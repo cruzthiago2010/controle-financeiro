@@ -1334,6 +1334,123 @@ def resumo():
     })
 
 
+# ---------------- Backup e restauração ----------------
+
+ARQUIVO_BANCO_NO_ZIP = "orcamento.db"
+
+
+def copia_consistente_do_banco(destino):
+    """Copia o banco usando a API de backup do SQLite: seguro mesmo com o app
+    em uso, ao contrário de copiar o arquivo direto."""
+    origem = sqlite3.connect(DB_PATH)
+    try:
+        alvo = sqlite3.connect(destino)
+        try:
+            origem.backup(alvo)
+        finally:
+            alvo.close()
+    finally:
+        origem.close()
+
+
+@app.route("/api/backup", methods=["GET"])
+def baixar_backup():
+    memoria = io.BytesIO()
+    with tempfile.TemporaryDirectory() as tmp:
+        copia_banco = os.path.join(tmp, ARQUIVO_BANCO_NO_ZIP)
+        copia_consistente_do_banco(copia_banco)
+        with zipfile.ZipFile(memoria, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.write(copia_banco, ARQUIVO_BANCO_NO_ZIP)
+            for pasta, prefixo in ((COMPROVANTES_DIR, "comprovantes"), (FOTOS_DIR, "fotos")):
+                if not os.path.isdir(pasta):
+                    continue
+                for nome in os.listdir(pasta):
+                    caminho = os.path.join(pasta, nome)
+                    if os.path.isfile(caminho):
+                        zf.write(caminho, f"{prefixo}/{nome}")
+    memoria.seek(0)
+    nome_arquivo = f"backup-financeiro-{datetime.now().strftime('%Y-%m-%d-%H%M')}.zip"
+    return send_file(memoria, mimetype="application/zip",
+                     as_attachment=True, download_name=nome_arquivo)
+
+
+@app.route("/api/backup/info", methods=["GET"])
+def info_backup():
+    def tamanho_pasta(pasta):
+        if not os.path.isdir(pasta):
+            return 0, 0
+        arquivos = [os.path.join(pasta, n) for n in os.listdir(pasta)]
+        arquivos = [a for a in arquivos if os.path.isfile(a)]
+        return len(arquivos), sum(os.path.getsize(a) for a in arquivos)
+
+    n_comp, bytes_comp = tamanho_pasta(COMPROVANTES_DIR)
+    n_fotos, bytes_fotos = tamanho_pasta(FOTOS_DIR)
+    bytes_banco = os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0
+    return jsonify({
+        "comprovantes": n_comp,
+        "fotos": n_fotos,
+        "tamanho_total_bytes": bytes_banco + bytes_comp + bytes_fotos,
+    })
+
+
+@app.route("/api/restaurar", methods=["POST"])
+def restaurar_backup():
+    if "arquivo" not in request.files:
+        return jsonify({"erro": "envie o arquivo .zip do backup"}), 400
+    enviado = request.files["arquivo"]
+    if not enviado.filename.lower().endswith(".zip"):
+        return jsonify({"erro": "o backup precisa ser um arquivo .zip"}), 400
+
+    with tempfile.TemporaryDirectory() as tmp:
+        caminho_zip = os.path.join(tmp, "backup.zip")
+        enviado.save(caminho_zip)
+        if not zipfile.is_zipfile(caminho_zip):
+            return jsonify({"erro": "arquivo inválido ou corrompido"}), 400
+
+        extraido = os.path.join(tmp, "conteudo")
+        with zipfile.ZipFile(caminho_zip) as zf:
+            nomes = zf.namelist()
+            if ARQUIVO_BANCO_NO_ZIP not in nomes:
+                return jsonify({"erro": "esse zip não parece um backup do app"}), 400
+            # Evita zip-slip: nada pode escapar da pasta de destino.
+            for nome in nomes:
+                if os.path.isabs(nome) or ".." in nome.replace("\\", "/").split("/"):
+                    return jsonify({"erro": "arquivo de backup inválido"}), 400
+            zf.extractall(extraido)
+
+        banco_novo = os.path.join(extraido, ARQUIVO_BANCO_NO_ZIP)
+        try:
+            teste = sqlite3.connect(banco_novo)
+            tabelas = {r[0] for r in teste.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()}
+            teste.close()
+        except sqlite3.Error:
+            return jsonify({"erro": "o banco dentro do backup está corrompido"}), 400
+        if not {"lancamentos", "usuarios"} <= tabelas:
+            return jsonify({"erro": "esse zip não parece um backup do app"}), 400
+
+        # Guarda o estado atual antes de sobrescrever, por segurança.
+        carimbo = datetime.now().strftime("%Y%m%d%H%M%S")
+        if os.path.exists(DB_PATH):
+            shutil.copy2(DB_PATH, f"{DB_PATH}.antes-de-restaurar-{carimbo}")
+        shutil.copy2(banco_novo, DB_PATH)
+
+        for prefixo, pasta in (("comprovantes", COMPROVANTES_DIR), ("fotos", FOTOS_DIR)):
+            origem = os.path.join(extraido, prefixo)
+            if not os.path.isdir(origem):
+                continue
+            os.makedirs(pasta, exist_ok=True)
+            for nome in os.listdir(origem):
+                caminho = os.path.join(origem, nome)
+                if os.path.isfile(caminho):
+                    shutil.copy2(caminho, os.path.join(pasta, os.path.basename(nome)))
+
+    init_db()
+    session.clear()  # o backup pode ter outros usuários/senhas
+    return jsonify({"ok": True})
+
+
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=5000)

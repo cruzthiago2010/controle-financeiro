@@ -922,6 +922,18 @@
       <button class="secondary" type="button" id="trocarSenhaCancelar">Fechar</button>
       <button type="button" id="trocarSenhaSalvar">Salvar nova senha</button>
     </div>
+
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:24px 0 0;">Backup</h3>
+    <p style="font-size:0.78rem; color:var(--muted-soft); margin:6px 0 10px;" id="backupInfo">
+      Baixa um .zip com todos os lançamentos, comprovantes e fotos.
+    </p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="button" id="baixarBackupBtn" style="flex:1;">⬇️ Baixar backup</button>
+      <label class="botao-arquivo" style="flex:1;" id="restaurarLabel">
+        ⬆️ Restaurar
+        <input type="file" id="restaurarInput" accept=".zip">
+      </label>
+    </div>
   </div>
 </div>
 
@@ -2404,6 +2416,7 @@ document.getElementById("sidebarUsuario").addEventListener("click", () => {
   document.getElementById("senhaAtualInput").value = "";
   document.getElementById("novaSenhaInput").value = "";
   atualizarPreviewFotoPerfil();
+  carregarInfoBackup();
   document.getElementById("modalTrocarSenha").classList.add("ativo");
 });
 document.getElementById("trocarSenhaCancelar").addEventListener("click", () => {
@@ -2445,6 +2458,53 @@ document.getElementById("perfilFotoRemover").addEventListener("click", async () 
     await carregarUsuarios();
     atualizarPreviewFotoPerfil();
   } catch (err) {}
+});
+
+// ---------- Backup ----------
+function formatarTamanho(bytes){
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function carregarInfoBackup(){
+  try {
+    const res = await apiFetch(`${API}/backup/info`, undefined, {erro:"Não foi possível ler o tamanho do backup"});
+    const info = await res.json();
+    document.getElementById("backupInfo").textContent =
+      `Um .zip com todos os lançamentos, ${info.comprovantes} comprovante(s) e ${info.fotos} foto(s) — cerca de ${formatarTamanho(info.tamanho_total_bytes)}.`;
+  } catch (e) {}
+}
+
+document.getElementById("baixarBackupBtn").addEventListener("click", () => {
+  showToast("Gerando backup...", "ok");
+  window.location.href = `${API}/backup`;
+});
+
+document.getElementById("restaurarInput").addEventListener("change", async (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  const ok = confirm(
+    "Restaurar vai SUBSTITUIR todos os dados atuais pelos do backup.\n\n" +
+    "O banco atual é salvo como cópia antes de sobrescrever, mas você será " +
+    "desconectado e terá que entrar de novo.\n\nDeseja continuar?"
+  );
+  if (!ok){ e.target.value = ""; return; }
+
+  const formData = new FormData();
+  formData.append("arquivo", arquivo);
+  const label = document.getElementById("restaurarLabel");
+  const textoOriginal = label.firstChild.nodeValue;
+  label.firstChild.nodeValue = "Restaurando...";
+  try {
+    await apiFetch(`${API}/restaurar`, {method:"POST", body: formData},
+      {erro:"Não foi possível restaurar o backup"});
+    showToast("Backup restaurado! Entrando de novo...", "ok");
+    setTimeout(() => { window.location.href = "/login"; }, 1500);
+  } catch (err) {
+    label.firstChild.nodeValue = textoOriginal;
+    e.target.value = "";
+  }
 });
 document.getElementById("trocarSenhaSalvar").addEventListener("click", async () => {
   const body = {
