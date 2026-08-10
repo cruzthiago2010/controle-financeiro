@@ -33,6 +33,17 @@
     color:var(--text); padding-bottom:80px; -webkit-font-smoothing:antialiased;
   }
   .mes-selector{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .mes-aviso{
+    display:none; align-items:center; gap:6px; background:rgba(245,196,81,0.15);
+    border:1px solid var(--yellow); color:var(--yellow); font-size:0.78rem; font-weight:700;
+    padding:5px 10px; border-radius:999px; white-space:nowrap;
+  }
+  .mes-aviso.ativo{display:inline-flex;}
+  .mes-aviso button{
+    background:var(--yellow); color:#3a2c00; border:none; padding:3px 9px;
+    font-size:0.74rem; font-weight:700; box-shadow:none; border-radius:999px;
+  }
+  .mes-aviso button:hover{filter:brightness(0.95); transform:none;}
   select, input, button, textarea{
     background:var(--card2); color:var(--text); border:1px solid var(--border);
     border-radius:var(--radius-sm); padding:9px 12px; font-size:0.92rem; font-family:inherit;
@@ -187,6 +198,19 @@
   .cal-dot.pendente{background:var(--yellow);}
   .cal-lista{margin-top:16px;}
 
+  /* Faixa de modo demonstração */
+  .demo-banner{
+    display:none; align-items:center; gap:10px; justify-content:center;
+    background:linear-gradient(135deg, var(--yellow), #e0a92e); color:#3a2c00;
+    padding:9px 16px; font-size:0.85rem; font-weight:700; text-align:center;
+  }
+  .demo-banner.ativo{display:flex;}
+  .demo-banner button{
+    background:rgba(0,0,0,0.18); color:#3a2c00; border:none; padding:5px 12px;
+    font-size:0.78rem; font-weight:700; box-shadow:none; border-radius:6px;
+  }
+  .demo-banner button:hover{background:rgba(0,0,0,0.3); transform:none; box-shadow:none;}
+
   /* Banner de instalação do app (PWA) */
   .install-banner{
     display:none; align-items:center; gap:12px; margin:0 0 14px;
@@ -269,7 +293,26 @@
   }
   .nav-item:hover{background:var(--card2); transform:none; box-shadow:none; color:var(--text);}
   .nav-item.ativo{color:#fff; background:linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow:0 2px 10px rgba(91,141,239,0.3);}
-  .nav-icon{font-size:1.05rem; flex:none; width:20px; text-align:center;}
+  .nav-icon{display:flex; align-items:center; justify-content:center; flex:none; width:20px;}
+
+  /* Ícones de linha (substituem os emojis) */
+  .ico{
+    width:20px; height:20px; flex:none; display:inline-block;
+    fill:none; stroke:currentColor; stroke-width:1.7;
+    stroke-linecap:round; stroke-linejoin:round;
+    vertical-align:-0.22em;  /* só vale quando o ícone fica junto de texto */
+  }
+  .ico.sm{width:15px; height:15px; stroke-width:1.9;}
+  .ico.lg{width:26px; height:26px; stroke-width:1.5;}
+  .ico.xl{width:30px; height:30px; stroke-width:1.4;}
+  /* Dentro de botões e caixas flex o ícone é centralizado de verdade,
+     sem depender da linha de base do texto. */
+  .icon-btn, button.icon, .fab, .sidebar-colapsar,
+  .item .acoes button, .item .acoes label, .item .acoes a.comp-link{
+    display:inline-flex; align-items:center; justify-content:center; gap:4px;
+  }
+  .icon-btn .ico, button.icon .ico, .fab .ico, .sidebar-colapsar .ico,
+  .item .acoes .ico, .nav-icon .ico{vertical-align:0;}
   .sidebar-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:39;}
   .sidebar-overlay.ativo{display:block;}
 
@@ -401,6 +444,9 @@
 
   /* Toggle switch */
   .toggle-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; font-size:0.85rem; color:var(--text);}
+  /* O rótulo (tudo menos o interruptor) alinha o ícone com o texto de verdade */
+  .toggle-row > span:not(.toggle-switch){display:inline-flex; align-items:center; gap:7px;}
+  .toggle-row .ico{width:16px; height:16px; vertical-align:0;}
   .toggle-switch{position:relative; display:inline-block; width:42px; height:24px; flex:none;}
   .toggle-switch input{opacity:0; width:0; height:0; position:absolute;}
   .toggle-slider{position:absolute; cursor:pointer; inset:0; background:var(--card3); border:1px solid var(--border); border-radius:999px; transition:background 0.2s;}
@@ -435,43 +481,98 @@
 </head>
 <body>
 
+<!-- Ícones de linha reutilizáveis. Usados via <svg class="ico" viewBox="0 0 24 24"><use href="#i-nome"></use></svg> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="i-dashboard"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></g>
+    <g id="i-banco"><path d="M12 3 3 8h18Z"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8"/><path d="M3 21h18"/></g>
+    <g id="i-trocas"><path d="M7 21V4"/><path d="m3 8 4-4 4 4"/><path d="M17 3v17"/><path d="m13 16 4 4 4-4"/></g>
+    <g id="i-tag"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 2.8 12V4.8A2 2 0 0 1 4.8 2.8H12a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.3"/></g>
+    <g id="i-calendario"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></g>
+    <g id="i-cartao"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20M6 15h4"/></g>
+    <g id="i-escudo"><path d="M12 3 5 6v6c0 4.4 3 7.9 7 9 4-1.1 7-4.6 7-9V6Z"/><path d="m9.5 12 1.8 1.8 3.7-3.8"/></g>
+    <g id="i-menu"><path d="M4 7h16M4 12h16M4 17h16"/></g>
+    <g id="i-esquerda"><path d="m14 6-6 6 6 6"/></g>
+    <g id="i-direita"><path d="m10 6 6 6-6 6"/></g>
+    <g id="i-olho"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></g>
+    <g id="i-olho-fechado"><path d="M3 3l18 18M10.6 6.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.3 4M6.3 8.3A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 3.7-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></g>
+    <g id="i-lua"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></g>
+    <g id="i-sol"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></g>
+    <g id="i-mais"><path d="M12 5v14M5 12h14"/></g>
+    <g id="i-lapis"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></g>
+    <g id="i-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></g>
+    <g id="i-clipe"><path d="M21.4 11.05 12.25 20.2a6 6 0 0 1-8.49-8.49l9.2-9.19a4 4 0 0 1 5.65 5.66l-9.19 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></g>
+    <g id="i-check-circulo"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></g>
+    <g id="i-carteira"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><path d="M17 12h.01"/></g>
+    <g id="i-grafico"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></g>
+    <g id="i-sobe"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></g>
+    <g id="i-desce"><path d="M3 7 9 13l4-4 8 8"/><path d="M15 17h6v-6"/></g>
+    <g id="i-recibo"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2Z"/><path d="M9 7h6M9 11h6M9 15h3"/></g>
+    <g id="i-relogio"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g>
+    <g id="i-bussola"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></g>
+    <g id="i-sino"><path d="M18 9a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></g>
+    <g id="i-repetir"><path d="M17 2l4 4-4 4"/><path d="M3 12v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 12v1a4 4 0 0 1-4 4H3"/></g>
+    <g id="i-sair"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></g>
+    <g id="i-usuario-mais"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M18 8v6M15 11h6"/></g>
+    <g id="i-baixar"><path d="M12 3v12M8 11l4 4 4-4M4 20h16"/></g>
+    <g id="i-enviar"><path d="M12 20V8M8 12l4-4 4 4M4 4h16"/></g>
+    <g id="i-restaurar"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></g>
+    <g id="i-lixeira"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-13M9 7V4h6v3"/></g>
+    <g id="i-camera"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/></g>
+    <g id="i-celular"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18.5h2"/></g>
+    <g id="i-busca"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></g>
+  </defs>
+</svg>
+
+
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-topo">
-      <span class="logo">💰 <span class="logo-texto">Controle Financeiro</span></span>
-      <button class="sidebar-colapsar" id="sidebarColapsarBtn" type="button" title="Recolher menu">«</button>
+      <span class="logo"><svg class="ico lg" viewBox="0 0 24 24"><use href="#i-carteira"/></svg> <span class="logo-texto">Controle Financeiro</span></span>
+      <button class="sidebar-colapsar" id="sidebarColapsarBtn" type="button" title="Recolher menu"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-esquerda"/></svg></button>
     </div>
     <nav class="sidebar-nav">
-      <button class="nav-item ativo" data-tab="dashboard" title="Dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></button>
-      <button class="nav-item" data-tab="contas" title="Contas"><span class="nav-icon">🏦</span><span class="nav-label">Contas</span></button>
-      <button class="nav-item" data-tab="lancamentos" title="Receitas & Despesas"><span class="nav-icon">💵</span><span class="nav-label">Receitas &amp; Despesas</span></button>
-      <button class="nav-item" data-tab="categorias" title="Categorias"><span class="nav-icon">🏷️</span><span class="nav-label">Categorias</span></button>
-      <button class="nav-item" data-tab="calendario" title="Calendário"><span class="nav-icon">📅</span><span class="nav-label">Calendário</span></button>
-      <button class="nav-item" data-tab="cartoes" title="Cartões"><span class="nav-icon">💳</span><span class="nav-label">Cartões</span></button>
-      <button class="nav-item" data-tab="dividas" title="Dívidas"><span class="nav-icon">📉</span><span class="nav-label">Dívidas</span></button>
+      <button class="nav-item ativo" data-tab="dashboard" title="Dashboard"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-dashboard"/></svg></span><span class="nav-label">Dashboard</span></button>
+      <button class="nav-item" data-tab="contas" title="Contas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-banco"/></svg></span><span class="nav-label">Contas</span></button>
+      <button class="nav-item" data-tab="lancamentos" title="Receitas & Despesas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg></span><span class="nav-label">Receitas &amp; Despesas</span></button>
+      <button class="nav-item" data-tab="categorias" title="Categorias"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span><span class="nav-label">Categorias</span></button>
+      <button class="nav-item" data-tab="calendario" title="Calendário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendario"/></svg></span><span class="nav-label">Calendário</span></button>
+      <button class="nav-item" data-tab="cartoes" title="Cartões"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cartao"/></svg></span><span class="nav-label">Cartões</span></button>
+      <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
     </nav>
     <div class="sidebar-rodape">
       <div class="sidebar-usuario" id="sidebarUsuario" title="Trocar senha">
         <span class="usuario-avatar" id="usuarioAvatar">?</span>
         <span class="nav-label" id="usuarioNomeLabel">...</span>
       </div>
-      <button class="nav-item" id="btnAdicionarUsuario" title="Adicionar usuário"><span class="nav-icon">➕</span><span class="nav-label">Adicionar usuário</span></button>
-      <button class="nav-item" id="btnSair" title="Sair"><span class="nav-icon">🚪</span><span class="nav-label">Sair</span></button>
+      <button class="nav-item" id="btnAdicionarUsuario" title="Adicionar usuário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg></span><span class="nav-label">Adicionar usuário</span></button>
+      <button class="nav-item" id="btnSair" title="Sair"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sair"/></svg></span><span class="nav-label">Sair</span></button>
     </div>
   </aside>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <div class="conteudo">
+    <div class="demo-banner" id="demoBanner">
+      <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-olho"/></svg>
+      <span>MODO DEMONSTRAÇÃO ATIVADO — dados fictícios, suas contas reais estão ocultas</span>
+      <button type="button" id="sairDemoBtn">Sair do demo</button>
+    </div>
+
     <header class="topbar">
-      <button class="icon-btn" id="menuToggle" type="button" title="Menu">☰</button>
+      <button class="icon-btn" id="menuToggle" type="button" title="Menu"><svg class="ico" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
       <div class="mes-selector">
-        <button class="icon-btn" id="mesAnteriorBtn" type="button" title="Mês anterior">‹</button>
+        <button class="icon-btn" id="mesAnteriorBtn" type="button" title="Mês anterior"><svg class="ico" viewBox="0 0 24 24"><use href="#i-esquerda"/></svg></button>
         <select id="mesSelect"></select>
-        <button class="icon-btn" id="mesProximoBtn" type="button" title="Próximo mês">›</button>
+        <button class="icon-btn" id="mesProximoBtn" type="button" title="Próximo mês"><svg class="ico" viewBox="0 0 24 24"><use href="#i-direita"/></svg></button>
+        <span class="mes-aviso" id="mesAvisoNaoAtual">
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg>
+          Não é o mês atual
+          <button type="button" id="voltarMesAtualBtn">Voltar para hoje</button>
+        </span>
       </div>
       <div class="topbar-acoes">
-        <button class="icon-btn" id="ocultarValoresBtn" type="button" title="Ocultar valores">👁️</button>
-        <button class="icon-btn" id="temaBtn" type="button" title="Alternar tema">🌙</button>
+        <button class="icon-btn" id="ocultarValoresBtn" type="button" title="Ocultar valores"><svg class="ico" viewBox="0 0 24 24"><use href="#i-olho"/></svg></button>
+        <button class="icon-btn" id="temaBtn" type="button" title="Alternar tema"><svg class="ico" viewBox="0 0 24 24"><use href="#i-lua"/></svg></button>
       </div>
     </header>
 
@@ -480,13 +581,13 @@
     <main>
 
   <div class="install-banner" id="installBanner">
-    <span style="font-size:1.5rem;">📲</span>
+    <svg class="ico xl" viewBox="0 0 24 24"><use href="#i-celular"/></svg>
     <div class="texto-inst">
       <strong>Instalar como app</strong>
       <small id="installDica">Abre em tela cheia, sem a barra do navegador.</small>
     </div>
     <button type="button" id="installBtn">Instalar</button>
-    <button type="button" class="secondary" id="installFechar" title="Dispensar">✕</button>
+    <button type="button" class="secondary" id="installFechar" title="Dispensar"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
   </div>
 
   <!-- ===================== DASHBOARD ===================== -->
@@ -498,7 +599,7 @@
     <div class="destaque" id="destaqueDiario"></div>
 
     <div class="secao">
-      <h2>💧 Fluxo de caixa do mês <span style="text-transform:none; font-weight:400; opacity:0.7;">· toque numa coluna para ver o detalhe</span></h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Fluxo de caixa do mês <span style="text-transform:none; font-weight:400; opacity:0.7;">· toque numa coluna para ver o detalhe</span></h2>
       <div class="chart-box"><canvas id="chartComparacao"></canvas></div>
     </div>
 
@@ -508,17 +609,17 @@
     </div>
 
     <div class="secao">
-      <h2>⏰ Contas vencendo nos próximos 7 dias</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> Contas vencendo nos próximos 7 dias</h2>
       <div id="listaVencendo"></div>
     </div>
 
     <div class="secao">
-      <h2>📅 Parcelas futuras</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-calendario"/></svg> Parcelas futuras</h2>
       <div id="listaParcelasFuturas"></div>
     </div>
 
     <div class="secao">
-      <h2>🏦 Resumo por conta</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-banco"/></svg> Resumo por conta</h2>
       <div id="listaContasResumo"></div>
     </div>
   </section>
@@ -528,7 +629,7 @@
     <div class="secao">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <h2 style="margin-bottom:0;">Contas</h2>
-        <button class="secondary" type="button" id="btnAbrirTransferencia">🔁 Transferir</button>
+        <button class="secondary" type="button" id="btnAbrirTransferencia"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> Transferir</button>
       </div>
       <div class="contas-grid" id="listaContas"></div>
     </div>
@@ -543,12 +644,12 @@
   <section class="painel" id="painel-lancamentos">
 
     <div class="secao pendentes" id="secaoPendentes" style="display:none;">
-      <h2 style="color:var(--yellow);">⚠️ Contas pendentes do mês</h2>
+      <h2 style="color:var(--yellow);"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> Contas pendentes do mês</h2>
       <div id="listaPendentes"></div>
     </div>
 
     <div class="filtros-row">
-      <input type="text" id="buscaInput" placeholder="🔍 Buscar por descrição">
+      <input type="text" id="buscaInput" placeholder="Buscar por descrição">
       <select id="filtroCategoria"><option value="">Todas categorias</option></select>
       <select id="filtroConta"><option value="">Todas contas</option></select>
       <select id="filtroStatus">
@@ -629,20 +730,50 @@
     </form>
   </section>
 
-  <!-- ===================== DÍVIDAS ===================== -->
-  <section class="painel" id="painel-dividas">
+  <!-- ===================== BACKUP ===================== -->
+  <section class="painel" id="painel-backup">
     <div class="secao">
-      <h2>Dívidas</h2>
-      <div id="listaDividas"></div>
+      <h2>Backup automático</h2>
+      <div class="card">
+        <label>Com que frequência?</label>
+        <select id="backupPeriodo">
+          <option value="desligado">Desligado</option>
+          <option value="diario">Todo dia</option>
+          <option value="semanal">Toda semana</option>
+          <option value="mensal">Todo mês</option>
+        </select>
+        <label>Quantos backups manter?</label>
+        <input type="number" id="backupManter" min="1" max="30" value="5">
+        <p style="font-size:0.78rem; color:var(--muted-soft); margin:10px 0 0;">
+          Ao passar do limite, o backup mais antigo é apagado automaticamente.
+        </p>
+        <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+          <button type="button" id="salvarConfigBackup" style="flex:1;">Salvar configuração</button>
+          <button type="button" class="secondary" id="backupAgoraBtn" style="flex:1;">Fazer backup agora</button>
+        </div>
+      </div>
     </div>
-    <form class="add-form" id="dividaForm">
-      <input type="text" id="dividaDesc" placeholder="Descrição (ex: Consignado banco X)" required>
-      <input type="number" id="dividaTotal" placeholder="Valor total (R$)" step="0.01">
-      <input type="number" id="dividaRestante" placeholder="Valor restante (R$)" step="0.01">
-      <input type="number" id="dividaParcela" placeholder="Parcela mensal (R$)" step="0.01">
-      <input type="number" id="dividaDiaVenc" placeholder="Dia de vencimento" min="1" max="31">
-      <button type="submit">Adicionar dívida</button>
-    </form>
+
+    <div class="secao">
+      <h2>Backups salvos no servidor</h2>
+      <div id="listaBackups"></div>
+    </div>
+
+    <div class="secao">
+      <h2>Baixar / restaurar manualmente</h2>
+      <div class="card">
+        <p style="font-size:0.8rem; color:var(--muted); margin:0 0 12px;" id="backupInfo">
+          Baixa um .zip com todos os lançamentos, comprovantes e fotos.
+        </p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" id="baixarBackupBtn" style="flex:1;"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Baixar agora</button>
+          <label class="botao-arquivo" style="flex:1;" id="restaurarLabel">
+            <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-enviar"/></svg> Restaurar de um arquivo
+            <input type="file" id="restaurarInput" accept=".zip">
+          </label>
+        </div>
+      </div>
+    </div>
   </section>
 
     </main>
@@ -665,7 +796,7 @@
     <label>Conta</label>
     <select id="editConta"><option value="">Sem conta</option></select>
     <label class="toggle-row">
-      <span id="editPagoLabel">✅ Já paga</span>
+      <span id="editPagoLabel"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg> Já paga</span>
       <span class="toggle-switch"><input type="checkbox" id="editPago"><span class="toggle-slider"></span></span>
     </label>
     <label id="editDataPagLabel" style="display:none;">Data do pagamento</label>
@@ -726,18 +857,18 @@
   <div class="fab-opcoes" id="fabOpcoes">
     <button class="fab-mini" id="fabTransferencia" type="button">
       <span class="fab-mini-label">Transferência</span>
-      <span class="fab-mini-icone transferencia">🔁</span>
+      <span class="fab-mini-icone transferencia"><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg></span>
     </button>
     <button class="fab-mini" id="fabReceita" type="button">
       <span class="fab-mini-label">Receita</span>
-      <span class="fab-mini-icone receita">💰</span>
+      <span class="fab-mini-icone receita"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sobe"/></svg></span>
     </button>
     <button class="fab-mini" id="fabDespesa" type="button">
       <span class="fab-mini-label">Despesa</span>
-      <span class="fab-mini-icone despesa">💸</span>
+      <span class="fab-mini-icone despesa"><svg class="ico" viewBox="0 0 24 24"><use href="#i-desce"/></svg></span>
     </button>
   </div>
-  <button class="fab" id="fabToggle" type="button" title="Novo">+</button>
+  <button class="fab" id="fabToggle" type="button" title="Novo"><svg class="ico lg" viewBox="0 0 24 24"><use href="#i-mais"/></svg></button>
 </div>
 
 <div class="modal-overlay" id="modalNovoLancamento">
@@ -780,7 +911,7 @@
     </div>
 
     <label class="toggle-row">
-      🔁 Parcelar
+      <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> Parcelar</span>
       <span class="toggle-switch"><input type="checkbox" id="parcelarInput"><span class="toggle-slider"></span></span>
     </label>
     <div id="parcelasBox" style="display:none;">
@@ -799,11 +930,22 @@
 
     <div id="opcoesNaoParceladas">
       <label class="toggle-row">
-        🔄 Repetir todo mês (recorrente)
+        <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> Repetir todo mês (recorrente)</span>
         <span class="toggle-switch"><input type="checkbox" id="recInput"><span class="toggle-slider"></span></span>
       </label>
+      <div id="recorrenciaBox" style="display:none;">
+        <label>Por quantos meses?</label>
+        <div class="segmented" id="recDuracaoSegmented">
+          <button type="button" class="ativo" data-modo="sempre">Sempre</button>
+          <button type="button" data-modo="limitado">Nº de vezes</button>
+        </div>
+        <div id="recVezesBox" style="display:none;">
+          <input type="number" id="recVezesInput" min="2" value="6" placeholder="ex: 6">
+          <div class="formula-box" id="recPreview" style="margin-top:10px; margin-bottom:0;"></div>
+        </div>
+      </div>
       <label class="toggle-row">
-        <span id="labelEfetivada">✅ Já paga</span>
+        <span id="labelEfetivada"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg> Já paga</span>
         <span class="toggle-switch"><input type="checkbox" id="pagoInput"><span class="toggle-slider"></span></span>
       </label>
     </div>
@@ -818,7 +960,7 @@
 <!-- Modal de transferência entre contas -->
 <div class="modal-overlay" id="modalTransferencia">
   <div class="modal-box">
-    <h3>🔁 Transferência entre contas</h3>
+    <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> Transferência entre contas</h3>
     <label>Conta de origem</label>
     <select id="transfContaOrigem"></select>
     <label>Conta de destino</label>
@@ -906,14 +1048,24 @@
       <div class="perfil-foto" id="perfilFotoPreview"></div>
       <div class="perfil-foto-acoes">
         <label class="botao-arquivo" id="perfilFotoLabel">
-          📷 Escolher foto
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-camera"/></svg> Escolher foto
           <input type="file" id="perfilFotoInput" accept="image/*">
         </label>
         <button type="button" class="secondary" id="perfilFotoRemover">Remover foto</button>
       </div>
     </div>
 
-    <h3 style="font-size:0.85rem; color:var(--muted); margin:20px 0 0;">Trocar senha</h3>
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;">Modo demonstração</h3>
+    <p style="font-size:0.78rem; color:var(--muted-soft); margin:6px 0 10px;">
+      Troca temporariamente seus dados por um conjunto fictício, para mostrar o app
+      a outras pessoas sem expor suas contas. Seus dados reais continuam intactos.
+    </p>
+    <label class="toggle-row" style="padding-top:0;">
+      <span id="demoLabel">Modo demonstração desligado</span>
+      <span class="toggle-switch"><input type="checkbox" id="demoToggle"><span class="toggle-slider"></span></span>
+    </label>
+
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;">Trocar senha</h3>
     <label>Senha atual</label>
     <input type="password" id="senhaAtualInput">
     <label>Nova senha</label>
@@ -923,22 +1075,28 @@
       <button type="button" id="trocarSenhaSalvar">Salvar nova senha</button>
     </div>
 
-    <h3 style="font-size:0.85rem; color:var(--muted); margin:24px 0 0;">Backup</h3>
-    <p style="font-size:0.78rem; color:var(--muted-soft); margin:6px 0 10px;" id="backupInfo">
-      Baixa um .zip com todos os lançamentos, comprovantes e fotos.
-    </p>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button type="button" id="baixarBackupBtn" style="flex:1;">⬇️ Baixar backup</button>
-      <label class="botao-arquivo" style="flex:1;" id="restaurarLabel">
-        ⬆️ Restaurar
-        <input type="file" id="restaurarInput" accept=".zip">
-      </label>
-    </div>
   </div>
 </div>
 
 <script>
 const API = "/api";
+
+// Ícones de linha usados em conteúdo gerado por JS.
+const svgIco = (nome, cls = "ico") => `<svg class="${cls}" viewBox="0 0 24 24"><use href="#i-${nome}"/></svg>`;
+const ICO = {
+  lua: svgIco("lua"), sol: svgIco("sol"),
+  olho: svgIco("olho"), olhoFechado: svgIco("olho-fechado"),
+  esquerda: svgIco("esquerda"), direita: svgIco("direita"),
+  lapis: svgIco("lapis", "ico sm"), x: svgIco("x", "ico sm"),
+  clipe: svgIco("clipe", "ico sm"), clipeSm: svgIco("clipe", "ico sm"),
+  baixar: svgIco("baixar", "ico sm"), restaurar: svgIco("restaurar", "ico sm"),
+  lixeira: svgIco("lixeira", "ico sm"), repetir: svgIco("repetir", "ico sm"),
+  carteira: svgIco("carteira", "ico sm"), grafico: svgIco("grafico", "ico sm"),
+  sobe: svgIco("sobe", "ico sm"), desce: svgIco("desce", "ico sm"),
+  recibo: svgIco("recibo", "ico sm"), checkCirculo: svgIco("check-circulo", "ico sm"),
+  bussola: svgIco("bussola", "ico sm"), banco: svgIco("banco", "ico lg"),
+  relogio: svgIco("relogio", "ico sm"), calendario: svgIco("calendario", "ico sm"),
+};
 let mesAtual = null;
 let categoriasCache = {receita:[], despesa:[]};
 let chartComparacao = null, chartCategoria = null;
@@ -1046,6 +1204,7 @@ document.getElementById("sidebarOverlay").addEventListener("click", fecharSideba
 function aplicarSidebarColapsada(colapsada){
   document.getElementById("sidebar").classList.toggle("colapsada", colapsada);
   document.getElementById("sidebarColapsarBtn").title = colapsada ? "Expandir menu" : "Recolher menu";
+  document.getElementById("sidebarColapsarBtn").innerHTML = colapsada ? ICO.direita : ICO.esquerda;
   localStorage.setItem("sidebarColapsada", colapsada ? "1" : "0");
 }
 document.getElementById("sidebarColapsarBtn").addEventListener("click", () => {
@@ -1056,7 +1215,7 @@ aplicarSidebarColapsada(localStorage.getItem("sidebarColapsada") === "1");
 // ---------- Tema claro/escuro ----------
 function aplicarTema(tema){
   document.documentElement.setAttribute("data-tema", tema);
-  document.getElementById("temaBtn").textContent = tema === "claro" ? "☀️" : "🌙";
+  document.getElementById("temaBtn").innerHTML = tema === "claro" ? ICO.sol : ICO.lua;
   localStorage.setItem("tema", tema);
   if (mesAtual && document.getElementById("painel-dashboard").classList.contains("ativo")) carregarDashboard();
 }
@@ -1069,7 +1228,7 @@ aplicarTema(localStorage.getItem("tema") || "escuro");
 // ---------- Ocultar valores ----------
 function aplicarOcultarValores(ocultar){
   document.body.classList.toggle("valores-ocultos", ocultar);
-  document.getElementById("ocultarValoresBtn").textContent = ocultar ? "🙈" : "👁️";
+  document.getElementById("ocultarValoresBtn").innerHTML = ocultar ? ICO.olhoFechado : ICO.olho;
   document.getElementById("ocultarValoresBtn").classList.toggle("ativo", ocultar);
   localStorage.setItem("valoresOcultos", ocultar ? "1" : "0");
 }
@@ -1079,6 +1238,15 @@ document.getElementById("ocultarValoresBtn").addEventListener("click", () => {
 aplicarOcultarValores(localStorage.getItem("valoresOcultos") === "1");
 
 // ---------- Navegação de mês (‹ ›) — cria o mês automaticamente se ainda não existir ----------
+function mesAtualReal(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function atualizarAvisoMes(){
+  const aviso = document.getElementById("mesAvisoNaoAtual");
+  aviso.classList.toggle("ativo", mesAtual !== mesAtualReal());
+}
+document.getElementById("voltarMesAtualBtn").addEventListener("click", () => irParaMes(mesAtualReal()));
 function mesAnteriorStr(mes){
   let [ano, m] = mes.split("-").map(Number);
   m -= 1;
@@ -1102,6 +1270,7 @@ function irParaMes(novoMes){
   }
   sel.value = novoMes;
   mesAtual = novoMes;
+  atualizarAvisoMes();
   carregarTudo();
 }
 document.getElementById("mesAnteriorBtn").addEventListener("click", () => {
@@ -1123,8 +1292,9 @@ async function carregarMeses(){
       opt.value = m; opt.textContent = formatMes(m);
       sel.appendChild(opt);
     });
-    mesAtual = meses[0];
+    mesAtual = meses.includes(mesAtualReal()) ? mesAtualReal() : meses[0];
     sel.value = mesAtual;
+    atualizarAvisoMes();
   } catch (e) { /* toast já exibido pelo apiFetch */ }
 }
 
@@ -1151,8 +1321,8 @@ function renderizarPainelCategorias(){
       <span class="dot" style="background:${corPara(c.nome)}"></span>
       <span class="nome">${escapeHtml(c.nome)}</span>
       <div class="acoes">
-        <button class="icon" onclick="abrirEdicaoCategoria(${c.id})" title="Editar">✎</button>
-        <button class="icon danger" onclick="excluirCategoria(${c.id})" title="Excluir">✕</button>
+        <button class="icon" onclick="abrirEdicaoCategoria(${c.id})" title="Editar">${ICO.lapis}</button>
+        <button class="icon danger" onclick="excluirCategoria(${c.id})" title="Excluir">${ICO.x}</button>
       </div>
     `;
     return div;
@@ -1279,7 +1449,7 @@ document.querySelectorAll("#tipoSegmented button").forEach(btn => {
     btn.classList.add("ativo");
     const tipo = btn.dataset.tipo;
     document.getElementById("tipoInput").value = tipo;
-    document.getElementById("labelEfetivada").textContent = tipo === "renda" ? "✅ Já recebida" : "✅ Já paga";
+    document.getElementById("labelEfetivada").innerHTML = ICO.checkCirculo + (tipo === "renda" ? " Já recebida" : " Já paga");
     document.getElementById("novoSalvar").style.background = tipo === "renda"
       ? "linear-gradient(135deg, var(--green), #2fb377)"
       : "linear-gradient(135deg, var(--red), #e05353)";
@@ -1303,6 +1473,39 @@ function atualizarPreviewParcela(){
     formulaLinha(`Em ${parcelas}x de`, valorParcela) +
     formulaLinha("Total parcelado", total, "total");
 }
+// ---------- Duração da recorrência (sempre x nº de vezes) ----------
+function modoRecorrencia(){
+  const btn = document.querySelector("#recDuracaoSegmented button.ativo");
+  return btn ? btn.dataset.modo : "sempre";
+}
+function atualizarPreviewRecorrencia(){
+  if (modoRecorrencia() !== "limitado") return;
+  const vezes = Math.max(Number(document.getElementById("recVezesInput").value) || 2, 2);
+  const ultimo = somarMesesStr(mesAtual, vezes - 1);
+  document.getElementById("recPreview").innerHTML =
+    `<div class="linha"><span>Repete</span><span>${vezes}x</span></div>` +
+    `<div class="linha total"><span>De ${formatMes(mesAtual)} até</span><span>${formatMes(ultimo)}</span></div>`;
+}
+function somarMesesStr(mes, n){
+  let atual = mes;
+  for (let i = 0; i < n; i++) atual = mesSeguinteStr(atual);
+  return atual;
+}
+document.getElementById("recInput").addEventListener("change", (e) => {
+  document.getElementById("recorrenciaBox").style.display = e.target.checked ? "block" : "none";
+  if (e.target.checked) atualizarPreviewRecorrencia();
+});
+document.querySelectorAll("#recDuracaoSegmented button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#recDuracaoSegmented button").forEach(b => b.classList.remove("ativo"));
+    btn.classList.add("ativo");
+    document.getElementById("recVezesBox").style.display =
+      btn.dataset.modo === "limitado" ? "block" : "none";
+    atualizarPreviewRecorrencia();
+  });
+});
+document.getElementById("recVezesInput").addEventListener("input", atualizarPreviewRecorrencia);
+
 document.getElementById("parcelarInput").addEventListener("change", (e) => {
   document.getElementById("parcelasBox").style.display = e.target.checked ? "block" : "none";
   document.getElementById("opcoesNaoParceladas").style.display = e.target.checked ? "none" : "block";
@@ -1336,13 +1539,18 @@ function abrirModalNovoLancamento(tipoInicial){
   document.querySelector('#modoValorSegmented button[data-modo="total"]').classList.add("ativo");
   document.getElementById("obsInput").value = "";
   document.getElementById("recInput").checked = false;
+  document.getElementById("recorrenciaBox").style.display = "none";
+  document.getElementById("recVezesBox").style.display = "none";
+  document.getElementById("recVezesInput").value = 6;
+  document.querySelectorAll("#recDuracaoSegmented button").forEach(b => b.classList.remove("ativo"));
+  document.querySelector('#recDuracaoSegmented button[data-modo="sempre"]').classList.add("ativo");
   document.getElementById("pagoInput").checked = false;
   document.getElementById("contaInput").value = "";
   atualizarDotPreview("contaInput", "dotConta", null);
   document.querySelectorAll("#tipoSegmented button").forEach(b => b.classList.remove("ativo"));
   document.querySelector(`#tipoSegmented button[data-tipo="${tipoInicial}"]`).classList.add("ativo");
   document.getElementById("tipoInput").value = tipoInicial;
-  document.getElementById("labelEfetivada").textContent = tipoInicial === "renda" ? "✅ Já recebida" : "✅ Já paga";
+  document.getElementById("labelEfetivada").innerHTML = ICO.checkCirculo + (tipoInicial === "renda" ? " Já recebida" : " Já paga");
   document.getElementById("novoSalvar").style.background = tipoInicial === "renda"
     ? "linear-gradient(135deg, var(--green), #2fb377)"
     : "linear-gradient(135deg, var(--red), #e05353)";
@@ -1462,6 +1670,10 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
     observacao: document.getElementById("obsInput").value,
     recorrente: parcelar ? false : document.getElementById("recInput").checked,
     pago: parcelar ? false : document.getElementById("pagoInput").checked,
+    // 0 = repete para sempre
+    recorrencia_vezes: (!parcelar && document.getElementById("recInput").checked && modoRecorrencia() === "limitado")
+      ? Math.max(Number(document.getElementById("recVezesInput").value) || 2, 2)
+      : 0,
   };
   if (!body.descricao.trim()){ showToast("Descrição é obrigatória", "erro"); return; }
   if (!valorDigitado || valorDigitado <= 0){ showToast("Informe um valor válido", "erro"); return; }
@@ -1478,7 +1690,7 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
 async function carregarTudo(){
   diaSelecionadoCalendario = null;
   await carregarContas();
-  await Promise.all([carregarLancamentos(), carregarDashboard(), carregarCartoes(), carregarDividas()]);
+  await Promise.all([carregarLancamentos(), carregarDashboard(), carregarCartoes()]);
   if (document.getElementById("painel-calendario").classList.contains("ativo")){
     await carregarCalendario();
   }
@@ -1522,8 +1734,8 @@ function renderizarContas(){
         <div class="secundario">previsto ${formatMoeda(c.saldo_previsto)}</div>
       </div>
       <div class="conta-acoes">
-        <button class="icon" onclick="abrirEdicaoConta(${c.id})" title="Editar">✎</button>
-        <button class="icon danger" onclick="excluirConta(${c.id})" title="Excluir">✕</button>
+        <button class="icon" onclick="abrirEdicaoConta(${c.id})" title="Editar">${ICO.lapis}</button>
+        <button class="icon danger" onclick="excluirConta(${c.id})" title="Excluir">${ICO.x}</button>
       </div>
     `;
     container.appendChild(div);
@@ -1682,8 +1894,11 @@ function criarItemHTML(item){
   if (item.conta) metaPartes.push(escapeHtml(item.conta));
   if (item.vencimento) metaPartes.push((atrasado ? "Venc " : "Venc ") + formatData(item.vencimento) + (atrasado ? " (atrasado)" : ""));
   if (item.parcela_total > 1) metaPartes.push(`${item.parcela_num}/${item.parcela_total}`);
+  if (item.recorrente){
+    metaPartes.push(item.recorrencia_ate ? `repete até ${formatMes(item.recorrencia_ate)}` : "repete todo mês");
+  }
   if (item.pago) metaPartes.push((ehRenda ? "✓ recebido" : "✓ pago") + (item.data_pagamento ? " " + formatData(item.data_pagamento) : ""));
-  if (item.observacao) metaPartes.push("💬 " + escapeHtml(item.observacao));
+  if (item.observacao) metaPartes.push(escapeHtml(item.observacao));
 
   // Efetivar e anexar valem para receita e despesa.
   const checkboxHTML = `<input type="checkbox" class="pago-check" ${item.pago ? "checked" : ""}
@@ -1691,21 +1906,21 @@ function criarItemHTML(item){
       onchange="togglePago(${item.id}, this.checked)">`;
 
   const comprovanteHTML = item.comprovante
-    ? `<a class="comp-link com-anexo" href="${API}/comprovante/${encodeURIComponent(item.comprovante)}" target="_blank" title="Ver comprovante anexado">📎 anexo</a>`
-    : `<label title="Anexar comprovante">📎<input type="file" onchange="enviarComprovante(${item.id}, this.files[0])"></label>`;
+    ? `<a class="comp-link com-anexo" href="${API}/comprovante/${encodeURIComponent(item.comprovante)}" target="_blank" title="Ver comprovante anexado">${ICO.clipeSm} anexo</a>`
+    : `<label title="Anexar comprovante">${ICO.clipe}<input type="file" onchange="enviarComprovante(${item.id}, this.files[0])"></label>`;
 
   div.innerHTML = `
     <div class="item-topo">
       ${checkboxHTML}
       <div class="desc-wrap">
-        <div class="desc">${escapeHtml(item.descricao)}${item.recorrente ? " 🔁" : ""}</div>
+        <div class="desc">${escapeHtml(item.descricao)}${item.recorrente ? ` <svg class="ico sm" viewBox="0 0 24 24" style="opacity:.65" title="Repete todo mês"><use href="#i-repetir"/></svg>` : ""}</div>
         <div class="meta ${atrasado ? 'atrasado' : ''}">${metaPartes.join(" · ")}</div>
       </div>
       <span class="valor ${ehRenda ? 'positivo' : 'negativo'}">${formatMoeda(item.valor)}</span>
       <div class="acoes">
-        <button class="icon" onclick="abrirEdicaoPorId(${item.id})">✎</button>
+        <button class="icon" title="Editar" onclick="abrirEdicaoPorId(${item.id})">${ICO.lapis}</button>
         ${comprovanteHTML}
-        <button class="icon danger" onclick="excluir(${item.id})">✕</button>
+        <button class="icon danger" title="Excluir" onclick="excluir(${item.id})">${ICO.x}</button>
       </div>
     </div>
   `;
@@ -1804,7 +2019,7 @@ async function enviarComprovante(id, arquivo){
   } catch (e) {}
 }
 
-document.getElementById("mesSelect").addEventListener("change", (e) => { mesAtual = e.target.value; carregarTudo(); });
+document.getElementById("mesSelect").addEventListener("change", (e) => { mesAtual = e.target.value; atualizarAvisoMes(); carregarTudo(); });
 
 // ---------- Dashboard ----------
 async function carregarDashboard(){
@@ -1821,21 +2036,21 @@ async function carregarDashboard(){
   const temContas = d.contas && d.contas.length > 0;
   const destaqueContasEl = document.getElementById("destaqueSaldoContas");
   destaqueContasEl.innerHTML = temContas
-    ? `<div class="valor-grande ${d.saldo_total_contas>=0?'':'negativo'}">🏦 ${formatMoeda(d.saldo_total_contas)}</div>
+    ? `<div class="valor-grande ${d.saldo_total_contas>=0?'':'negativo'}">${svgIco("banco","ico lg")} ${formatMoeda(d.saldo_total_contas)}</div>
        <div class="texto">saldo real somando todas as suas contas · toque para ver</div>`
-    : `<div class="valor-grande">🏦 Cadastre suas contas</div>
+    : `<div class="valor-grande">${svgIco("banco","ico lg")} Cadastre suas contas</div>
        <div class="texto">toque aqui para ir até "Contas" e ver seu saldo real de banco/carteira</div>`;
   destaqueContasEl.classList.add("clicavel");
   destaqueContasEl.onclick = () => document.querySelector('.nav-item[data-tab="contas"]').click();
 
   const cardsHTML = `
-    <div class="card clicavel" onclick="abrirExplicacao('saldo_mes')"><div class="label">📆 Saldo do mês (recebido − pago)</div><div class="valor ${d.saldo_atual>=0?'positivo':'negativo'}">${formatMoeda(d.saldo_atual)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('disponivel')"><div class="label">📊 Dinheiro disponível (mês)</div><div class="valor ${d.disponivel>=0?'positivo':'negativo'}">${formatMoeda(d.disponivel)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('receitas')"><div class="label">📈 Receitas do mês</div><div class="valor positivo">${formatMoeda(d.receita_total)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('despesas')"><div class="label">📉 Despesas do mês</div><div class="valor negativo">${formatMoeda(d.despesa_total)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('gasto_pago')"><div class="label">🧾 Já gastou (pago)</div><div class="valor negativo">${formatMoeda(d.despesa_paga)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('ainda_pode_gastar')"><div class="label">✅ Ainda pode gastar</div><div class="valor ${d.ainda_pode_gastar>=0?'positivo':'negativo'}">${formatMoeda(d.ainda_pode_gastar)}</div></div>
-    <div class="card clicavel" style="grid-column:1/-1;" onclick="abrirExplicacao('previsao')"><div class="label">🔮 Previsão de saldo no fim do mês</div><div class="valor ${d.previsao_fim_mes>=0?'positivo':'negativo'}">${formatMoeda(d.previsao_fim_mes)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('saldo_mes')"><div class="label">${ICO.calendario} Saldo do mês (recebido − pago)</div><div class="valor ${d.saldo_atual>=0?'positivo':'negativo'}">${formatMoeda(d.saldo_atual)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('disponivel')"><div class="label">${ICO.grafico} Dinheiro disponível (mês)</div><div class="valor ${d.disponivel>=0?'positivo':'negativo'}">${formatMoeda(d.disponivel)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('receitas')"><div class="label">${ICO.sobe} Receitas do mês</div><div class="valor positivo">${formatMoeda(d.receita_total)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('despesas')"><div class="label">${ICO.desce} Despesas do mês</div><div class="valor negativo">${formatMoeda(d.despesa_total)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('gasto_pago')"><div class="label">${ICO.recibo} Já gastou (pago)</div><div class="valor negativo">${formatMoeda(d.despesa_paga)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('ainda_pode_gastar')"><div class="label">${ICO.checkCirculo} Ainda pode gastar</div><div class="valor ${d.ainda_pode_gastar>=0?'positivo':'negativo'}">${formatMoeda(d.ainda_pode_gastar)}</div></div>
+    <div class="card clicavel" style="grid-column:1/-1;" onclick="abrirExplicacao('previsao')"><div class="label">${ICO.bussola} Previsão de saldo no fim do mês</div><div class="valor ${d.previsao_fim_mes>=0?'positivo':'negativo'}">${formatMoeda(d.previsao_fim_mes)}</div></div>
   `;
   document.getElementById("dashCards").innerHTML = cardsHTML;
 
@@ -1843,7 +2058,7 @@ async function carregarDashboard(){
   destaqueDiarioEl.className = "destaque clicavel";
   destaqueDiarioEl.onclick = () => abrirExplicacao("gasto_diario");
   destaqueDiarioEl.innerHTML = `
-    <div class="valor-grande">✨ Você pode gastar até ${formatMoeda(d.gasto_diario_disponivel)} por dia</div>
+    <div class="valor-grande">${svgIco("carteira","ico lg")} Você pode gastar até ${formatMoeda(d.gasto_diario_disponivel)} por dia</div>
     <div class="texto">até o fim do mês (${d.dias_restantes} dia(s) restante(s)) · toque para ver como chegamos nesse número</div>
   `;
 
@@ -1978,17 +2193,17 @@ function abrirExplicacao(chave){
   const todasDespesas = lancamentosCache.filter(l => l.tipo === "despesa");
 
   if (chave === "receitas"){
-    tituloEl.textContent = "📈 Receitas do mês";
+    tituloEl.textContent = "Receitas do mês";
     formulaEl.innerHTML = formulaLinha("Total de receitas do mês", somaValor(todasReceitas), "total");
     adicionarGrupoExplicacao(listasEl, "Recebidas", receitasPagas);
     adicionarGrupoExplicacao(listasEl, "Pendentes", receitasPendentes);
   } else if (chave === "despesas"){
-    tituloEl.textContent = "📉 Despesas do mês";
+    tituloEl.textContent = "Despesas do mês";
     formulaEl.innerHTML = formulaLinha("Total de despesas do mês", somaValor(todasDespesas), "total");
     adicionarGrupoExplicacao(listasEl, "Pagas", despesasPagas);
     adicionarGrupoExplicacao(listasEl, "Pendentes", despesasPendentes);
   } else if (chave === "saldo_mes"){
-    tituloEl.textContent = "📆 Saldo do mês (recebido − pago)";
+    tituloEl.textContent = "Saldo do mês (recebido − pago)";
     const r = somaValor(receitasPagas), d = somaValor(despesasPagas);
     formulaEl.innerHTML =
       formulaLinha("Receitas recebidas", r) +
@@ -1997,7 +2212,7 @@ function abrirExplicacao(chave){
     adicionarGrupoExplicacao(listasEl, "Receitas recebidas", receitasPagas);
     adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
   } else if (chave === "disponivel" || chave === "ainda_pode_gastar"){
-    tituloEl.textContent = chave === "disponivel" ? "📊 Dinheiro disponível (mês)" : "✅ Ainda pode gastar";
+    tituloEl.textContent = chave === "disponivel" ? "Dinheiro disponível (mês)" : "Ainda pode gastar";
     const r = somaValor(todasReceitas), d = somaValor(todasDespesas);
     const resultado = chave === "ainda_pode_gastar" ? Math.max(r - d, 0) : r - d;
     formulaEl.innerHTML =
@@ -2007,11 +2222,11 @@ function abrirExplicacao(chave){
     adicionarGrupoExplicacao(listasEl, "Receitas do mês", todasReceitas);
     adicionarGrupoExplicacao(listasEl, "Despesas do mês", todasDespesas);
   } else if (chave === "gasto_pago"){
-    tituloEl.textContent = "🧾 Já gastou (pago)";
+    tituloEl.textContent = "Já gastou (pago)";
     formulaEl.innerHTML = formulaLinha("Total de despesas já pagas", somaValor(despesasPagas), "total");
     adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
   } else if (chave === "previsao"){
-    tituloEl.textContent = "🔮 Previsão de saldo no fim do mês";
+    tituloEl.textContent = "Previsão de saldo no fim do mês";
     const r = somaValor(receitasPagas), d = somaValor(despesasPagas);
     const rp = somaValor(receitasPendentes), dp = somaValor(despesasPendentes);
     const saldoMes = r - d;
@@ -2025,7 +2240,7 @@ function abrirExplicacao(chave){
     adicionarGrupoExplicacao(listasEl, "Receitas pendentes", receitasPendentes);
     adicionarGrupoExplicacao(listasEl, "Despesas pendentes", despesasPendentes);
   } else if (chave === "gasto_diario"){
-    tituloEl.textContent = "✨ Quanto pode gastar por dia";
+    tituloEl.textContent = "Quanto pode gastar por dia";
     const r = somaValor(receitasPagas), d = somaValor(despesasPagas);
     const saldoMes = r - d;
     const dp = somaValor(despesasPendentes);
@@ -2076,8 +2291,8 @@ async function carregarCartoes(){
           <div class="cartao-sub">${c.conta_nome ? "Conta: " + escapeHtml(c.conta_nome) : "Sem conta vinculada"}</div>
         </div>
         <div class="cartao-acoes">
-          <button class="icon" onclick="abrirEdicaoCartao(${c.id})" title="Editar">✎</button>
-          <button class="icon danger" onclick="excluirCartao(${c.id})" title="Excluir">✕</button>
+          <button class="icon" onclick="abrirEdicaoCartao(${c.id})" title="Editar">${ICO.lapis}</button>
+          <button class="icon danger" onclick="excluirCartao(${c.id})" title="Excluir">${ICO.x}</button>
         </div>
       </div>
       <div class="cartao-grid">
@@ -2161,59 +2376,6 @@ async function excluirCartao(id){
   } catch (e) {}
 }
 
-// ---------- Dívidas ----------
-async function carregarDividas(){
-  document.getElementById("listaDividas").innerHTML = `<div class="loading-msg">Carregando...</div>`;
-  let dividas;
-  try {
-    const res = await apiFetch(`${API}/dividas`, undefined, {erro:"Não foi possível carregar as dívidas"});
-    dividas = await res.json();
-  } catch (e) {
-    document.getElementById("listaDividas").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
-    return;
-  }
-  const container = document.getElementById("listaDividas");
-  container.innerHTML = "";
-  if (dividas.length === 0){ container.innerHTML = `<div class="empty">Nenhuma dívida cadastrada.</div>`; return; }
-  dividas.forEach(dv => {
-    const div = document.createElement("div");
-    div.className = "simple-card";
-    div.innerHTML = `
-      <div>
-        <div class="nome">${escapeHtml(dv.descricao)}</div>
-        <div class="sub">Total: ${formatMoeda(dv.valor_total)} · Restante: ${formatMoeda(dv.valor_restante)} · Parcela: ${formatMoeda(dv.parcela_mensal)}${dv.dia_vencimento ? " · dia " + dv.dia_vencimento : ""}</div>
-      </div>
-      <button class="danger" onclick="excluirDivida(${dv.id})">✕</button>
-    `;
-    container.appendChild(div);
-  });
-}
-document.getElementById("dividaForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const body = {
-    descricao: document.getElementById("dividaDesc").value,
-    valor_total: document.getElementById("dividaTotal").value,
-    valor_restante: document.getElementById("dividaRestante").value,
-    parcela_mensal: document.getElementById("dividaParcela").value,
-    dia_vencimento: document.getElementById("dividaDiaVenc").value,
-  };
-  try {
-    await apiFetch(`${API}/dividas`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
-      {sucesso:"Dívida adicionada", erro:"Não foi possível adicionar a dívida"});
-    e.target.reset();
-    carregarDividas();
-    carregarDashboard();
-  } catch (e) {}
-});
-async function excluirDivida(id){
-  if (!confirm("Excluir esta dívida?")) return;
-  try {
-    await apiFetch(`${API}/dividas/${id}`, {method:"DELETE"}, {sucesso:"Dívida excluída", erro:"Não foi possível excluir a dívida"});
-    carregarDividas();
-    carregarDashboard();
-  } catch (e) {}
-}
-
 // ---------- Edição de lançamento ----------
 function fecharTodosOsModais(){
   document.querySelectorAll(".modal-overlay.ativo").forEach(m => m.classList.remove("ativo"));
@@ -2236,7 +2398,7 @@ function abrirEdicaoPorId(id){
   // Marcar como efetivado e definir a data valem tanto para despesa quanto receita.
   const ehRenda = item.tipo === "renda";
   document.getElementById("editPago").checked = !!item.pago;
-  document.getElementById("editPagoLabel").textContent = ehRenda ? "✅ Já recebida" : "✅ Já paga";
+  document.getElementById("editPagoLabel").innerHTML = ICO.checkCirculo + (ehRenda ? " Já recebida" : " Já paga");
   document.getElementById("editDataPagLabel").textContent =
     ehRenda ? "Data do recebimento" : "Data do pagamento";
   atualizarVisibilidadeDataPagamento();
@@ -2369,6 +2531,9 @@ document.querySelectorAll(".nav-item").forEach(btn => {
   if (btn.dataset.tab === "calendario"){
     btn.addEventListener("click", carregarCalendario);
   }
+  if (btn.dataset.tab === "backup"){
+    btn.addEventListener("click", () => { carregarBackups(); carregarInfoBackup(); });
+  }
 });
 
 // ---------- Sessão / usuários ----------
@@ -2481,6 +2646,97 @@ document.getElementById("baixarBackupBtn").addEventListener("click", () => {
   window.location.href = `${API}/backup`;
 });
 
+// ---------- Backups automáticos salvos no servidor ----------
+function formatarDataHora(iso){
+  const d = new Date(iso);
+  return d.toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", year:"numeric",
+                                    hour:"2-digit", minute:"2-digit"});
+}
+
+async function carregarBackups(){
+  const container = document.getElementById("listaBackups");
+  container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const res = await apiFetch(`${API}/backups`, undefined, {erro:"Não foi possível listar os backups"});
+    const dados = await res.json();
+    document.getElementById("backupPeriodo").value = dados.config.periodo;
+    document.getElementById("backupManter").value = dados.config.manter;
+
+    container.innerHTML = "";
+    if (dados.backups.length === 0){
+      container.innerHTML = `<div class="empty">Nenhum backup automático ainda. Use "Fazer backup agora" para criar o primeiro.</div>`;
+      return;
+    }
+    dados.backups.forEach(b => {
+      const div = document.createElement("div");
+      div.className = "simple-card";
+      div.innerHTML = `
+        <div style="min-width:0;">
+          <div class="nome">${formatarDataHora(b.criado_em)}</div>
+          <div class="sub">${formatarTamanho(b.tamanho_bytes)}</div>
+        </div>
+        <div style="display:flex; gap:4px; flex:none;">
+          <button class="icon" title="Baixar" onclick="baixarBackupSalvo('${escapeHtml(b.nome)}')">${ICO.baixar}</button>
+          <button class="icon" title="Restaurar" onclick="restaurarBackupSalvo('${escapeHtml(b.nome)}')">${ICO.restaurar}</button>
+          <button class="icon danger" title="Excluir" onclick="excluirBackupSalvo('${escapeHtml(b.nome)}')">${ICO.lixeira}</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  } catch (e) {
+    container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+  }
+}
+
+function baixarBackupSalvo(nome){
+  window.location.href = `${API}/backups/${encodeURIComponent(nome)}`;
+}
+
+async function excluirBackupSalvo(nome){
+  if (!confirm("Excluir este backup do servidor?")) return;
+  try {
+    await apiFetch(`${API}/backups/${encodeURIComponent(nome)}`, {method:"DELETE"},
+      {sucesso:"Backup excluído", erro:"Não foi possível excluir o backup"});
+    carregarBackups();
+  } catch (e) {}
+}
+
+async function restaurarBackupSalvo(nome){
+  if (!confirm(
+    "Restaurar vai SUBSTITUIR todos os dados atuais pelos desse backup.\n\n" +
+    "O banco atual é salvo como cópia antes de sobrescrever, mas você será " +
+    "desconectado e terá que entrar de novo.\n\nDeseja continuar?"
+  )) return;
+  try {
+    await apiFetch(`${API}/backups/${encodeURIComponent(nome)}/restaurar`, {method:"POST"},
+      {erro:"Não foi possível restaurar o backup"});
+    showToast("Backup restaurado! Entrando de novo...", "ok");
+    setTimeout(() => { window.location.href = "/login"; }, 1500);
+  } catch (e) {}
+}
+
+document.getElementById("salvarConfigBackup").addEventListener("click", async () => {
+  const body = {
+    periodo: document.getElementById("backupPeriodo").value,
+    manter: document.getElementById("backupManter").value,
+  };
+  try {
+    await apiFetch(`${API}/backups/config`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Configuração salva", erro:"Não foi possível salvar a configuração"});
+    carregarBackups();
+  } catch (e) {}
+});
+
+document.getElementById("backupAgoraBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("backupAgoraBtn");
+  btn.disabled = true;
+  try {
+    await apiFetch(`${API}/backups/agora`, {method:"POST"},
+      {sucesso:"Backup criado", erro:"Não foi possível criar o backup"});
+    carregarBackups();
+  } catch (e) {} finally { btn.disabled = false; }
+});
+
 document.getElementById("restaurarInput").addEventListener("change", async (e) => {
   const arquivo = e.target.files[0];
   if (!arquivo) return;
@@ -2541,6 +2797,42 @@ document.getElementById("novoUsuarioSalvar").addEventListener("click", async () 
   } catch (e) {}
 });
 
+// ---------- Modo demonstração ----------
+let demoAtivo = false;
+
+function aplicarEstadoDemo(ativo){
+  demoAtivo = ativo;
+  document.getElementById("demoBanner").classList.toggle("ativo", ativo);
+  document.getElementById("demoToggle").checked = ativo;
+  document.getElementById("demoLabel").textContent =
+    ativo ? "Modo demonstração LIGADO" : "Modo demonstração desligado";
+}
+
+async function carregarStatusDemo(){
+  try {
+    const res = await apiFetch(`${API}/demo`, undefined, {erro:"Não foi possível verificar o modo demonstração"});
+    aplicarEstadoDemo((await res.json()).ativo);
+  } catch (e) {}
+}
+
+async function alternarDemo(ativar){
+  try {
+    const res = await apiFetch(`${API}/demo`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ativo: ativar})},
+      {sucesso: ativar ? "Modo demonstração ligado" : "De volta aos seus dados reais",
+       erro:"Não foi possível alternar o modo demonstração"});
+    aplicarEstadoDemo((await res.json()).ativo);
+    fecharTodosOsModais();
+    await carregarMeses();
+    await carregarCategorias();
+    await carregarTudo();
+  } catch (e) {
+    document.getElementById("demoToggle").checked = demoAtivo;
+  }
+}
+
+document.getElementById("demoToggle").addEventListener("change", (e) => alternarDemo(e.target.checked));
+document.getElementById("sairDemoBtn").addEventListener("click", () => alternarDemo(false));
+
 // ---------- PWA: registra o service worker ----------
 if ("serviceWorker" in navigator){
   window.addEventListener("load", () => {
@@ -2585,7 +2877,7 @@ document.getElementById("installFechar").addEventListener("click", () => {
 
 window.addEventListener("appinstalled", () => {
   banner.classList.remove("ativo");
-  showToast("App instalado! 🎉", "ok");
+  showToast("App instalado!", "ok");
 });
 
 // Navegadores sem instalação automática (Firefox, Safari): mostra só a instrução manual.
@@ -2603,6 +2895,7 @@ setTimeout(() => {
 }, 2500);
 
 (async function init(){
+  await carregarStatusDemo();
   await carregarUsuarioAtual();
   await carregarUsuarios();
   await carregarMeses();

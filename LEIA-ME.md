@@ -9,17 +9,16 @@ nada sai do seu servidor.
 ## Como rodar no Umbrel (mais fácil — via terminal/SSH)
 
 1. Acesse seu Umbrel via SSH (ou o terminal, se tiver o app "Terminal" instalado).
-2. Clone o repositório e suba o container:
+2. Copie a pasta `orcamento-app` inteira para o Umbrel, por exemplo via `scp`:
    ```bash
-   git clone https://github.com/cruzthiago2010/controle-financeiro.git
-   cd controle-financeiro
+   scp -r orcamento-app umbrel@umbrel.local:~/orcamento-app
+   ```
+3. Entre na pasta e suba o container:
+   ```bash
+   cd ~/orcamento-app
    docker compose up -d --build
    ```
-3. Acesse no navegador: `http://umbrel.local:8420` (ou o IP do seu Umbrel).
-
-A pasta `data/` é criada sozinha no primeiro start e guarda o banco, os
-comprovantes e as fotos. Ela fica fora do container, então atualizar o código
-não apaga nada.
+4. Acesse no navegador: `http://umbrel.local:8420` (ou o IP do seu Umbrel).
 
 Para parar: `docker compose down`
 Para atualizar depois de editar o código: `docker compose up -d --build`
@@ -71,41 +70,14 @@ Acesse `http://localhost:8420`.
 
 ## Como usar
 
-- Escolha o mês no topo, ou navegue com as setas ‹ › (o mês é criado sozinho).
-- Use o botão flutuante **(+)** no canto inferior direito para lançar uma
-  despesa, uma receita ou uma transferência.
-- Marque **"Repetir todo mês"** para itens fixos (aluguel, salário, internet).
-  Eles passam a aparecer sozinhos nos meses seguintes — não precisa importar nada.
-- Para parcelar, ligue **"Parcelar"** e escolha se o valor digitado é o total
-  ou o de cada parcela.
-- Clique em qualquer card do dashboard (ou numa coluna do gráfico) para ver a
-  conta que gerou aquele número e os lançamentos por trás dele.
-
-### Excluir um lançamento recorrente
-
-Ao excluir um item que se repete, o app pergunta o que fazer:
-
-- **Só neste mês** — remove apenas essa ocorrência; os outros meses continuam
-  e ele não volta sozinho.
-- **Em todos os meses** — apaga a recorrência inteira, inclusive o histórico.
-
-## Backup
-
-No menu lateral, clique no seu nome → seção **Backup**:
-
-- **Baixar backup** gera um `.zip` com o banco, os comprovantes e as fotos.
-- **Restaurar** substitui os dados atuais pelos do arquivo enviado. O banco
-  anterior é salvo como cópia antes de sobrescrever, e você é desconectado
-  para entrar de novo.
-
-## Outros recursos
-
-- **Contas** com saldo próprio, e **cartões** vinculados a uma conta.
-- **Categorias** com cor personalizável (aba própria no menu).
-- **Tema claro/escuro** e botão de **ocultar valores** (o "olho") na barra do topo.
-- **Foto de perfil** por usuário.
-- Cada usuário vê apenas os próprios lançamentos, contas, cartões e dívidas.
-  As categorias são compartilhadas entre todos.
+- Escolha o mês no topo.
+- Adicione lançamentos (renda, despesa ou consignado) no formulário embaixo.
+- Marque "recorrente" para itens que se repetem todo mês (aluguel, salário,
+  consignados fixos).
+- Use "Copiar recorrentes do mês anterior" para não digitar tudo de novo
+  todo mês — ele traz os itens marcados como recorrentes do mês anterior
+  para o mês atual.
+- O saldo do mês é calculado automaticamente.
 
 ## Trocar a porta
 

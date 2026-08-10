@@ -1,5 +1,7 @@
 import io
 import os
+import json
+import time
 import uuid
 import shutil
 import zipfile
@@ -7,14 +9,18 @@ import secrets
 import calendar
 import sqlite3
 import tempfile
+import threading
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, request, jsonify, send_from_directory, session, redirect, send_file
+from flask import (Flask, request, jsonify, send_from_directory, session, redirect,
+                   send_file, has_request_context)
 
 DB_PATH = os.environ.get("DB_PATH", "/data/orcamento.db")
 COMPROVANTES_DIR = os.environ.get("COMPROVANTES_DIR", "/data/comprovantes")
 FOTOS_DIR = os.environ.get("FOTOS_DIR", "/data/fotos")
+BACKUPS_DIR = os.environ.get("BACKUPS_DIR", "/data/backups")
+DEMO_DB_PATH = os.environ.get("DEMO_DB_PATH", "/data/orcamento-demo.db")
 
 EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 TAMANHO_MAX_UPLOAD = 8 * 1024 * 1024  # 8 MB
@@ -60,9 +66,23 @@ def exigir_login():
     return None
 
 
+def em_demo():
+    """Modo demonstração: usa um banco separado com dados fictícios,
+    então os dados reais ficam intocados enquanto ele está ligado.
+    Fora de uma requisição (ex: init_db na subida do app) não existe sessão,
+    e aí o banco correto é sempre o real."""
+    if not has_request_context():
+        return False
+    return bool(session.get("demo"))
+
+
+def caminho_banco_atual():
+    return DEMO_DB_PATH if em_demo() else DB_PATH
+
+
 def uid():
     """ID do usuário logado. Cada usuário só enxerga os próprios dados."""
-    return session["usuario_id"]
+    return 1 if em_demo() else session["usuario_id"]
 
 
 def pertence_ao_usuario(conn, tabela, item_id):
@@ -77,7 +97,7 @@ CATEGORIAS_DESPESA_PADRAO = ["Mercado", "Combustível", "Aluguel", "Energia", "�
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(caminho_banco_atual())
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -88,11 +108,16 @@ def add_col_if_missing(conn, tabela, coluna, ddl):
         conn.execute(ddl)
 
 
-def init_db():
+def init_db(caminho=None, criar_usuario_inicial=True):
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     os.makedirs(COMPROVANTES_DIR, exist_ok=True)
     os.makedirs(FOTOS_DIR, exist_ok=True)
-    conn = get_db()
+    os.makedirs(BACKUPS_DIR, exist_ok=True)
+    if caminho:
+        conn = sqlite3.connect(caminho)
+        conn.row_factory = sqlite3.Row
+    else:
+        conn = get_db()
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS lancamentos (
@@ -123,18 +148,6 @@ def init_db():
             nome TEXT NOT NULL,
             limite REAL DEFAULT 0,
             fatura_atual REAL DEFAULT 0,
-            dia_vencimento INTEGER
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS dividas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            descricao TEXT NOT NULL,
-            valor_total REAL DEFAULT 0,
-            valor_restante REAL DEFAULT 0,
-            parcela_mensal REAL DEFAULT 0,
             dia_vencimento INTEGER
         )
         """
@@ -202,6 +215,8 @@ def init_db():
         ("eh_transferencia", "ALTER TABLE lancamentos ADD COLUMN eh_transferencia INTEGER DEFAULT 0"),
         ("grupo_transferencia", "ALTER TABLE lancamentos ADD COLUMN grupo_transferencia TEXT"),
         ("grupo_recorrencia", "ALTER TABLE lancamentos ADD COLUMN grupo_recorrencia TEXT"),
+        # Último mês da recorrência (YYYY-MM). NULL = repete para sempre.
+        ("recorrencia_ate", "ALTER TABLE lancamentos ADD COLUMN recorrencia_ate TEXT"),
     ]:
         add_col_if_missing(conn, "lancamentos", coluna, ddl)
     for coluna, ddl in [
@@ -216,10 +231,10 @@ def init_db():
     add_col_if_missing(conn, "contas", "usuario_id", "ALTER TABLE contas ADD COLUMN usuario_id INTEGER")
     add_col_if_missing(conn, "lancamentos", "usuario_id", "ALTER TABLE lancamentos ADD COLUMN usuario_id INTEGER")
     add_col_if_missing(conn, "cartoes", "usuario_id", "ALTER TABLE cartoes ADD COLUMN usuario_id INTEGER")
-    add_col_if_missing(conn, "dividas", "usuario_id", "ALTER TABLE dividas ADD COLUMN usuario_id INTEGER")
     conn.commit()
     migrar_contas_de_texto_livre(conn)
-    bootstrap_usuario_inicial(conn)
+    if criar_usuario_inicial:
+        bootstrap_usuario_inicial(conn)
     migrar_contas_nome_unico_por_usuario(conn)
     migrar_series_de_recorrencia(conn)
     conn.close()
@@ -317,7 +332,6 @@ def bootstrap_usuario_inicial(conn):
         uid = primeiro_usuario["id"]
         conn.execute("UPDATE contas SET usuario_id = ? WHERE usuario_id IS NULL", (uid,))
         conn.execute("UPDATE cartoes SET usuario_id = ? WHERE usuario_id IS NULL", (uid,))
-        conn.execute("UPDATE dividas SET usuario_id = ? WHERE usuario_id IS NULL", (uid,))
         # Lançamentos herdam o dono da conta vinculada; os sem conta ficam com o primeiro usuário.
         conn.execute(
             "UPDATE lancamentos SET usuario_id = ("
@@ -418,15 +432,19 @@ def garantir_recorrentes(conn, mes, usuario_id):
         ).fetchone()
         if not modelo:
             continue
+        # Recorrência com prazo (ex: dívida em 6x) para de gerar depois do último mês.
+        if modelo["recorrencia_ate"] and mes > modelo["recorrencia_ate"]:
+            continue
         conn.execute(
             """INSERT INTO lancamentos
                (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
-                pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, '', ?, ?, ?, ?)""",
+                pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia,
+                recorrencia_ate)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, '', ?, ?, ?, ?, ?)""",
             (mes, modelo["tipo"], modelo["descricao"], modelo["valor"],
              vencimento_no_mes(modelo["vencimento"], mes), modelo["categoria"],
              modelo["conta"], modelo["conta_id"], modelo["observacao"],
-             datetime.now().isoformat(), usuario_id, grupo),
+             datetime.now().isoformat(), usuario_id, grupo, modelo["recorrencia_ate"]),
         )
         criados += 1
 
@@ -566,6 +584,7 @@ def enviar_foto_perfil(item_id):
         return jsonify({"erro": "envie uma imagem (jpg, png, gif ou webp)"}), 400
 
     os.makedirs(FOTOS_DIR, exist_ok=True)
+    os.makedirs(BACKUPS_DIR, exist_ok=True)
     nome_final = f"u{item_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}{extensao}"
     arquivo.save(os.path.join(FOTOS_DIR, nome_final))
 
@@ -755,13 +774,26 @@ def criar_lancamento():
 
     # Recorrente vira uma "série": é ela que se propaga sozinha para os meses seguintes.
     grupo_recorrencia = str(uuid.uuid4()) if recorrente else None
+    # Repetições limitadas (ex: dívida em 6x) viram o mês em que a série termina.
+    recorrencia_ate = None
+    if recorrente:
+        try:
+            vezes = int(data.get("recorrencia_vezes") or 0)
+        except (TypeError, ValueError):
+            vezes = 0
+        if vezes > 1:
+            recorrencia_ate = somar_meses(mes, vezes - 1)
+        elif vezes == 1:
+            recorrencia_ate = mes
     cur = conn.execute(
         """INSERT INTO lancamentos
            (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
-            pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia,
+            recorrencia_ate)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
-         pago, data_pagamento, observacao, datetime.now().isoformat(), uid(), grupo_recorrencia),
+         pago, data_pagamento, observacao, datetime.now().isoformat(), uid(), grupo_recorrencia,
+         recorrencia_ate),
     )
     conn.commit()
     novo_id = cur.lastrowid
@@ -1166,44 +1198,6 @@ def deletar_cartao(item_id):
     return jsonify({"ok": True})
 
 
-# ---------------- Dívidas ----------------
-
-@app.route("/api/dividas", methods=["GET"])
-def listar_dividas():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM dividas WHERE usuario_id = ? ORDER BY id", (uid(),)).fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
-
-
-@app.route("/api/dividas", methods=["POST"])
-def criar_divida():
-    data = request.get_json(force=True)
-    conn = get_db()
-    conn.execute(
-        """INSERT INTO dividas (descricao, valor_total, valor_restante, parcela_mensal, dia_vencimento, usuario_id)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (data.get("descricao", "").strip(), float(data.get("valor_total", 0) or 0),
-         float(data.get("valor_restante", 0) or 0), float(data.get("parcela_mensal", 0) or 0),
-         int(data.get("dia_vencimento") or 0) or None, uid()),
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True}), 201
-
-
-@app.route("/api/dividas/<int:item_id>", methods=["DELETE"])
-def deletar_divida(item_id):
-    conn = get_db()
-    if not pertence_ao_usuario(conn, "dividas", item_id):
-        conn.close()
-        return jsonify({"erro": "dívida não encontrada"}), 404
-    conn.execute("DELETE FROM dividas WHERE id = ?", (item_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({"ok": True})
-
-
 # ---------------- Dashboard ----------------
 
 @app.route("/api/dashboard", methods=["GET"])
@@ -1280,7 +1274,6 @@ def dashboard():
         "WHERE cartoes.usuario_id = ? ORDER BY cartoes.id",
         (uid(),),
     ).fetchall()
-    dividas = conn.execute("SELECT * FROM dividas WHERE usuario_id = ? ORDER BY id", (uid(),)).fetchall()
     contas = contas_com_saldo(conn, mes)
     saldo_total_contas = sum(c["saldo_atual"] for c in contas)
 
@@ -1302,7 +1295,6 @@ def dashboard():
         "parcelas_futuras": [dict(r) for r in parcelas_futuras],
         "grafico_categoria": [dict(r) for r in por_categoria],
         "cartoes": [dict(r) for r in cartoes],
-        "dividas": [dict(r) for r in dividas],
         "contas": contas,
         "saldo_total_contas": saldo_total_contas,
         "mes_anterior": {"receita": anterior["receita_total"], "despesa": anterior["despesa_total"]},
@@ -1334,9 +1326,178 @@ def resumo():
     })
 
 
+# ---------------- Modo demonstração ----------------
+
+def _semear_demo():
+    """Preenche o banco de demonstração com uma vida financeira fictícia:
+    salário, dois aluguéis recebidos, contas de casa, cartões e parcelamentos."""
+    if os.path.exists(DEMO_DB_PATH):
+        os.remove(DEMO_DB_PATH)
+    init_db(DEMO_DB_PATH, criar_usuario_inicial=False)
+
+    conn = sqlite3.connect(DEMO_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("DELETE FROM usuarios")
+    conn.execute(
+        "INSERT INTO usuarios (id, nome, username, senha_hash, criado_em) VALUES (1, ?, ?, ?, ?)",
+        ("Visitante (demo)", "demo", generate_password_hash(secrets.token_urlsafe(16)),
+         datetime.now().isoformat()),
+    )
+
+    # Saldos escolhidos para que, depois dos meses de histórico abaixo,
+    # o saldo somado das contas fique em torno de R$ 20 mil.
+    contas = [("Nubank", 3500.0), ("Itaú", 2200.0), ("Carteira", 2400.0)]
+    ids_conta = {}
+    for nome, saldo in contas:
+        cur = conn.execute(
+            "INSERT INTO contas (nome, saldo_inicial, criado_em, usuario_id) VALUES (?, ?, ?, 1)",
+            (nome, saldo, datetime.now().isoformat()),
+        )
+        ids_conta[nome] = cur.lastrowid
+
+    conn.execute(
+        "INSERT INTO cartoes (nome, limite, fatura_atual, dia_vencimento, conta_id, fatura_paga, usuario_id) "
+        "VALUES (?, ?, ?, ?, ?, 0, 1)", ("Nubank", 15000.0, 3180.45, 10, ids_conta["Nubank"]))
+    conn.execute(
+        "INSERT INTO cartoes (nome, limite, fatura_atual, dia_vencimento, conta_id, fatura_paga, usuario_id) "
+        "VALUES (?, ?, ?, ?, ?, 1, 1)", ("Itaú Platinum", 8000.0, 942.80, 17, ids_conta["Itaú"]))
+
+    hoje = datetime.now()
+    mes_atual = hoje.strftime("%Y-%m")
+    meses = [mes_anterior(mes_anterior(mes_atual)), mes_anterior(mes_atual), mes_atual]
+
+    # (descricao, valor, categoria, conta, dia, recorrente)
+    receitas = [
+        ("Salário", 7800.00, "Salário", "Nubank", 5, True),
+        ("Aluguel recebido — Apto Centro", 2000.00, "Rendimentos", "Itaú", 10, True),
+        ("Aluguel recebido — Kitnet", 2000.00, "Rendimentos", "Itaú", 10, True),
+    ]
+    despesas = [
+        ("Aluguel", 1000.00, "Aluguel", "Nubank", 5, True),
+        ("Condomínio", 480.00, "Aluguel", "Nubank", 5, True),
+        ("Energia", 212.40, "Energia", "Nubank", 15, True),
+        ("Água", 96.80, "Água", "Nubank", 15, True),
+        ("Internet", 129.90, "Internet", "Nubank", 17, True),
+        ("Celular", 89.90, "Internet", "Nubank", 17, True),
+        ("Plano de saúde", 618.00, "Outros", "Itaú", 8, True),
+        ("Escola das crianças", 890.00, "Outros", "Itaú", 10, True),
+        ("Seguro do carro", 268.00, "Transporte", "Itaú", 12, True),
+        ("Parcela do carro", 1180.00, "Transporte", "Itaú", 12, True),
+        ("Fatura do cartão", 1850.00, "Compras", "Nubank", 10, True),
+        ("Mercado do mês", 1340.75, "Mercado", "Nubank", 12, False),
+        ("Padaria e lanches", 318.60, "Alimentação", "Carteira", 25, False),
+        ("Combustível", 420.00, "Combustível", "Carteira", 20, False),
+        ("Academia", 119.90, "Lazer", "Nubank", 6, True),
+        ("Streaming", 55.90, "Lazer", "Nubank", 22, True),
+        ("Pet shop", 165.00, "Outros", "Nubank", 14, False),
+    ]
+
+    def dia_valido(mes, dia):
+        ano, m = map(int, mes.split("-"))
+        return f"{ano}-{m:02d}-{min(dia, calendar.monthrange(ano, m)[1]):02d}"
+
+    agora = datetime.now().isoformat()
+    for indice_mes, mes in enumerate(meses):
+        ultimo = indice_mes == len(meses) - 1
+        for descricao, valor, categoria, conta, dia, recorrente in receitas + despesas:
+            tipo = "renda" if (descricao, valor, categoria, conta, dia, recorrente) in receitas else "despesa"
+            vencimento = dia_valido(mes, dia)
+            # No mês atual, o que já venceu aparece como pago; o resto fica pendente.
+            pago = 0 if (ultimo and vencimento > hoje.strftime("%Y-%m-%d")) else 1
+            grupo = f"demo-{descricao}" if recorrente else None
+            conn.execute(
+                """INSERT INTO lancamentos
+                   (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
+                    pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, 1, ?)""",
+                (mes, tipo, descricao, valor, vencimento, categoria, conta, ids_conta[conta],
+                 1 if recorrente else 0, pago, vencimento if pago else "", agora, grupo),
+            )
+
+    # Uma compra parcelada em 10x, começando dois meses atrás.
+    grupo_parcela = str(uuid.uuid4())
+    for i in range(10):
+        mes_p = somar_meses(meses[0], i)
+        venc = dia_valido(mes_p, 18)
+        conn.execute(
+            """INSERT INTO lancamentos
+               (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
+                grupo_parcela, parcela_num, parcela_total, pago, data_pagamento, observacao,
+                criado_em, usuario_id)
+               VALUES (?, 'despesa', ?, 489.90, ?, 'Compras', 'Nubank', ?, 0, ?, ?, 10, ?, ?, '', ?, 1)""",
+            (mes_p, f"Notebook novo ({i+1}/10)", venc, ids_conta["Nubank"], grupo_parcela, i + 1,
+             1 if venc <= hoje.strftime("%Y-%m-%d") else 0,
+             venc if venc <= hoje.strftime("%Y-%m-%d") else "", agora),
+        )
+
+    # Extras só do mês atual, para o dashboard ficar variado.
+    extras = [
+        ("renda", "Freelance — site institucional", 1250.00, "Freelance", "Nubank", 1),
+        ("despesa", "Jantar de aniversário", 268.40, "Alimentação", "Nubank", 1),
+        ("despesa", "Farmácia", 87.30, "Outros", "Carteira", 1),
+        ("despesa", "Presente", 150.00, "Compras", "Nubank", 0),
+    ]
+    for tipo, descricao, valor, categoria, conta, pago in extras:
+        venc = dia_valido(mes_atual, min(hoje.day, 26))
+        conn.execute(
+            """INSERT INTO lancamentos
+               (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
+                pago, data_pagamento, observacao, criado_em, usuario_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, '', ?, 1)""",
+            (mes_atual, tipo, descricao, valor, venc, categoria, conta, ids_conta[conta],
+             pago, venc if pago else "", agora),
+        )
+
+    # Uma transferência entre contas próprias.
+    grupo_transf = str(uuid.uuid4())
+    venc_transf = dia_valido(mes_atual, min(hoje.day, 15))
+    for tipo, conta, sinal in (("despesa", "Nubank", "→ Itaú"), ("renda", "Itaú", "de Nubank")):
+        conn.execute(
+            """INSERT INTO lancamentos
+               (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, pago,
+                data_pagamento, observacao, eh_transferencia, grupo_transferencia, criado_em, usuario_id)
+               VALUES (?, ?, ?, 1500.0, ?, 'Transferência', ?, ?, 1, ?, '', 1, ?, ?, 1)""",
+            (mes_atual, tipo, f"Reserva {sinal}", venc_transf, conta, ids_conta[conta],
+             venc_transf, grupo_transf, agora),
+        )
+
+    cores = {"Salário": "#3ecf8e", "Rendimentos": "#4dd0e1", "Aluguel": "#ff6b6b",
+             "Mercado": "#f5c451", "Lazer": "#a78bfa", "Energia": "#f0932b"}
+    for nome, cor in cores.items():
+        conn.execute("UPDATE categorias SET cor = ? WHERE nome = ?", (cor, nome))
+
+    conn.commit()
+    conn.close()
+
+
+@app.route("/api/demo", methods=["GET"])
+def status_demo():
+    return jsonify({"ativo": em_demo()})
+
+
+@app.route("/api/demo", methods=["POST"])
+def alternar_demo():
+    data = request.get_json(force=True)
+    ativar = bool(data.get("ativo"))
+    if ativar:
+        _semear_demo()
+        session["demo"] = True
+    else:
+        session.pop("demo", None)
+    return jsonify({"ok": True, "ativo": em_demo()})
+
+
 # ---------------- Backup e restauração ----------------
 
 ARQUIVO_BANCO_NO_ZIP = "orcamento.db"
+
+PERIODOS_BACKUP = {
+    "desligado": 0,
+    "diario": 24 * 3600,
+    "semanal": 7 * 24 * 3600,
+    "mensal": 30 * 24 * 3600,
+}
+CONFIG_BACKUP_PADRAO = {"periodo": "semanal", "manter": 5}
 
 
 def copia_consistente_do_banco(destino):
@@ -1353,13 +1514,12 @@ def copia_consistente_do_banco(destino):
         origem.close()
 
 
-@app.route("/api/backup", methods=["GET"])
-def baixar_backup():
-    memoria = io.BytesIO()
+def escrever_zip_backup(destino_stream_ou_caminho):
+    """Monta o .zip com banco + comprovantes + fotos."""
     with tempfile.TemporaryDirectory() as tmp:
         copia_banco = os.path.join(tmp, ARQUIVO_BANCO_NO_ZIP)
         copia_consistente_do_banco(copia_banco)
-        with zipfile.ZipFile(memoria, "w", zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(destino_stream_ou_caminho, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.write(copia_banco, ARQUIVO_BANCO_NO_ZIP)
             for pasta, prefixo in ((COMPROVANTES_DIR, "comprovantes"), (FOTOS_DIR, "fotos")):
                 if not os.path.isdir(pasta):
@@ -1368,10 +1528,164 @@ def baixar_backup():
                     caminho = os.path.join(pasta, nome)
                     if os.path.isfile(caminho):
                         zf.write(caminho, f"{prefixo}/{nome}")
+
+
+def ler_config_backup():
+    caminho = os.path.join(os.path.dirname(DB_PATH), "backup-config.json")
+    if os.path.exists(caminho):
+        try:
+            with open(caminho) as f:
+                salvo = json.load(f)
+            return {**CONFIG_BACKUP_PADRAO, **salvo}
+        except (ValueError, OSError):
+            pass
+    return dict(CONFIG_BACKUP_PADRAO)
+
+
+def gravar_config_backup(config):
+    caminho = os.path.join(os.path.dirname(DB_PATH), "backup-config.json")
+    with open(caminho, "w") as f:
+        json.dump(config, f)
+
+
+def listar_backups_automaticos():
+    if not os.path.isdir(BACKUPS_DIR):
+        return []
+    arquivos = []
+    for nome in os.listdir(BACKUPS_DIR):
+        caminho = os.path.join(BACKUPS_DIR, nome)
+        if nome.endswith(".zip") and os.path.isfile(caminho):
+            arquivos.append({
+                "nome": nome,
+                "tamanho_bytes": os.path.getsize(caminho),
+                "criado_em": datetime.fromtimestamp(os.path.getmtime(caminho)).isoformat(),
+                "criado_em_ts": os.path.getmtime(caminho),
+            })
+    return sorted(arquivos, key=lambda a: a["criado_em_ts"], reverse=True)
+
+
+def criar_backup_automatico():
+    """Gera um backup em disco e apaga os mais antigos além do limite."""
+    os.makedirs(BACKUPS_DIR, exist_ok=True)
+    nome = f"backup-{datetime.now().strftime('%Y-%m-%d-%H%M%S')}.zip"
+    caminho = os.path.join(BACKUPS_DIR, nome)
+    escrever_zip_backup(caminho)
+
+    manter = max(int(ler_config_backup().get("manter", 5)), 1)
+    for antigo in listar_backups_automaticos()[manter:]:
+        try:
+            os.remove(os.path.join(BACKUPS_DIR, antigo["nome"]))
+        except OSError:
+            pass
+    return nome
+
+
+def _loop_backup_automatico():
+    """Roda em segundo plano verificando se já passou o intervalo configurado."""
+    while True:
+        try:
+            config = ler_config_backup()
+            intervalo = PERIODOS_BACKUP.get(config.get("periodo"), 0)
+            if intervalo:
+                existentes = listar_backups_automaticos()
+                ultimo = existentes[0]["criado_em_ts"] if existentes else 0
+                if (datetime.now().timestamp() - ultimo) >= intervalo:
+                    nome = criar_backup_automatico()
+                    print(f"[backup] backup automático criado: {nome}", flush=True)
+        except Exception as e:
+            print(f"[backup] falha ao gerar backup automático: {e}", flush=True)
+        time.sleep(600)  # confere a cada 10 minutos
+
+
+def iniciar_agendador_backup():
+    t = threading.Thread(target=_loop_backup_automatico, daemon=True)
+    t.start()
+
+
+@app.route("/api/backup", methods=["GET"])
+def baixar_backup():
+    memoria = io.BytesIO()
+    escrever_zip_backup(memoria)
     memoria.seek(0)
     nome_arquivo = f"backup-financeiro-{datetime.now().strftime('%Y-%m-%d-%H%M')}.zip"
     return send_file(memoria, mimetype="application/zip",
                      as_attachment=True, download_name=nome_arquivo)
+
+
+@app.route("/api/backups", methods=["GET"])
+def listar_backups():
+    return jsonify({
+        "config": ler_config_backup(),
+        "periodos": list(PERIODOS_BACKUP.keys()),
+        "backups": [
+            {k: v for k, v in b.items() if k != "criado_em_ts"}
+            for b in listar_backups_automaticos()
+        ],
+    })
+
+
+@app.route("/api/backups/config", methods=["PUT"])
+def salvar_config_backup():
+    data = request.get_json(force=True)
+    periodo = data.get("periodo")
+    if periodo not in PERIODOS_BACKUP:
+        return jsonify({"erro": "período inválido"}), 400
+    try:
+        manter = int(data.get("manter") or CONFIG_BACKUP_PADRAO["manter"])
+    except (TypeError, ValueError):
+        return jsonify({"erro": "quantidade inválida"}), 400
+    manter = max(1, min(manter, 30))
+    gravar_config_backup({"periodo": periodo, "manter": manter})
+    return jsonify({"ok": True, "config": ler_config_backup()})
+
+
+@app.route("/api/backups/agora", methods=["POST"])
+def gerar_backup_agora():
+    nome = criar_backup_automatico()
+    return jsonify({"ok": True, "nome": nome}), 201
+
+
+def caminho_backup_valido(nome_arquivo):
+    """Impede que o nome escape da pasta de backups."""
+    nome = os.path.basename(nome_arquivo)
+    if not nome.endswith(".zip"):
+        return None
+    caminho = os.path.join(BACKUPS_DIR, nome)
+    if not os.path.isfile(caminho):
+        return None
+    return caminho
+
+
+@app.route("/api/backups/<path:nome_arquivo>", methods=["GET"])
+def baixar_backup_salvo(nome_arquivo):
+    caminho = caminho_backup_valido(nome_arquivo)
+    if not caminho:
+        return jsonify({"erro": "backup não encontrado"}), 404
+    return send_from_directory(BACKUPS_DIR, os.path.basename(caminho), as_attachment=True)
+
+
+@app.route("/api/backups/<path:nome_arquivo>", methods=["DELETE"])
+def excluir_backup_salvo(nome_arquivo):
+    caminho = caminho_backup_valido(nome_arquivo)
+    if not caminho:
+        return jsonify({"erro": "backup não encontrado"}), 404
+    os.remove(caminho)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/backups/<path:nome_arquivo>/restaurar", methods=["POST"])
+def restaurar_backup_salvo(nome_arquivo):
+    if em_demo():
+        return jsonify({"erro": "desligue o modo demonstração antes de restaurar"}), 400
+    caminho = caminho_backup_valido(nome_arquivo)
+    if not caminho:
+        return jsonify({"erro": "backup não encontrado"}), 404
+    with open(caminho, "rb") as f:
+        erro = aplicar_backup(f)
+    if erro:
+        return jsonify({"erro": erro}), 400
+    session.clear()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/backup/info", methods=["GET"])
@@ -1393,29 +1707,29 @@ def info_backup():
     })
 
 
-@app.route("/api/restaurar", methods=["POST"])
-def restaurar_backup():
-    if "arquivo" not in request.files:
-        return jsonify({"erro": "envie o arquivo .zip do backup"}), 400
-    enviado = request.files["arquivo"]
-    if not enviado.filename.lower().endswith(".zip"):
-        return jsonify({"erro": "o backup precisa ser um arquivo .zip"}), 400
-
+def aplicar_backup(origem_arquivo):
+    """Valida e aplica um backup. Retorna None se deu certo, ou a mensagem de erro.
+    Usado tanto pelo upload manual quanto pela restauração de um backup automático."""
     with tempfile.TemporaryDirectory() as tmp:
         caminho_zip = os.path.join(tmp, "backup.zip")
-        enviado.save(caminho_zip)
+        if hasattr(origem_arquivo, "save"):
+            origem_arquivo.save(caminho_zip)
+        else:
+            with open(caminho_zip, "wb") as destino:
+                shutil.copyfileobj(origem_arquivo, destino)
+
         if not zipfile.is_zipfile(caminho_zip):
-            return jsonify({"erro": "arquivo inválido ou corrompido"}), 400
+            return "arquivo inválido ou corrompido"
 
         extraido = os.path.join(tmp, "conteudo")
         with zipfile.ZipFile(caminho_zip) as zf:
             nomes = zf.namelist()
             if ARQUIVO_BANCO_NO_ZIP not in nomes:
-                return jsonify({"erro": "esse zip não parece um backup do app"}), 400
+                return "esse zip não parece um backup do app"
             # Evita zip-slip: nada pode escapar da pasta de destino.
             for nome in nomes:
                 if os.path.isabs(nome) or ".." in nome.replace("\\", "/").split("/"):
-                    return jsonify({"erro": "arquivo de backup inválido"}), 400
+                    return "arquivo de backup inválido"
             zf.extractall(extraido)
 
         banco_novo = os.path.join(extraido, ARQUIVO_BANCO_NO_ZIP)
@@ -1426,9 +1740,9 @@ def restaurar_backup():
             ).fetchall()}
             teste.close()
         except sqlite3.Error:
-            return jsonify({"erro": "o banco dentro do backup está corrompido"}), 400
+            return "o banco dentro do backup está corrompido"
         if not {"lancamentos", "usuarios"} <= tabelas:
-            return jsonify({"erro": "esse zip não parece um backup do app"}), 400
+            return "esse zip não parece um backup do app"
 
         # Guarda o estado atual antes de sobrescrever, por segurança.
         carimbo = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -1447,10 +1761,26 @@ def restaurar_backup():
                     shutil.copy2(caminho, os.path.join(pasta, os.path.basename(nome)))
 
     init_db()
+    return None
+
+
+@app.route("/api/restaurar", methods=["POST"])
+def restaurar_backup():
+    if em_demo():
+        return jsonify({"erro": "desligue o modo demonstração antes de restaurar"}), 400
+    if "arquivo" not in request.files:
+        return jsonify({"erro": "envie o arquivo .zip do backup"}), 400
+    enviado = request.files["arquivo"]
+    if not enviado.filename.lower().endswith(".zip"):
+        return jsonify({"erro": "o backup precisa ser um arquivo .zip"}), 400
+    erro = aplicar_backup(enviado)
+    if erro:
+        return jsonify({"erro": erro}), 400
     session.clear()  # o backup pode ter outros usuários/senhas
     return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
     init_db()
+    iniciar_agendador_backup()
     app.run(host="0.0.0.0", port=5000)

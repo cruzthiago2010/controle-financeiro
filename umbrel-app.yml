@@ -9,10 +9,10 @@ description: >-
   consignado mês a mês, com totais e saldo calculados automaticamente.
   Todos os dados ficam salvos localmente no seu servidor Umbrel.
 developer: Thiago
-website: "https://github.com/cruzthiago2010/controle-financeiro"
+website: ""
 dependencies: []
-repo: "https://github.com/cruzthiago2010/controle-financeiro"
-support: "https://github.com/cruzthiago2010/controle-financeiro/issues"
+repo: ""
+support: ""
 port: 8420
 gallery: []
 path: ""
