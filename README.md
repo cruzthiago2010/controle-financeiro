@@ -1,28 +1,25 @@
 # Controle Financeiro — Self-hosted
 
 App simples de controle mensal de renda, despesas e consignados, feito
-para rodar no seu servidor (Umbrel ou qualquer Docker).
+para rodar no seu servidor home lab ou qualquer Docker.
 
 Todos os dados ficam salvos localmente em SQLite, dentro da pasta `data/` —
 nada sai do seu servidor.
 
-## Como rodar no Umbrel (mais fácil — via terminal/SSH)
+## Como rodar ? (mais fácil — via terminal/SSH)
 
-1. Acesse seu Umbrel via SSH (ou o terminal, se tiver o app "Terminal" instalado).
+1. Acesse via SSH (ou o terminal instalado).
 2. Clone o repositório e suba o container:
    ```bash
    git clone https://github.com/cruzthiago2010/controle-financeiro.git
    cd controle-financeiro
    docker compose up -d --build
    ```
-3. Acesse no navegador: `http://umbrel.local:8420` (ou o IP do seu Umbrel).
+3. Acesse no navegador: `http://localhost:8420` (IP da sua maquina).
 
 A pasta `data/` é criada sozinha no primeiro start e guarda o banco, os
 comprovantes e as fotos. Ela fica fora do container, então atualizar o código
 não apaga nada.
-
-Para parar: `docker compose down`
-Para atualizar depois de editar o código: `docker compose up -d --build`
 
 ## Login
 
@@ -48,14 +45,6 @@ inferior direito, ou "🔁 Transferir" na aba Contas, para mover dinheiro entre
 contas — inclusive entre contas de usuários diferentes (ex: da sua conta para
 a da sua esposa). A transferência não conta como receita/despesa real nos
 totais do mês, só ajusta o saldo de cada conta.
-
-## Como rodar em qualquer máquina com Docker
-
-```bash
-cd orcamento-app
-docker compose up -d --build
-```
-Acesse `http://localhost:8420`.
 
 ## Estrutura
 
