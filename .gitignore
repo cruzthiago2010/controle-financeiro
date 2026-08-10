@@ -1,0 +1,22 @@
+# Dados locais — NUNCA versionar (banco, chave de sessão, anexos pessoais)
+data/
+*.db
+*.sqlite
+*.sqlite3
+.secret_key
+
+# Logs e artefatos
+*.log
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

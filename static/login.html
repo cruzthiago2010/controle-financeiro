@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar — Controle Financeiro</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0b0f19">
+<style>
+  :root{
+    --bg:#0b0f19; --card:#161d2e; --card2:#1c2438;
+    --border:#26304a; --text:#eef1f8; --muted:#8b96b3;
+    --accent:#5b8def; --accent2:#4f7fe0; --red:#ff6b6b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    font-family:-apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(91,141,239,0.12), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(167,139,250,0.09), transparent 45%),
+      var(--bg);
+    color:var(--text); padding:20px;
+  }
+  .login-box{
+    width:100%; max-width:360px; background:linear-gradient(160deg, var(--card), var(--card2));
+    border:1px solid var(--border); border-radius:20px; padding:32px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  }
+  .logo{
+    text-align:center; font-size:1.4rem; font-weight:800; margin-bottom:6px;
+    background:linear-gradient(90deg, #fff, #b9c6ec); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .subtitulo{text-align:center; color:var(--muted); font-size:0.85rem; margin-bottom:26px;}
+  label{display:block; font-size:0.78rem; color:var(--muted); margin:14px 0 4px;}
+  input{
+    width:100%; background:var(--card2); color:var(--text); border:1px solid var(--border);
+    border-radius:10px; padding:11px 12px; font-size:0.95rem; font-family:inherit;
+  }
+  input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,141,239,0.18);}
+  button{
+    width:100%; margin-top:22px; cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2));
+    border:none; border-radius:10px; padding:12px; font-size:1rem; font-weight:700; color:#fff;
+    box-shadow:0 4px 14px rgba(91,141,239,0.3);
+  }
+  button:disabled{opacity:0.6; cursor:default;}
+  .erro{
+    display:none; margin-top:14px; background:rgba(255,107,107,0.1); border:1px solid var(--red);
+    color:var(--red); border-radius:8px; padding:10px 12px; font-size:0.85rem; text-align:center;
+  }
+  .erro.ativo{display:block;}
+</style>
+</head>
+<body>
+
+<div class="login-box">
+  <div class="logo">💰 Controle Financeiro</div>
+  <div class="subtitulo">Entre com seu usuário e senha</div>
+  <form id="loginForm">
+    <label>Usuário</label>
+    <input type="text" id="username" autocomplete="username" required autofocus>
+    <label>Senha</label>
+    <input type="password" id="senha" autocomplete="current-password" required>
+    <div class="erro" id="loginErro"></div>
+    <button type="submit" id="loginBtn">Entrar</button>
+  </form>
+</div>
+
+<script>
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const erroEl = document.getElementById("loginErro");
+  const btn = document.getElementById("loginBtn");
+  erroEl.classList.remove("ativo");
+  btn.disabled = true;
+  btn.textContent = "Entrando...";
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        username: document.getElementById("username").value,
+        senha: document.getElementById("senha").value,
+      }),
+    });
+    if (!res.ok){
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.erro || "Não foi possível entrar");
+    }
+    window.location.href = "/";
+  } catch (err) {
+    erroEl.textContent = err.message;
+    erroEl.classList.add("ativo");
+    btn.disabled = false;
+    btn.textContent = "Entrar";
+  }
+});
+</script>
+</body>
+</html>

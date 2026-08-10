@@ -1,0 +1,22 @@
+manifestVersion: 1
+id: controle-financeiro
+category: finance
+name: Controle Financeiro
+version: "1.0.0"
+tagline: Controle mensal de renda, despesas e consignados
+description: >-
+  Aplicativo simples para controlar renda, despesas e parcelas de
+  consignado mês a mês, com totais e saldo calculados automaticamente.
+  Todos os dados ficam salvos localmente no seu servidor Umbrel.
+developer: Thiago
+website: "https://github.com/cruzthiago2010/controle-financeiro"
+dependencies: []
+repo: "https://github.com/cruzthiago2010/controle-financeiro"
+support: "https://github.com/cruzthiago2010/controle-financeiro/issues"
+port: 8420
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Thiago
+submission: ""

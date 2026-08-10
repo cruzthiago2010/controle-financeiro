@@ -1,0 +1,2554 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle Financeiro</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icon.svg">
+<meta name="theme-color" content="#0b0f19">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0f19; --card:#161d2e; --card2:#1c2438; --card3:#212a42;
+    --border:#26304a; --border-soft:#1e2740;
+    --text:#eef1f8; --muted:#8b96b3; --muted-soft:#6b7694;
+    --green:#3ecf8e; --red:#ff6b6b; --accent:#5b8def; --accent2:#4f7fe0;
+    --yellow:#f5c451; --purple:#a78bfa;
+    --radius-lg:16px; --radius-md:12px; --radius-sm:8px;
+    --shadow-card:0 2px 10px rgba(0,0,0,0.25);
+    --shadow-hover:0 8px 24px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(91,141,239,0.09), transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(167,139,250,0.07), transparent 45%),
+      var(--bg);
+    background-attachment:fixed;
+    color:var(--text); padding-bottom:80px; -webkit-font-smoothing:antialiased;
+  }
+  .mes-selector{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  select, input, button, textarea{
+    background:var(--card2); color:var(--text); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:9px 12px; font-size:0.92rem; font-family:inherit;
+    transition:border-color 0.15s, box-shadow 0.15s, transform 0.1s, background 0.15s;
+  }
+  select:focus, input:focus, textarea:focus{
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,141,239,0.18);
+  }
+  button{
+    cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2)); border:none;
+    font-weight:600; color:#fff; box-shadow:0 2px 8px rgba(91,141,239,0.25);
+  }
+  button:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(91,141,239,0.35);}
+  button:active{transform:translateY(0) scale(0.98);}
+  button.secondary{background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;}
+  button.secondary:hover{background:var(--card3); box-shadow:none;}
+  button.danger{background:transparent; color:var(--red); padding:4px 8px; font-size:0.85rem; box-shadow:none;}
+  button.danger:hover{background:rgba(255,107,107,0.1); transform:none; box-shadow:none;}
+  button[disabled]{opacity:0.55; cursor:default; transform:none !important;}
+
+  main{padding:16px; max-width:1000px;}
+  .painel{display:none;}
+  .painel.ativo{display:block; animation:fadeIn 0.25s ease;}
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); gap:10px;}
+  .card{
+    background:linear-gradient(160deg, var(--card), var(--card2)); border:1px solid var(--border);
+    border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card);
+    transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .card:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover);}
+  .card .label{font-size:0.76rem; color:var(--muted);}
+  .card .valor{font-size:1.2rem; font-weight:800; margin-top:5px; letter-spacing:-0.01em;}
+  .positivo{color:var(--green);} .negativo{color:var(--red);} .alerta{color:var(--yellow);}
+
+  .destaque{
+    background:linear-gradient(135deg, #24345f, #1a2148 60%, #171d3d);
+    border:1px solid rgba(91,141,239,0.4);
+    border-radius:var(--radius-lg); padding:20px 16px; margin:16px 0; text-align:center;
+    box-shadow:0 4px 20px rgba(91,141,239,0.12); position:relative; overflow:hidden;
+  }
+  .destaque .valor-grande{font-size:1.55rem; font-weight:800; color:#fff;}
+  .destaque .texto{font-size:0.85rem; color:var(--muted); margin-top:5px;}
+
+  .secao{margin:24px 0;}
+  .secao h2{
+    font-size:0.82rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;
+    margin-bottom:10px; font-weight:700;
+  }
+  .chart-box{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; height:220px; box-shadow:var(--shadow-card);}
+
+  .item{
+    background:var(--card); border:1px solid var(--border); border-left:3px solid var(--cat-color, var(--border));
+    border-radius:var(--radius-sm); padding:8px 10px; margin-bottom:6px;
+    transition:border-color 0.15s;
+  }
+  .item:hover{border-color:var(--accent);}
+  .item.pendente-item{border-left-color:var(--yellow);}
+  .item-topo{display:flex; align-items:center; gap:8px;}
+  .item .pago-check{flex:none; width:auto; margin:0; accent-color:var(--green);}
+  .item .desc-wrap{flex:1; min-width:0;}
+  .item .desc{font-size:0.89rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .item .meta{font-size:0.68rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
+  .item .meta.atrasado{color:var(--red); font-weight:600;}
+  .item .valor{font-weight:700; white-space:nowrap; font-size:0.87rem; flex:none;}
+  .item .acoes{display:flex; align-items:center; gap:1px; flex:none;}
+  .item .acoes button, .item .acoes label{padding:4px 6px; font-size:0.85rem; background:transparent; box-shadow:none; border-radius:6px;}
+  .item .acoes button:hover, .item .acoes label:hover{background:var(--card2); transform:none;}
+  .item .acoes label{cursor:pointer; color:var(--muted);}
+  .item .acoes a.comp-link{padding:4px 6px; font-size:0.85rem; text-decoration:none; color:var(--green); border-radius:6px;}
+  .item .acoes a.comp-link:hover{background:rgba(62,207,142,0.1);}
+  /* Anexo existente fica em destaque, não só um clipe apagado */
+  .item .acoes a.comp-link.com-anexo{
+    background:rgba(62,207,142,0.15); border:1px solid var(--green); font-size:0.7rem;
+    font-weight:700; padding:3px 8px; white-space:nowrap;
+  }
+  .item .acoes a.comp-link.com-anexo:hover{background:rgba(62,207,142,0.28);}
+  .item .acoes input[type=file]{display:none;}
+
+  .total-secao{display:flex; justify-content:space-between; padding:10px 12px; font-weight:700; color:var(--muted); font-size:0.88rem; border-top:1px dashed var(--border); margin-top:2px;}
+
+  form.add-form{display:flex; flex-wrap:wrap; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; margin-top:18px; box-shadow:var(--shadow-card);}
+  form.add-form select, form.add-form input, form.add-form textarea{flex:1; min-width:110px;}
+  form.add-form textarea{width:100%; min-height:50px; resize:vertical;}
+  form.add-form button{width:100%; padding:11px; font-size:1rem;}
+  .empty{color:var(--muted-soft); font-size:0.88rem; padding:22px 10px; text-align:center;}
+  .footer-actions{display:flex; gap:8px; margin-top:16px;}
+  .footer-actions button{flex:1;}
+
+  .simple-card{
+    display:flex; justify-content:space-between; align-items:center; background:var(--card);
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin-bottom:8px;
+    transition:transform 0.15s, box-shadow 0.15s;
+  }
+  .simple-card:hover{transform:translateX(2px); box-shadow:var(--shadow-card);}
+  .simple-card .nome{font-weight:600;}
+  .simple-card .sub{font-size:0.78rem; color:var(--muted); margin-top:2px;}
+
+  .categorias-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px;}
+  .categoria-card{
+    display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:10px 12px; box-shadow:var(--shadow-card);
+  }
+  .categoria-card .dot{width:16px; height:16px; border-radius:50%; flex:none; border:2px solid var(--card2);}
+  .categoria-card .nome{flex:1; min-width:0; font-weight:600; font-size:0.87rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .categoria-card .acoes{display:flex; gap:1px; flex:none;}
+
+  button.icon{background:transparent; color:var(--muted); padding:4px 6px; font-size:0.9rem; box-shadow:none;}
+  button.icon:hover{background:var(--card2); color:var(--text); transform:none;}
+
+  /* Modal de edição */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(5,7,14,0.65); backdrop-filter:blur(2px);
+    z-index:100; align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.ativo{display:flex;}
+  .modal-box{
+    background:var(--card); border:1px solid var(--border); border-radius:20px 20px 0 0;
+    padding:20px; width:100%; max-width:480px; max-height:85vh; overflow-y:auto;
+    box-shadow:0 -8px 30px rgba(0,0,0,0.4); animation:modalUp 0.25s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes modalUp{ from{transform:translateY(24px); opacity:0;} to{transform:translateY(0); opacity:1;} }
+  .modal-box h3{margin:0 0 14px; font-size:1.05rem;}
+  .modal-box label{display:block; font-size:0.78rem; color:var(--muted); margin:10px 0 4px;}
+  .modal-box input, .modal-box select, .modal-box textarea{width:100%;}
+  .modal-box textarea{min-height:50px; resize:vertical;}
+  .modal-acoes{display:flex; gap:8px; margin-top:16px;}
+  .modal-acoes button{flex:1;}
+  .modal-rec{display:flex; align-items:center; gap:6px; margin-top:12px; font-size:0.85rem; color:var(--muted);}
+  .modal-rec input{width:auto;}
+
+  /* Calendário */
+  .cal-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .cal-header .titulo{font-weight:700; font-size:1.05rem;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
+  .cal-diasemana{font-size:0.68rem; color:var(--muted); text-align:center; padding:4px 0; font-weight:600;}
+  .cal-dia{
+    aspect-ratio:1; background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:4px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    font-size:0.78rem; cursor:pointer; position:relative; transition:background 0.15s, border-color 0.15s;
+  }
+  .cal-dia:hover{border-color:var(--accent);}
+  .cal-dia.vazio{background:transparent; border:none; cursor:default;}
+  .cal-dia.hoje{border-color:var(--accent); border-width:2px; box-shadow:0 0 0 3px rgba(91,141,239,0.12);}
+  .cal-dia.selecionado{background:linear-gradient(160deg, var(--card2), var(--card3)); border-color:var(--accent);}
+  .cal-dia .num{font-weight:700;}
+  .cal-dots{display:flex; gap:2px; margin-top:3px;}
+  .cal-dot{width:6px; height:6px; border-radius:50%;}
+  .cal-dot.renda{background:var(--green);}
+  .cal-dot.despesa{background:var(--red);}
+  .cal-dot.pendente{background:var(--yellow);}
+  .cal-lista{margin-top:16px;}
+
+  /* Banner de instalação do app (PWA) */
+  .install-banner{
+    display:none; align-items:center; gap:12px; margin:0 0 14px;
+    background:linear-gradient(135deg, #24345f, #1a2148); border:1px solid rgba(91,141,239,0.4);
+    border-radius:var(--radius-md); padding:12px 14px;
+  }
+  .install-banner.ativo{display:flex;}
+  .install-banner .texto-inst{flex:1; min-width:0; font-size:0.85rem;}
+  .install-banner .texto-inst small{display:block; color:var(--muted); margin-top:2px; font-size:0.75rem;}
+  .install-banner button{padding:8px 14px; font-size:0.82rem; flex:none;}
+  .install-banner button.secondary{background:transparent; border:none; color:var(--muted); box-shadow:none;}
+  :root[data-tema="claro"] .install-banner{background:linear-gradient(135deg, #e7edfb, #f4f0ff); border-color:rgba(91,141,239,0.3);}
+
+  /* Toasts */
+  .toast-container{position:fixed; left:0; right:0; bottom:14px; display:flex; flex-direction:column;
+    align-items:center; gap:8px; z-index:200; pointer-events:none; padding:0 16px;}
+  .toast{
+    background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:11px 18px;
+    font-size:0.85rem; font-weight:500; box-shadow:0 8px 24px rgba(0,0,0,0.45); max-width:480px; width:100%;
+    opacity:0; transform:translateY(10px) scale(0.98); transition:opacity 0.25s, transform 0.25s;
+  }
+  .toast.show{opacity:1; transform:translateY(0) scale(1);}
+  .toast.ok{border-color:var(--green); color:var(--green);}
+  .toast.erro{border-color:var(--red); color:var(--red);}
+
+  /* Loading */
+  .loading-msg{color:var(--muted); font-size:0.85rem; padding:14px 0; text-align:center;}
+  .skeleton{background:linear-gradient(90deg, var(--card) 25%, var(--card2) 37%, var(--card) 63%);
+    background-size:400% 100%; animation:skeleton-anim 1.4s ease infinite; border-radius:8px;}
+  @keyframes skeleton-anim{0%{background-position:100% 50%;} 100%{background-position:0 50%;}}
+
+  /* Filtros de lançamentos */
+  .filtros-row{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+  .filtros-row input, .filtros-row select{flex:1; min-width:120px;}
+  .filtros-row input#buscaInput{flex:2; min-width:160px;}
+
+  ::-webkit-scrollbar{width:8px; height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+
+  /* Tema claro */
+  :root[data-tema="claro"]{
+    --bg:#f2f4fa; --card:#ffffff; --card2:#f3f5fb; --card3:#e9edf7;
+    --border:#e1e6f2; --border-soft:#e9edf7;
+    --text:#1c2438; --muted:#6b7694; --muted-soft:#9aa4c0;
+  }
+  :root[data-tema="claro"] body{
+    background:
+      radial-gradient(circle at 15% 0%, rgba(91,141,239,0.05), transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(167,139,250,0.04), transparent 45%),
+      var(--bg);
+  }
+  :root[data-tema="claro"] .sidebar, :root[data-tema="claro"] .topbar{background:rgba(255,255,255,0.88);}
+  :root[data-tema="claro"] h1{background:linear-gradient(90deg, #1c2438, #5b8def); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  :root[data-tema="claro"] .destaque{background:linear-gradient(135deg, #e7edfb, #f4f0ff 60%, #eef2fc); border-color:rgba(91,141,239,0.3);}
+  :root[data-tema="claro"] .destaque .valor-grande{color:#1c2438;}
+  :root[data-tema="claro"] .modal-overlay{background:rgba(30,35,55,0.35);}
+
+  /* App shell (sidebar + topbar) */
+  .app-shell{display:flex; min-height:100vh;}
+  .sidebar{
+    width:224px; flex:none; background:rgba(11,15,25,0.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-right:1px solid var(--border-soft); display:flex; flex-direction:column;
+    position:fixed; top:0; left:0; bottom:0; z-index:40; transition:transform 0.25s ease, width 0.2s ease;
+  }
+  .sidebar-topo{padding:22px 16px 16px; display:flex; align-items:center; justify-content:space-between; gap:6px;}
+  .sidebar-topo .logo{font-size:1.05rem; font-weight:800; display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden;
+    background:linear-gradient(90deg, #fff, #b9c6ec); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap;}
+  :root[data-tema="claro"] .sidebar-topo .logo{background:linear-gradient(90deg, #1c2438, #5b8def); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .sidebar-colapsar{
+    background:transparent; border:none; color:var(--muted); box-shadow:none; padding:4px 6px;
+    width:auto; height:auto; font-size:0.95rem; flex:none; border-radius:6px; transition:transform 0.2s;
+  }
+  .sidebar-colapsar:hover{color:var(--text); background:var(--card2); transform:none;}
+  .sidebar-nav{display:flex; flex-direction:column; gap:2px; padding:8px 12px; overflow-y:auto; overflow-x:hidden;}
+  .nav-item{
+    display:flex; align-items:center; gap:10px; background:transparent; color:var(--muted);
+    border:none; padding:11px 12px; font-weight:600; font-size:0.87rem; border-radius:var(--radius-sm);
+    box-shadow:none; text-align:left; justify-content:flex-start; width:100%; white-space:nowrap; overflow:hidden;
+  }
+  .nav-item:hover{background:var(--card2); transform:none; box-shadow:none; color:var(--text);}
+  .nav-item.ativo{color:#fff; background:linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow:0 2px 10px rgba(91,141,239,0.3);}
+  .nav-icon{font-size:1.05rem; flex:none; width:20px; text-align:center;}
+  .sidebar-overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:39;}
+  .sidebar-overlay.ativo{display:block;}
+
+  .sidebar-rodape{margin-top:auto; padding:10px 12px 16px; border-top:1px solid var(--border-soft); display:flex; flex-direction:column; gap:2px;}
+  .sidebar-usuario{
+    display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:var(--radius-sm);
+    cursor:pointer; font-size:0.85rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden;
+  }
+  .sidebar-usuario:hover{background:var(--card2);}
+  .usuario-avatar{
+    width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff; font-weight:800;
+    font-size:0.75rem; display:flex; align-items:center; justify-content:center; flex:none;
+    background-size:cover; background-position:center; overflow:hidden;
+  }
+  .sidebar.colapsada .sidebar-usuario .nav-label{display:none;}
+
+  /* Foto de perfil no modal */
+  .perfil-foto-area{display:flex; align-items:center; gap:14px; margin-top:6px;}
+  .perfil-foto{
+    width:72px; height:72px; border-radius:50%; flex:none; background:var(--card3);
+    background-size:cover; background-position:center; display:flex; align-items:center;
+    justify-content:center; font-weight:800; font-size:1.4rem; color:#fff;
+    border:2px solid var(--border);
+  }
+  .perfil-foto-acoes{display:flex; flex-direction:column; gap:8px; flex:1; min-width:0;}
+  .perfil-foto-acoes button, .botao-arquivo{width:100%; font-size:0.82rem; padding:9px 12px; text-align:center;}
+  .botao-arquivo{
+    cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff;
+    border:none; border-radius:var(--radius-sm); font-weight:600; display:block;
+    box-shadow:0 2px 8px rgba(91,141,239,0.25);
+  }
+  .botao-arquivo input[type=file]{display:none;}
+
+  .sidebar.colapsada{width:68px;}
+  .sidebar.colapsada .logo-texto, .sidebar.colapsada .nav-label{display:none;}
+  .sidebar.colapsada .sidebar-topo{justify-content:center;}
+  .sidebar.colapsada .nav-item{justify-content:center; padding:11px;}
+  .sidebar.colapsada .sidebar-colapsar{transform:rotate(180deg);}
+  .sidebar.colapsada ~ .conteudo{margin-left:68px;}
+
+  .conteudo{flex:1; margin-left:224px; min-width:0; transition:margin-left 0.2s ease;}
+  .topbar{
+    padding:14px 20px; position:sticky; top:0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:rgba(11,15,25,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    z-index:20; border-bottom:1px solid var(--border-soft);
+  }
+  #menuToggle{display:none;}
+  .topbar-acoes{display:flex; gap:6px; margin-left:auto;}
+  .icon-btn{
+    background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;
+    width:36px; height:36px; padding:0; display:flex; align-items:center; justify-content:center;
+    border-radius:var(--radius-sm); font-size:1rem; flex:none;
+  }
+  .icon-btn:hover{background:var(--card3); transform:none; box-shadow:none;}
+  .icon-btn.ativo{border-color:var(--accent); color:var(--accent);}
+
+  @media (max-width: 860px){
+    .sidebar{transform:translateX(-100%); width:224px !important;}
+    .sidebar.aberta{transform:translateX(0);}
+    .sidebar.colapsada ~ .conteudo{margin-left:0;}
+    .sidebar.colapsada .logo-texto, .sidebar.colapsada .nav-label{display:inline;}
+    .sidebar.colapsada .sidebar-topo{justify-content:space-between;}
+    .sidebar.colapsada .nav-item{justify-content:flex-start; padding:11px 12px;}
+    .sidebar-colapsar{display:none;}
+    .conteudo{margin-left:0;}
+    #menuToggle{display:flex;}
+  }
+
+  /* Ocultar valores */
+  body.valores-ocultos .valor, body.valores-ocultos .valor-grande, body.valores-ocultos .valor-info,
+  body.valores-ocultos #totalRenda, body.valores-ocultos #totalDespesa,
+  body.valores-ocultos .conta-saldos .principal, body.valores-ocultos .conta-saldos .secundario{
+    filter:blur(6px); user-select:none;
+  }
+
+  /* Barras de progresso e badges */
+  .barra-progresso{background:var(--card3); border-radius:999px; height:7px; overflow:hidden; margin-top:8px;}
+  .barra-progresso .fill{height:100%; border-radius:999px; transition:width 0.3s ease;}
+  .badge{display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px;}
+  .badge.paga{background:rgba(62,207,142,0.15); color:var(--green);}
+  .badge.aberta{background:rgba(91,141,239,0.15); color:var(--accent);}
+
+  /* Grids de cartões e contas */
+  .cartoes-grid, .contas-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px;}
+
+  .cartao-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card);}
+  .cartao-card .cartao-topo{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .cartao-icone{width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; flex:none; font-size:0.9rem;}
+  .cartao-card .cartao-nome{font-weight:700;}
+  .cartao-card .cartao-sub{font-size:0.75rem; color:var(--muted);}
+  .cartao-card .cartao-acoes{margin-left:auto; display:flex; gap:2px;}
+  .cartao-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; font-size:0.78rem; margin:10px 0;}
+  .cartao-grid .rotulo{color:var(--muted); font-size:0.68rem;}
+  .cartao-grid .valor-info{font-weight:700; margin-top:2px;}
+  .cartao-rodape{display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); gap:8px; flex-wrap:wrap;}
+  .cartao-rodape button{font-size:0.78rem; padding:6px 10px;}
+
+  .conta-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card); display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .conta-icone{width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; flex:none;}
+  .conta-card .conta-nome{font-weight:700;}
+  .conta-card .conta-sub{font-size:0.75rem; color:var(--muted); margin-top:2px;}
+  .conta-card .conta-saldos{text-align:right;}
+  .conta-card .conta-saldos .principal{font-weight:800; font-size:1.05rem;}
+  .conta-card .conta-saldos .secundario{font-size:0.72rem; color:var(--muted); margin-top:2px;}
+  .conta-card .conta-acoes{display:flex; gap:2px;}
+
+  /* Botão flutuante (FAB) com speed-dial */
+  .fab-container{position:fixed; right:20px; bottom:24px; z-index:35; display:flex; flex-direction:column; align-items:flex-end; gap:14px;}
+  .fab{
+    width:56px; height:56px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:1.7rem; line-height:1;
+    box-shadow:0 6px 20px rgba(91,141,239,0.45); padding:0; transition:transform 0.2s ease;
+  }
+  .fab:hover{transform:translateY(-2px) scale(1.03);}
+  .fab.ativo{transform:rotate(45deg);}
+  .fab.ativo:hover{transform:rotate(45deg) scale(1.03);}
+  .fab-opcoes{display:none; flex-direction:column; gap:12px; align-items:flex-end;}
+  .fab-opcoes.aberta{display:flex;}
+  .fab-mini{display:flex; align-items:center; gap:10px; background:transparent; border:none; box-shadow:none; padding:0;}
+  .fab-mini:hover{transform:none;}
+  .fab-mini-label{background:var(--card2); color:var(--text); padding:6px 12px; border-radius:8px; font-size:0.8rem; font-weight:600; box-shadow:var(--shadow-card); border:1px solid var(--border); white-space:nowrap;}
+  .fab-mini-icone{
+    width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:1.25rem; box-shadow:0 4px 14px rgba(0,0,0,0.3); flex:none; color:#fff;
+  }
+  .fab-mini-icone.despesa{background:linear-gradient(135deg, var(--red), #e05353);}
+  .fab-mini-icone.receita{background:linear-gradient(135deg, var(--green), #2fb377);}
+  .fab-mini-icone.transferencia{background:linear-gradient(135deg, var(--accent), var(--accent2));}
+
+  /* Toggle switch */
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; font-size:0.85rem; color:var(--text);}
+  .toggle-switch{position:relative; display:inline-block; width:42px; height:24px; flex:none;}
+  .toggle-switch input{opacity:0; width:0; height:0; position:absolute;}
+  .toggle-slider{position:absolute; cursor:pointer; inset:0; background:var(--card3); border:1px solid var(--border); border-radius:999px; transition:background 0.2s;}
+  .toggle-slider::before{content:""; position:absolute; height:16px; width:16px; left:3px; top:2px; background:#fff; border-radius:50%; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+  .toggle-switch input:checked + .toggle-slider{background:var(--accent); border-color:var(--accent);}
+  .toggle-switch input:checked + .toggle-slider::before{transform:translateX(18px);}
+
+  /* Controle segmentado (Despesa/Receita) */
+  .segmented{display:flex; background:var(--card2); border-radius:999px; padding:3px; gap:2px; margin-bottom:6px;}
+  .segmented button{flex:1; background:transparent; box-shadow:none; border-radius:999px; padding:9px; font-size:0.88rem; font-weight:700; color:var(--muted);}
+  .segmented button:hover{transform:none;}
+  .segmented button.ativo{background:var(--accent); color:#fff;}
+  .segmented button.ativo.despesa{background:var(--red); color:#fff;}
+  .segmented button.ativo.renda{background:var(--green); color:#fff;}
+
+  /* Select com bolinha de cor (categoria/conta) */
+  .select-com-icone{display:flex; align-items:center; gap:8px;}
+  .select-com-icone .dot-preview{width:12px; height:12px; border-radius:50%; flex:none; background:var(--border);}
+  .select-com-icone select{flex:1;}
+  .select-com-icone button.icon{flex:none; border:1px solid var(--border); border-radius:var(--radius-sm);}
+
+  /* Cards clicáveis do dashboard + modal de explicação */
+  .card.clicavel, .destaque.clicavel{cursor:pointer;}
+  .card.clicavel:hover{border-color:var(--accent);}
+  .destaque.clicavel:hover{border-color:var(--accent);}
+  .formula-box{background:var(--card2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:16px; font-size:0.85rem;}
+  .formula-box .linha{display:flex; justify-content:space-between; padding:4px 0;}
+  .formula-box .linha.total{border-top:1px dashed var(--border); margin-top:6px; padding-top:8px; font-weight:700;}
+  .explicacao-grupo{margin-bottom:18px;}
+  .explicacao-grupo h2{font-size:0.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; font-weight:700;}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-topo">
+      <span class="logo">💰 <span class="logo-texto">Controle Financeiro</span></span>
+      <button class="sidebar-colapsar" id="sidebarColapsarBtn" type="button" title="Recolher menu">«</button>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item ativo" data-tab="dashboard" title="Dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></button>
+      <button class="nav-item" data-tab="contas" title="Contas"><span class="nav-icon">🏦</span><span class="nav-label">Contas</span></button>
+      <button class="nav-item" data-tab="lancamentos" title="Receitas & Despesas"><span class="nav-icon">💵</span><span class="nav-label">Receitas &amp; Despesas</span></button>
+      <button class="nav-item" data-tab="categorias" title="Categorias"><span class="nav-icon">🏷️</span><span class="nav-label">Categorias</span></button>
+      <button class="nav-item" data-tab="calendario" title="Calendário"><span class="nav-icon">📅</span><span class="nav-label">Calendário</span></button>
+      <button class="nav-item" data-tab="cartoes" title="Cartões"><span class="nav-icon">💳</span><span class="nav-label">Cartões</span></button>
+      <button class="nav-item" data-tab="dividas" title="Dívidas"><span class="nav-icon">📉</span><span class="nav-label">Dívidas</span></button>
+    </nav>
+    <div class="sidebar-rodape">
+      <div class="sidebar-usuario" id="sidebarUsuario" title="Trocar senha">
+        <span class="usuario-avatar" id="usuarioAvatar">?</span>
+        <span class="nav-label" id="usuarioNomeLabel">...</span>
+      </div>
+      <button class="nav-item" id="btnAdicionarUsuario" title="Adicionar usuário"><span class="nav-icon">➕</span><span class="nav-label">Adicionar usuário</span></button>
+      <button class="nav-item" id="btnSair" title="Sair"><span class="nav-icon">🚪</span><span class="nav-label">Sair</span></button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="conteudo">
+    <header class="topbar">
+      <button class="icon-btn" id="menuToggle" type="button" title="Menu">☰</button>
+      <div class="mes-selector">
+        <button class="icon-btn" id="mesAnteriorBtn" type="button" title="Mês anterior">‹</button>
+        <select id="mesSelect"></select>
+        <button class="icon-btn" id="mesProximoBtn" type="button" title="Próximo mês">›</button>
+      </div>
+      <div class="topbar-acoes">
+        <button class="icon-btn" id="ocultarValoresBtn" type="button" title="Ocultar valores">👁️</button>
+        <button class="icon-btn" id="temaBtn" type="button" title="Alternar tema">🌙</button>
+      </div>
+    </header>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <main>
+
+  <div class="install-banner" id="installBanner">
+    <span style="font-size:1.5rem;">📲</span>
+    <div class="texto-inst">
+      <strong>Instalar como app</strong>
+      <small id="installDica">Abre em tela cheia, sem a barra do navegador.</small>
+    </div>
+    <button type="button" id="installBtn">Instalar</button>
+    <button type="button" class="secondary" id="installFechar" title="Dispensar">✕</button>
+  </div>
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <section class="painel ativo" id="painel-dashboard">
+    <div class="destaque" id="destaqueSaldoContas"></div>
+
+    <div class="grid2" id="dashCards"></div>
+
+    <div class="destaque" id="destaqueDiario"></div>
+
+    <div class="secao">
+      <h2>💧 Fluxo de caixa do mês <span style="text-transform:none; font-weight:400; opacity:0.7;">· toque numa coluna para ver o detalhe</span></h2>
+      <div class="chart-box"><canvas id="chartComparacao"></canvas></div>
+    </div>
+
+    <div class="secao">
+      <h2>Gastos por categoria</h2>
+      <div class="chart-box"><canvas id="chartCategoria"></canvas></div>
+    </div>
+
+    <div class="secao">
+      <h2>⏰ Contas vencendo nos próximos 7 dias</h2>
+      <div id="listaVencendo"></div>
+    </div>
+
+    <div class="secao">
+      <h2>📅 Parcelas futuras</h2>
+      <div id="listaParcelasFuturas"></div>
+    </div>
+
+    <div class="secao">
+      <h2>🏦 Resumo por conta</h2>
+      <div id="listaContasResumo"></div>
+    </div>
+  </section>
+
+  <!-- ===================== CONTAS ===================== -->
+  <section class="painel" id="painel-contas">
+    <div class="secao">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h2 style="margin-bottom:0;">Contas</h2>
+        <button class="secondary" type="button" id="btnAbrirTransferencia">🔁 Transferir</button>
+      </div>
+      <div class="contas-grid" id="listaContas"></div>
+    </div>
+    <form class="add-form" id="contaForm">
+      <input type="text" id="contaNome" placeholder="Nome da conta (ex: Nubank, Carteira)" required>
+      <input type="number" id="contaSaldoInicial" placeholder="Saldo inicial (R$)" step="0.01">
+      <button type="submit">Adicionar conta</button>
+    </form>
+  </section>
+
+  <!-- ===================== LANÇAMENTOS ===================== -->
+  <section class="painel" id="painel-lancamentos">
+
+    <div class="secao pendentes" id="secaoPendentes" style="display:none;">
+      <h2 style="color:var(--yellow);">⚠️ Contas pendentes do mês</h2>
+      <div id="listaPendentes"></div>
+    </div>
+
+    <div class="filtros-row">
+      <input type="text" id="buscaInput" placeholder="🔍 Buscar por descrição">
+      <select id="filtroCategoria"><option value="">Todas categorias</option></select>
+      <select id="filtroConta"><option value="">Todas contas</option></select>
+      <select id="filtroStatus">
+        <option value="">Todos status</option>
+        <option value="pago">Pago</option>
+        <option value="pendente">Pendente</option>
+      </select>
+      <select id="ordenacaoSelect">
+        <option value="padrao">Ordem padrão</option>
+        <option value="valor-desc">Maior valor</option>
+        <option value="valor-asc">Menor valor</option>
+        <option value="data-asc">Data (mais antiga)</option>
+        <option value="data-desc">Data (mais recente)</option>
+        <option value="categoria">Categoria</option>
+      </select>
+    </div>
+
+    <div class="secao">
+      <h2>Renda</h2>
+      <div id="listaRenda"></div>
+      <div class="total-secao"><span>Total Renda</span><span id="totalRenda">R$ 0,00</span></div>
+    </div>
+
+    <div class="secao">
+      <h2>Despesas</h2>
+      <div id="listaDespesa"></div>
+      <div class="total-secao"><span>Total Despesas</span><span id="totalDespesa">R$ 0,00</span></div>
+    </div>
+
+  </section>
+
+  <!-- ===================== CATEGORIAS ===================== -->
+  <section class="painel" id="painel-categorias">
+    <div class="secao">
+      <h2>Categorias de Receita</h2>
+      <div class="categorias-grid" id="listaCategoriasReceita"></div>
+    </div>
+    <div class="secao">
+      <h2>Categorias de Despesa</h2>
+      <div class="categorias-grid" id="listaCategoriasDespesa"></div>
+    </div>
+    <form class="add-form" id="categoriaForm">
+      <select id="categoriaFormTipo">
+        <option value="despesa">Despesa</option>
+        <option value="renda">Renda</option>
+      </select>
+      <input type="text" id="categoriaFormNome" placeholder="Nome da categoria" required>
+      <label class="toggle-row" style="width:auto; gap:8px; padding:0;">
+        Cor
+        <input type="color" id="categoriaFormCor" value="#5b8def" style="width:44px; padding:2px; height:38px;">
+      </label>
+      <button type="submit">+ Adicionar categoria</button>
+    </form>
+  </section>
+
+  <!-- ===================== CALENDÁRIO ===================== -->
+  <section class="painel" id="painel-calendario">
+    <div class="cal-header">
+      <div class="titulo" id="calTitulo"></div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-lista" id="calLista"></div>
+  </section>
+
+  <!-- ===================== CARTÕES ===================== -->
+  <section class="painel" id="painel-cartoes">
+    <div class="secao">
+      <h2>Cartões de crédito</h2>
+      <div class="cartoes-grid" id="listaCartoes"></div>
+    </div>
+    <form class="add-form" id="cartaoForm">
+      <input type="text" id="cartaoNome" placeholder="Nome do cartão" required>
+      <input type="number" id="cartaoLimite" placeholder="Limite (R$)" step="0.01">
+      <input type="number" id="cartaoFatura" placeholder="Fatura atual (R$)" step="0.01">
+      <input type="number" id="cartaoDiaVenc" placeholder="Dia de vencimento" min="1" max="31">
+      <select id="cartaoConta"><option value="">Sem conta vinculada</option></select>
+      <button type="submit">Adicionar cartão</button>
+    </form>
+  </section>
+
+  <!-- ===================== DÍVIDAS ===================== -->
+  <section class="painel" id="painel-dividas">
+    <div class="secao">
+      <h2>Dívidas</h2>
+      <div id="listaDividas"></div>
+    </div>
+    <form class="add-form" id="dividaForm">
+      <input type="text" id="dividaDesc" placeholder="Descrição (ex: Consignado banco X)" required>
+      <input type="number" id="dividaTotal" placeholder="Valor total (R$)" step="0.01">
+      <input type="number" id="dividaRestante" placeholder="Valor restante (R$)" step="0.01">
+      <input type="number" id="dividaParcela" placeholder="Parcela mensal (R$)" step="0.01">
+      <input type="number" id="dividaDiaVenc" placeholder="Dia de vencimento" min="1" max="31">
+      <button type="submit">Adicionar dívida</button>
+    </form>
+  </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Modal de edição de lançamento -->
+<div class="modal-overlay" id="modalEdicao">
+  <div class="modal-box">
+    <h3>Editar lançamento</h3>
+    <input type="hidden" id="editId">
+    <label>Descrição</label>
+    <input type="text" id="editDesc">
+    <label>Valor (R$)</label>
+    <input type="number" id="editValor" step="0.01">
+    <label>Categoria</label>
+    <select id="editCategoria"></select>
+    <label>Vencimento / data</label>
+    <input type="date" id="editVenc">
+    <label>Conta</label>
+    <select id="editConta"><option value="">Sem conta</option></select>
+    <label class="toggle-row">
+      <span id="editPagoLabel">✅ Já paga</span>
+      <span class="toggle-switch"><input type="checkbox" id="editPago"><span class="toggle-slider"></span></span>
+    </label>
+    <label id="editDataPagLabel" style="display:none;">Data do pagamento</label>
+    <input type="date" id="editDataPag" style="display:none;">
+    <label>Observação</label>
+    <textarea id="editObs"></textarea>
+    <label class="modal-rec">
+      <input type="checkbox" id="editRec">
+      Repetir todo mês (recorrente)
+    </label>
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="editCancelar">Cancelar</button>
+      <button type="button" id="editSalvar">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de edição de conta -->
+<div class="modal-overlay" id="modalEdicaoConta">
+  <div class="modal-box">
+    <h3>Editar conta</h3>
+    <input type="hidden" id="editContaId">
+    <label>Nome</label>
+    <input type="text" id="editContaNome">
+    <label>Saldo inicial (R$)</label>
+    <input type="number" id="editContaSaldoInicial" step="0.01">
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="editContaCancelar">Cancelar</button>
+      <button type="button" id="editContaSalvar">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de edição de cartão -->
+<div class="modal-overlay" id="modalEdicaoCartao">
+  <div class="modal-box">
+    <h3>Editar cartão</h3>
+    <input type="hidden" id="editCartaoId">
+    <label>Nome</label>
+    <input type="text" id="editCartaoNome">
+    <label>Limite (R$)</label>
+    <input type="number" id="editCartaoLimite" step="0.01">
+    <label>Fatura atual (R$)</label>
+    <input type="number" id="editCartaoFatura" step="0.01">
+    <label>Dia de vencimento</label>
+    <input type="number" id="editCartaoDiaVenc" min="1" max="31">
+    <label>Conta vinculada</label>
+    <select id="editCartaoConta"><option value="">Sem conta vinculada</option></select>
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="editCartaoCancelar">Cancelar</button>
+      <button type="button" id="editCartaoSalvar">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- Botão flutuante (speed-dial: despesa / receita / transferência) -->
+<div class="fab-container">
+  <div class="fab-opcoes" id="fabOpcoes">
+    <button class="fab-mini" id="fabTransferencia" type="button">
+      <span class="fab-mini-label">Transferência</span>
+      <span class="fab-mini-icone transferencia">🔁</span>
+    </button>
+    <button class="fab-mini" id="fabReceita" type="button">
+      <span class="fab-mini-label">Receita</span>
+      <span class="fab-mini-icone receita">💰</span>
+    </button>
+    <button class="fab-mini" id="fabDespesa" type="button">
+      <span class="fab-mini-label">Despesa</span>
+      <span class="fab-mini-icone despesa">💸</span>
+    </button>
+  </div>
+  <button class="fab" id="fabToggle" type="button" title="Novo">+</button>
+</div>
+
+<div class="modal-overlay" id="modalNovoLancamento">
+  <div class="modal-box">
+    <h3>Novo lançamento</h3>
+    <div class="segmented" id="tipoSegmented">
+      <button type="button" class="ativo despesa" data-tipo="despesa">Despesa</button>
+      <button type="button" class="renda" data-tipo="renda">Receita</button>
+    </div>
+    <input type="hidden" id="tipoInput" value="despesa">
+
+    <label>Descrição</label>
+    <input type="text" id="descInput" placeholder="Ex: Mercado, Salário...">
+
+    <label>Valor (R$)</label>
+    <input type="number" id="valorInput" step="0.01" placeholder="0,00">
+
+    <label>Data / vencimento</label>
+    <input type="date" id="vencInput">
+
+    <label>Categoria</label>
+    <div class="select-com-icone">
+      <span class="dot-preview" id="dotCategoria"></span>
+      <select id="categoriaInput"></select>
+      <button type="button" class="icon" id="novaCategoriaBtn" title="Criar nova categoria">+</button>
+    </div>
+    <div id="novaCategoriaBox" style="display:none; margin-top:8px;">
+      <input type="text" id="novaCategoriaNomeInline" placeholder="Nome da nova categoria">
+      <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+        <input type="color" id="novaCategoriaCorInline" value="#5b8def" style="width:44px; padding:2px; height:38px; flex:none;">
+        <button type="button" class="secondary" id="novaCategoriaCancelarInline" style="flex:1;">Cancelar</button>
+        <button type="button" id="novaCategoriaSalvarInline" style="flex:1;">Salvar categoria</button>
+      </div>
+    </div>
+
+    <label>Conta</label>
+    <div class="select-com-icone">
+      <span class="dot-preview" id="dotConta"></span>
+      <select id="contaInput"><option value="">Sem conta</option></select>
+    </div>
+
+    <label class="toggle-row">
+      🔁 Parcelar
+      <span class="toggle-switch"><input type="checkbox" id="parcelarInput"><span class="toggle-slider"></span></span>
+    </label>
+    <div id="parcelasBox" style="display:none;">
+      <label>Número de parcelas</label>
+      <input type="number" id="parcelasInput" min="2" value="2">
+      <label>O valor informado acima é</label>
+      <div class="segmented" id="modoValorSegmented">
+        <button type="button" class="ativo" data-modo="total">Valor total</button>
+        <button type="button" data-modo="parcela">Valor parcela</button>
+      </div>
+      <div class="formula-box" id="parcelaPreview" style="margin-top:10px; margin-bottom:0;"></div>
+    </div>
+
+    <label>Observação (opcional)</label>
+    <textarea id="obsInput"></textarea>
+
+    <div id="opcoesNaoParceladas">
+      <label class="toggle-row">
+        🔄 Repetir todo mês (recorrente)
+        <span class="toggle-switch"><input type="checkbox" id="recInput"><span class="toggle-slider"></span></span>
+      </label>
+      <label class="toggle-row">
+        <span id="labelEfetivada">✅ Já paga</span>
+        <span class="toggle-switch"><input type="checkbox" id="pagoInput"><span class="toggle-slider"></span></span>
+      </label>
+    </div>
+
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="novoCancelar">Cancelar</button>
+      <button type="button" id="novoSalvar">Adicionar lançamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de transferência entre contas -->
+<div class="modal-overlay" id="modalTransferencia">
+  <div class="modal-box">
+    <h3>🔁 Transferência entre contas</h3>
+    <label>Conta de origem</label>
+    <select id="transfContaOrigem"></select>
+    <label>Conta de destino</label>
+    <select id="transfContaDestino"></select>
+    <label>Valor (R$)</label>
+    <input type="number" id="transfValor" step="0.01" placeholder="0,00">
+    <label>Data</label>
+    <input type="date" id="transfData">
+    <label>Descrição (opcional)</label>
+    <input type="text" id="transfDescricao" placeholder="Ex: Reserva de emergência">
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="transfCancelar">Cancelar</button>
+      <button type="button" id="transfSalvar">Transferir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de escopo ao excluir um lançamento recorrente -->
+<div class="modal-overlay" id="modalExcluirRecorrente">
+  <div class="modal-box">
+    <h3>Excluir lançamento recorrente</h3>
+    <p style="font-size:0.88rem; color:var(--muted); margin:0 0 6px;" id="excluirRecTexto"></p>
+    <div class="modal-acoes" style="flex-direction:column; gap:8px;">
+      <button type="button" id="excluirSoEsteMes">Excluir só neste mês</button>
+      <button type="button" class="danger" id="excluirTodosMeses"
+              style="border:1px solid var(--red); border-radius:var(--radius-sm); padding:11px;">
+        Excluir em todos os meses
+      </button>
+      <button type="button" class="secondary" id="excluirRecCancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de explicação dos cards do dashboard -->
+<div class="modal-overlay" id="modalExplicacao">
+  <div class="modal-box">
+    <h3 id="explicacaoTitulo">Como chegamos nesse valor</h3>
+    <div class="formula-box" id="explicacaoFormula"></div>
+    <div id="explicacaoListas"></div>
+    <div class="modal-acoes">
+      <button type="button" id="explicacaoFechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de edição de categoria -->
+<div class="modal-overlay" id="modalEdicaoCategoria">
+  <div class="modal-box">
+    <h3>Editar categoria</h3>
+    <input type="hidden" id="editCategoriaId">
+    <label>Nome</label>
+    <input type="text" id="editCategoriaNome">
+    <label>Cor</label>
+    <input type="color" id="editCategoriaCor" style="width:60px; padding:2px; height:40px;">
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="editCategoriaCancelar">Cancelar</button>
+      <button type="button" id="editCategoriaSalvar">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de adicionar usuário -->
+<div class="modal-overlay" id="modalNovoUsuario">
+  <div class="modal-box">
+    <h3>Adicionar usuário</h3>
+    <label>Nome</label>
+    <input type="text" id="novoUsuarioNome" placeholder="Ex: Nome da sua esposa">
+    <label>Usuário (login)</label>
+    <input type="text" id="novoUsuarioUsername" placeholder="ex: esposa" autocapitalize="off">
+    <label>Senha</label>
+    <input type="password" id="novoUsuarioSenha" placeholder="mínimo 4 caracteres">
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="novoUsuarioCancelar">Cancelar</button>
+      <button type="button" id="novoUsuarioSalvar">Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de trocar senha -->
+<div class="modal-overlay" id="modalTrocarSenha">
+  <div class="modal-box">
+    <h3>Meu perfil</h3>
+
+    <div class="perfil-foto-area">
+      <div class="perfil-foto" id="perfilFotoPreview"></div>
+      <div class="perfil-foto-acoes">
+        <label class="botao-arquivo" id="perfilFotoLabel">
+          📷 Escolher foto
+          <input type="file" id="perfilFotoInput" accept="image/*">
+        </label>
+        <button type="button" class="secondary" id="perfilFotoRemover">Remover foto</button>
+      </div>
+    </div>
+
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:20px 0 0;">Trocar senha</h3>
+    <label>Senha atual</label>
+    <input type="password" id="senhaAtualInput">
+    <label>Nova senha</label>
+    <input type="password" id="novaSenhaInput" placeholder="mínimo 4 caracteres">
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="trocarSenhaCancelar">Fechar</button>
+      <button type="button" id="trocarSenhaSalvar">Salvar nova senha</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "/api";
+let mesAtual = null;
+let categoriasCache = {receita:[], despesa:[]};
+let chartComparacao = null, chartCategoria = null;
+let itensPorId = {};
+let diaSelecionadoCalendario = null;
+let lancamentosCache = [];
+let contasCache = [];
+let usuariosCache = [];
+let usuarioAtual = null;
+let filtros = {busca:"", categoria:"", conta:"", status:"", ordenacao:"padrao"};
+
+const PALETA_CORES = ["#5b8def","#3ecf8e","#ff6b6b","#f5c451","#a78bfa","#4dd0e1","#f78fb3","#82e0aa","#f0932b","#c8d6e5"];
+let categoriaCorCache = {};
+function corHash(str){
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  return PALETA_CORES[hash % PALETA_CORES.length];
+}
+function corPara(str){
+  if (!str) return null;
+  return categoriaCorCache[str] || corHash(str);
+}
+
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str == null ? "" : String(str);
+  return div.innerHTML;
+}
+
+function showToast(msg, tipo){
+  const container = document.getElementById("toastContainer");
+  const el = document.createElement("div");
+  el.className = "toast" + (tipo ? " " + tipo : "");
+  el.textContent = msg;
+  container.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  setTimeout(() => {
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 250);
+  }, 3000);
+}
+
+async function apiFetch(url, options, opts){
+  opts = opts || {};
+  try {
+    const res = await fetch(url, options);
+    if (res.status === 401){
+      window.location.href = "/login";
+      throw new Error("não autenticado");
+    }
+    if (!res.ok){
+      let msg = "Erro na requisição (" + res.status + ")";
+      try { const j = await res.json(); if (j && j.erro) msg = j.erro; } catch(e){}
+      throw new Error(msg);
+    }
+    if (opts.sucesso) showToast(opts.sucesso, "ok");
+    return res;
+  } catch (e) {
+    if (e.message !== "não autenticado"){
+      showToast(opts.erro || e.message || "Falha ao conectar com o servidor", "erro");
+    }
+    throw e;
+  }
+}
+
+function formatMes(m){
+  const [ano, mes] = m.split("-");
+  const nomes = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  return `${nomes[parseInt(mes,10)-1]}/${ano}`;
+}
+function formatMoeda(v){
+  return "R$ " + Number(v||0).toLocaleString("pt-BR", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function formatData(v){
+  if (!v) return "";
+  const p = v.split("-");
+  if (p.length !== 3) return v;
+  return `${p[2]}/${p[1]}/${p[0]}`;
+}
+function hojeISO(){ return new Date().toISOString().slice(0,10); }
+
+// ---------- Navegação (sidebar) ----------
+document.querySelectorAll(".nav-item").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("ativo"));
+    document.querySelectorAll(".painel").forEach(p => p.classList.remove("ativo"));
+    btn.classList.add("ativo");
+    document.getElementById("painel-" + btn.dataset.tab).classList.add("ativo");
+    fecharSidebar();
+  });
+});
+
+function abrirSidebar(){
+  document.getElementById("sidebar").classList.add("aberta");
+  document.getElementById("sidebarOverlay").classList.add("ativo");
+}
+function fecharSidebar(){
+  document.getElementById("sidebar").classList.remove("aberta");
+  document.getElementById("sidebarOverlay").classList.remove("ativo");
+}
+document.getElementById("menuToggle").addEventListener("click", abrirSidebar);
+document.getElementById("sidebarOverlay").addEventListener("click", fecharSidebar);
+
+// ---------- Recolher sidebar (desktop) ----------
+function aplicarSidebarColapsada(colapsada){
+  document.getElementById("sidebar").classList.toggle("colapsada", colapsada);
+  document.getElementById("sidebarColapsarBtn").title = colapsada ? "Expandir menu" : "Recolher menu";
+  localStorage.setItem("sidebarColapsada", colapsada ? "1" : "0");
+}
+document.getElementById("sidebarColapsarBtn").addEventListener("click", () => {
+  aplicarSidebarColapsada(!document.getElementById("sidebar").classList.contains("colapsada"));
+});
+aplicarSidebarColapsada(localStorage.getItem("sidebarColapsada") === "1");
+
+// ---------- Tema claro/escuro ----------
+function aplicarTema(tema){
+  document.documentElement.setAttribute("data-tema", tema);
+  document.getElementById("temaBtn").textContent = tema === "claro" ? "☀️" : "🌙";
+  localStorage.setItem("tema", tema);
+  if (mesAtual && document.getElementById("painel-dashboard").classList.contains("ativo")) carregarDashboard();
+}
+document.getElementById("temaBtn").addEventListener("click", () => {
+  const atual = document.documentElement.getAttribute("data-tema") === "claro" ? "escuro" : "claro";
+  aplicarTema(atual);
+});
+aplicarTema(localStorage.getItem("tema") || "escuro");
+
+// ---------- Ocultar valores ----------
+function aplicarOcultarValores(ocultar){
+  document.body.classList.toggle("valores-ocultos", ocultar);
+  document.getElementById("ocultarValoresBtn").textContent = ocultar ? "🙈" : "👁️";
+  document.getElementById("ocultarValoresBtn").classList.toggle("ativo", ocultar);
+  localStorage.setItem("valoresOcultos", ocultar ? "1" : "0");
+}
+document.getElementById("ocultarValoresBtn").addEventListener("click", () => {
+  aplicarOcultarValores(!document.body.classList.contains("valores-ocultos"));
+});
+aplicarOcultarValores(localStorage.getItem("valoresOcultos") === "1");
+
+// ---------- Navegação de mês (‹ ›) — cria o mês automaticamente se ainda não existir ----------
+function mesAnteriorStr(mes){
+  let [ano, m] = mes.split("-").map(Number);
+  m -= 1;
+  if (m < 1){ m = 12; ano -= 1; }
+  return `${ano}-${String(m).padStart(2,"0")}`;
+}
+function mesSeguinteStr(mes){
+  let [ano, m] = mes.split("-").map(Number);
+  m += 1;
+  if (m > 12){ m = 1; ano += 1; }
+  return `${ano}-${String(m).padStart(2,"0")}`;
+}
+function irParaMes(novoMes){
+  const sel = document.getElementById("mesSelect");
+  if (![...sel.options].some(o => o.value === novoMes)){
+    const opt = document.createElement("option");
+    opt.value = novoMes; opt.textContent = formatMes(novoMes);
+    const posicaoAnterior = [...sel.options].find(o => o.value < novoMes);
+    if (posicaoAnterior) sel.insertBefore(opt, posicaoAnterior);
+    else sel.appendChild(opt);
+  }
+  sel.value = novoMes;
+  mesAtual = novoMes;
+  carregarTudo();
+}
+document.getElementById("mesAnteriorBtn").addEventListener("click", () => {
+  irParaMes(mesAnteriorStr(mesAtual));
+});
+document.getElementById("mesProximoBtn").addEventListener("click", () => {
+  irParaMes(mesSeguinteStr(mesAtual));
+});
+
+// ---------- Carregamento geral ----------
+async function carregarMeses(){
+  try {
+    const res = await apiFetch(`${API}/meses`, undefined, {erro:"Não foi possível carregar os meses"});
+    const meses = await res.json();
+    const sel = document.getElementById("mesSelect");
+    sel.innerHTML = "";
+    meses.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m; opt.textContent = formatMes(m);
+      sel.appendChild(opt);
+    });
+    mesAtual = meses[0];
+    sel.value = mesAtual;
+  } catch (e) { /* toast já exibido pelo apiFetch */ }
+}
+
+async function carregarCategorias(){
+  try {
+    const res = await apiFetch(`${API}/categorias`, undefined, {erro:"Não foi possível carregar as categorias"});
+    categoriasCache = await res.json();
+    categoriaCorCache = {};
+    [...(categoriasCache.receita_full || []), ...(categoriasCache.despesa_full || [])].forEach(c => {
+      if (c.cor) categoriaCorCache[c.nome] = c.cor;
+    });
+    atualizarSelectCategoria();
+    renderizarPainelCategorias();
+  } catch (e) { /* toast já exibido pelo apiFetch */ }
+}
+
+function renderizarPainelCategorias(){
+  const rec = document.getElementById("listaCategoriasReceita");
+  const desp = document.getElementById("listaCategoriasDespesa");
+  const criarCard = (c) => {
+    const div = document.createElement("div");
+    div.className = "categoria-card";
+    div.innerHTML = `
+      <span class="dot" style="background:${corPara(c.nome)}"></span>
+      <span class="nome">${escapeHtml(c.nome)}</span>
+      <div class="acoes">
+        <button class="icon" onclick="abrirEdicaoCategoria(${c.id})" title="Editar">✎</button>
+        <button class="icon danger" onclick="excluirCategoria(${c.id})" title="Excluir">✕</button>
+      </div>
+    `;
+    return div;
+  };
+  rec.innerHTML = "";
+  const listaReceita = categoriasCache.receita_full || [];
+  if (listaReceita.length === 0) rec.innerHTML = `<div class="empty">Nenhuma categoria de receita ainda.</div>`;
+  listaReceita.forEach(c => rec.appendChild(criarCard(c)));
+
+  desp.innerHTML = "";
+  const listaDespesa = categoriasCache.despesa_full || [];
+  if (listaDespesa.length === 0) desp.innerHTML = `<div class="empty">Nenhuma categoria de despesa ainda.</div>`;
+  listaDespesa.forEach(c => desp.appendChild(criarCard(c)));
+}
+
+document.getElementById("categoriaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nome = document.getElementById("categoriaFormNome").value.trim();
+  const tipo = document.getElementById("categoriaFormTipo").value;
+  const cor = document.getElementById("categoriaFormCor").value;
+  if (!nome) return;
+  try {
+    await apiFetch(`${API}/categorias`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({nome, tipo, cor})},
+      {sucesso:"Categoria adicionada", erro:"Não foi possível adicionar a categoria"});
+    e.target.reset();
+    await carregarCategorias();
+  } catch (e) {}
+});
+
+function abrirEdicaoCategoria(id){
+  const todas = [...(categoriasCache.receita_full || []), ...(categoriasCache.despesa_full || [])];
+  const cat = todas.find(c => c.id === id);
+  if (!cat) return;
+  document.getElementById("editCategoriaId").value = cat.id;
+  document.getElementById("editCategoriaNome").value = cat.nome;
+  document.getElementById("editCategoriaCor").value = cat.cor || corHash(cat.nome);
+  document.getElementById("modalEdicaoCategoria").classList.add("ativo");
+}
+document.getElementById("editCategoriaCancelar").addEventListener("click", () => {
+  document.getElementById("modalEdicaoCategoria").classList.remove("ativo");
+});
+document.getElementById("editCategoriaSalvar").addEventListener("click", async () => {
+  const id = document.getElementById("editCategoriaId").value;
+  const body = {
+    nome: document.getElementById("editCategoriaNome").value,
+    cor: document.getElementById("editCategoriaCor").value,
+  };
+  try {
+    await apiFetch(`${API}/categorias/${id}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Categoria atualizada", erro:"Não foi possível salvar a categoria"});
+    document.getElementById("modalEdicaoCategoria").classList.remove("ativo");
+    await carregarCategorias();
+    carregarDashboard();
+    renderizarListasFiltradas();
+  } catch (e) {}
+});
+
+async function excluirCategoria(id){
+  if (!confirm("Excluir esta categoria?")) return;
+  try {
+    await apiFetch(`${API}/categorias/${id}`, {method:"DELETE"}, {sucesso:"Categoria excluída", erro:"Não foi possível excluir a categoria"});
+    carregarCategorias();
+  } catch (e) {}
+}
+
+function atualizarSelectCategoria(){
+  const tipo = document.getElementById("tipoInput").value;
+  const sel = document.getElementById("categoriaInput");
+  const lista = tipo === "renda" ? categoriasCache.receita : categoriasCache.despesa;
+  sel.innerHTML = lista.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  atualizarDotPreview("categoriaInput", "dotCategoria", corPara(sel.value));
+}
+
+function atualizarDotPreview(idSelect, idDot, cor){
+  document.getElementById(idDot).style.background = cor || "var(--border)";
+}
+document.getElementById("categoriaInput").addEventListener("change", (e) => {
+  atualizarDotPreview("categoriaInput", "dotCategoria", corPara(e.target.value));
+});
+document.getElementById("contaInput").addEventListener("change", (e) => {
+  const conta = contasCache.find(c => String(c.id) === e.target.value);
+  atualizarDotPreview("contaInput", "dotConta", conta ? corPara(conta.nome) : null);
+});
+
+// ---------- Nova categoria inline (modal novo lançamento) ----------
+document.getElementById("novaCategoriaBtn").addEventListener("click", () => {
+  const caixa = document.getElementById("novaCategoriaBox");
+  const abrindo = caixa.style.display === "none";
+  caixa.style.display = abrindo ? "block" : "none";
+  if (abrindo){
+    document.getElementById("novaCategoriaNomeInline").value = "";
+    document.getElementById("novaCategoriaNomeInline").focus();
+  }
+});
+document.getElementById("novaCategoriaCancelarInline").addEventListener("click", () => {
+  document.getElementById("novaCategoriaBox").style.display = "none";
+});
+document.getElementById("novaCategoriaSalvarInline").addEventListener("click", async () => {
+  const nome = document.getElementById("novaCategoriaNomeInline").value.trim();
+  if (!nome){ showToast("Digite um nome para a categoria", "erro"); return; }
+  const tipoLancamento = document.getElementById("tipoInput").value;
+  const tipoCategoria = tipoLancamento === "renda" ? "receita" : "despesa";
+  const listaAtual = (tipoLancamento === "renda" ? categoriasCache.receita : categoriasCache.despesa) || [];
+  const jaExiste = listaAtual.some(c => c.toLowerCase() === nome.toLowerCase());
+  if (jaExiste){
+    showToast("Essa categoria já existe — selecione ela na lista", "erro");
+    return;
+  }
+  const cor = document.getElementById("novaCategoriaCorInline").value;
+  try {
+    await apiFetch(`${API}/categorias`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({nome, tipo: tipoCategoria, cor})},
+      {sucesso:"Categoria criada", erro:"Não foi possível criar a categoria"});
+    await carregarCategorias();
+    document.getElementById("categoriaInput").value = nome;
+    atualizarDotPreview("categoriaInput", "dotCategoria", corPara(nome));
+    document.getElementById("novaCategoriaBox").style.display = "none";
+  } catch (e) {}
+});
+
+// ---------- Segmented Despesa/Receita (modal novo lançamento) ----------
+document.querySelectorAll("#tipoSegmented button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#tipoSegmented button").forEach(b => b.classList.remove("ativo"));
+    btn.classList.add("ativo");
+    const tipo = btn.dataset.tipo;
+    document.getElementById("tipoInput").value = tipo;
+    document.getElementById("labelEfetivada").textContent = tipo === "renda" ? "✅ Já recebida" : "✅ Já paga";
+    document.getElementById("novoSalvar").style.background = tipo === "renda"
+      ? "linear-gradient(135deg, var(--green), #2fb377)"
+      : "linear-gradient(135deg, var(--red), #e05353)";
+    atualizarSelectCategoria();
+  });
+});
+
+// ---------- Parcelamento (modal novo lançamento) ----------
+function modoValorAtual(){
+  const btn = document.querySelector("#modoValorSegmented button.ativo");
+  return btn ? btn.dataset.modo : "total";
+}
+function atualizarPreviewParcela(){
+  if (!document.getElementById("parcelarInput").checked) return;
+  const valor = Number(document.getElementById("valorInput").value) || 0;
+  const parcelas = Math.max(Number(document.getElementById("parcelasInput").value) || 1, 1);
+  const modo = modoValorAtual();
+  const valorParcela = modo === "total" ? valor / parcelas : valor;
+  const total = modo === "total" ? valor : valor * parcelas;
+  document.getElementById("parcelaPreview").innerHTML =
+    formulaLinha(`Em ${parcelas}x de`, valorParcela) +
+    formulaLinha("Total parcelado", total, "total");
+}
+document.getElementById("parcelarInput").addEventListener("change", (e) => {
+  document.getElementById("parcelasBox").style.display = e.target.checked ? "block" : "none";
+  document.getElementById("opcoesNaoParceladas").style.display = e.target.checked ? "none" : "block";
+  if (e.target.checked){
+    document.getElementById("recInput").checked = false;
+    document.getElementById("pagoInput").checked = false;
+    atualizarPreviewParcela();
+  }
+});
+document.querySelectorAll("#modoValorSegmented button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#modoValorSegmented button").forEach(b => b.classList.remove("ativo"));
+    btn.classList.add("ativo");
+    atualizarPreviewParcela();
+  });
+});
+document.getElementById("parcelasInput").addEventListener("input", atualizarPreviewParcela);
+document.getElementById("valorInput").addEventListener("input", atualizarPreviewParcela);
+
+function abrirModalNovoLancamento(tipoInicial){
+  tipoInicial = tipoInicial || "despesa";
+  document.getElementById("descInput").value = "";
+  document.getElementById("valorInput").value = "";
+  document.getElementById("vencInput").value = hojeISO();
+  document.getElementById("novaCategoriaBox").style.display = "none";
+  document.getElementById("parcelarInput").checked = false;
+  document.getElementById("parcelasInput").value = 2;
+  document.getElementById("parcelasBox").style.display = "none";
+  document.getElementById("opcoesNaoParceladas").style.display = "block";
+  document.querySelectorAll("#modoValorSegmented button").forEach(b => b.classList.remove("ativo"));
+  document.querySelector('#modoValorSegmented button[data-modo="total"]').classList.add("ativo");
+  document.getElementById("obsInput").value = "";
+  document.getElementById("recInput").checked = false;
+  document.getElementById("pagoInput").checked = false;
+  document.getElementById("contaInput").value = "";
+  atualizarDotPreview("contaInput", "dotConta", null);
+  document.querySelectorAll("#tipoSegmented button").forEach(b => b.classList.remove("ativo"));
+  document.querySelector(`#tipoSegmented button[data-tipo="${tipoInicial}"]`).classList.add("ativo");
+  document.getElementById("tipoInput").value = tipoInicial;
+  document.getElementById("labelEfetivada").textContent = tipoInicial === "renda" ? "✅ Já recebida" : "✅ Já paga";
+  document.getElementById("novoSalvar").style.background = tipoInicial === "renda"
+    ? "linear-gradient(135deg, var(--green), #2fb377)"
+    : "linear-gradient(135deg, var(--red), #e05353)";
+  atualizarSelectCategoria();
+  document.getElementById("modalNovoLancamento").classList.add("ativo");
+}
+document.getElementById("novoCancelar").addEventListener("click", () => {
+  document.getElementById("modalNovoLancamento").classList.remove("ativo");
+});
+
+// ---------- FAB speed-dial (Despesa / Receita / Transferência) ----------
+function fecharFabOpcoes(){
+  document.getElementById("fabOpcoes").classList.remove("aberta");
+  document.getElementById("fabToggle").classList.remove("ativo");
+}
+document.getElementById("fabToggle").addEventListener("click", () => {
+  document.getElementById("fabOpcoes").classList.toggle("aberta");
+  document.getElementById("fabToggle").classList.toggle("ativo");
+});
+document.getElementById("fabDespesa").addEventListener("click", () => {
+  fecharFabOpcoes();
+  abrirModalNovoLancamento("despesa");
+});
+document.getElementById("fabReceita").addEventListener("click", () => {
+  fecharFabOpcoes();
+  abrirModalNovoLancamento("renda");
+});
+document.getElementById("fabTransferencia").addEventListener("click", () => {
+  fecharFabOpcoes();
+  abrirModalTransferencia();
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".fab-container")) fecharFabOpcoes();
+});
+
+// ---------- Transferência entre contas ----------
+async function abrirModalTransferencia(){
+  let contasTransf;
+  try {
+    const res = await apiFetch(`${API}/contas-transferencia`, undefined, {erro:"Não foi possível carregar as contas"});
+    contasTransf = await res.json();
+  } catch (e) { return; }
+
+  const minhas = contasTransf.filter(c => c.minha);
+  if (minhas.length === 0){
+    showToast("Cadastre uma conta antes de transferir", "erro");
+    return;
+  }
+  if (contasTransf.length < 2){
+    showToast("Cadastre pelo menos 2 contas para transferir entre elas", "erro");
+    return;
+  }
+
+  const rotulo = (c) => {
+    const dono = (!c.minha && c.usuario_nome) ? ` — ${c.usuario_nome}` : "";
+    return `<option value="${c.id}">${escapeHtml(c.nome)}${escapeHtml(dono)}</option>`;
+  };
+  // Origem: só as minhas. Destino: qualquer conta, inclusive de outro usuário.
+  document.getElementById("transfContaOrigem").innerHTML = minhas.map(rotulo).join("");
+  document.getElementById("transfContaDestino").innerHTML = contasTransf.map(rotulo).join("");
+
+  const origemId = document.getElementById("transfContaOrigem").value;
+  const selDestino = document.getElementById("transfContaDestino");
+  const primeiroDiferente = [...selDestino.options].findIndex(o => o.value !== origemId);
+  if (primeiroDiferente >= 0) selDestino.selectedIndex = primeiroDiferente;
+
+  document.getElementById("transfValor").value = "";
+  document.getElementById("transfData").value = hojeISO();
+  document.getElementById("transfDescricao").value = "";
+  document.getElementById("modalTransferencia").classList.add("ativo");
+}
+document.getElementById("transfCancelar").addEventListener("click", () => {
+  document.getElementById("modalTransferencia").classList.remove("ativo");
+});
+document.getElementById("transfSalvar").addEventListener("click", async () => {
+  const origemId = document.getElementById("transfContaOrigem").value;
+  const destinoId = document.getElementById("transfContaDestino").value;
+  if (origemId === destinoId){
+    showToast("As contas de origem e destino devem ser diferentes", "erro");
+    return;
+  }
+  const body = {
+    conta_origem_id: origemId,
+    conta_destino_id: destinoId,
+    valor: document.getElementById("transfValor").value,
+    data: document.getElementById("transfData").value,
+    descricao: document.getElementById("transfDescricao").value,
+  };
+  if (!body.valor || Number(body.valor) <= 0){ showToast("Informe um valor válido", "erro"); return; }
+  const btn = document.getElementById("transfSalvar");
+  btn.disabled = true;
+  try {
+    await apiFetch(`${API}/transferencias`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Transferência realizada", erro:"Não foi possível transferir"});
+    document.getElementById("modalTransferencia").classList.remove("ativo");
+    carregarTudo();
+  } catch (e) {} finally { btn.disabled = false; }
+});
+
+document.getElementById("novoSalvar").addEventListener("click", async () => {
+  const parcelar = document.getElementById("parcelarInput").checked;
+  const numParcelas = parcelar ? Math.max(Number(document.getElementById("parcelasInput").value) || 1, 1) : 1;
+  const valorDigitado = Number(document.getElementById("valorInput").value) || 0;
+  const valorParaEnviar = (parcelar && numParcelas > 1 && modoValorAtual() === "total")
+    ? Math.round((valorDigitado / numParcelas) * 100) / 100
+    : valorDigitado;
+
+  const body = {
+    mes: mesAtual,
+    tipo: document.getElementById("tipoInput").value,
+    categoria: document.getElementById("categoriaInput").value,
+    descricao: document.getElementById("descInput").value,
+    valor: valorParaEnviar,
+    vencimento: document.getElementById("vencInput").value,
+    conta_id: document.getElementById("contaInput").value || null,
+    parcelas: numParcelas,
+    observacao: document.getElementById("obsInput").value,
+    recorrente: parcelar ? false : document.getElementById("recInput").checked,
+    pago: parcelar ? false : document.getElementById("pagoInput").checked,
+  };
+  if (!body.descricao.trim()){ showToast("Descrição é obrigatória", "erro"); return; }
+  if (!valorDigitado || valorDigitado <= 0){ showToast("Informe um valor válido", "erro"); return; }
+  const btn = document.getElementById("novoSalvar");
+  btn.disabled = true;
+  try {
+    await apiFetch(`${API}/lancamentos`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Lançamento adicionado", erro:"Não foi possível adicionar o lançamento"});
+    document.getElementById("modalNovoLancamento").classList.remove("ativo");
+    carregarTudo();
+  } catch (e) {} finally { btn.disabled = false; }
+});
+
+async function carregarTudo(){
+  diaSelecionadoCalendario = null;
+  await carregarContas();
+  await Promise.all([carregarLancamentos(), carregarDashboard(), carregarCartoes(), carregarDividas()]);
+  if (document.getElementById("painel-calendario").classList.contains("ativo")){
+    await carregarCalendario();
+  }
+}
+
+// ---------- Contas ----------
+async function carregarContas(){
+  document.getElementById("listaContas").innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const res = await apiFetch(`${API}/contas?mes=${mesAtual}`, undefined, {erro:"Não foi possível carregar as contas"});
+    contasCache = await res.json();
+    renderizarContas();
+    popularSelectsConta();
+  } catch (e) {
+    document.getElementById("listaContas").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+  }
+}
+
+function renderizarContas(){
+  const container = document.getElementById("listaContas");
+  container.innerHTML = "";
+  if (contasCache.length === 0){
+    container.innerHTML = `<div class="empty">Nenhuma conta cadastrada. Adicione a primeira abaixo.</div>`;
+    return;
+  }
+  contasCache.forEach(c => {
+    const cor = corPara(c.nome) || "#5b8def";
+    const inicial = (c.nome || "?").trim().slice(0, 2).toUpperCase();
+    const div = document.createElement("div");
+    div.className = "conta-card";
+    div.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+        <div class="conta-icone" style="background:${cor}">${escapeHtml(inicial)}</div>
+        <div style="min-width:0;">
+          <div class="conta-nome">${escapeHtml(c.nome)}</div>
+          <div class="conta-sub">Saldo inicial: ${formatMoeda(c.saldo_inicial)}${usuariosCache.length > 1 && c.usuario_nome ? " · " + escapeHtml(c.usuario_nome) : ""}</div>
+        </div>
+      </div>
+      <div class="conta-saldos">
+        <div class="principal ${c.saldo_atual>=0?'positivo':'negativo'}">${formatMoeda(c.saldo_atual)}</div>
+        <div class="secundario">previsto ${formatMoeda(c.saldo_previsto)}</div>
+      </div>
+      <div class="conta-acoes">
+        <button class="icon" onclick="abrirEdicaoConta(${c.id})" title="Editar">✎</button>
+        <button class="icon danger" onclick="excluirConta(${c.id})" title="Excluir">✕</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function popularSelectsConta(){
+  const opcoesComVazio = `<option value="">Sem conta</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+
+  const selContaInput = document.getElementById("contaInput");
+  const valorAtual1 = selContaInput.value;
+  selContaInput.innerHTML = opcoesComVazio;
+  selContaInput.value = valorAtual1;
+
+  document.getElementById("editConta").innerHTML = opcoesComVazio;
+
+  const selFiltroConta = document.getElementById("filtroConta");
+  const valorAtual2 = selFiltroConta.value;
+  selFiltroConta.innerHTML = `<option value="">Todas contas</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+  selFiltroConta.value = valorAtual2;
+
+  const opcoesCartaoConta = `<option value="">Sem conta vinculada</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+  const selCartaoConta = document.getElementById("cartaoConta");
+  const valorAtual3 = selCartaoConta.value;
+  selCartaoConta.innerHTML = opcoesCartaoConta;
+  selCartaoConta.value = valorAtual3;
+
+  document.getElementById("editCartaoConta").innerHTML = opcoesCartaoConta;
+}
+
+document.getElementById("contaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = {
+    nome: document.getElementById("contaNome").value,
+    saldo_inicial: document.getElementById("contaSaldoInicial").value,
+  };
+  try {
+    await apiFetch(`${API}/contas`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Conta adicionada", erro:"Não foi possível adicionar a conta"});
+    e.target.reset();
+    carregarContas();
+    carregarDashboard();
+  } catch (e) {}
+});
+document.getElementById("btnAbrirTransferencia").addEventListener("click", abrirModalTransferencia);
+
+function abrirEdicaoConta(id){
+  const conta = contasCache.find(c => c.id === id);
+  if (!conta) return;
+  document.getElementById("editContaId").value = conta.id;
+  document.getElementById("editContaNome").value = conta.nome;
+  document.getElementById("editContaSaldoInicial").value = conta.saldo_inicial;
+  document.getElementById("modalEdicaoConta").classList.add("ativo");
+}
+document.getElementById("editContaCancelar").addEventListener("click", () => {
+  document.getElementById("modalEdicaoConta").classList.remove("ativo");
+});
+document.getElementById("editContaSalvar").addEventListener("click", async () => {
+  const id = document.getElementById("editContaId").value;
+  const body = {
+    nome: document.getElementById("editContaNome").value,
+    saldo_inicial: document.getElementById("editContaSaldoInicial").value,
+  };
+  try {
+    await apiFetch(`${API}/contas/${id}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Conta atualizada", erro:"Não foi possível salvar a conta"});
+    document.getElementById("modalEdicaoConta").classList.remove("ativo");
+    carregarTudo();
+  } catch (e) {}
+});
+
+async function excluirConta(id){
+  if (!confirm("Excluir esta conta? Os lançamentos vinculados a ela ficarão sem conta.")) return;
+  try {
+    await apiFetch(`${API}/contas/${id}`, {method:"DELETE"}, {sucesso:"Conta excluída", erro:"Não foi possível excluir a conta"});
+    carregarTudo();
+  } catch (e) {}
+}
+
+// ---------- Lançamentos ----------
+async function carregarLancamentos(){
+  document.getElementById("listaRenda").innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  document.getElementById("listaDespesa").innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const [lancRes] = await Promise.all([
+      apiFetch(`${API}/lancamentos?mes=${mesAtual}`, undefined, {erro:"Não foi possível carregar os lançamentos"}),
+    ]);
+    const lancamentos = await lancRes.json();
+    lancamentosCache = lancamentos;
+    lancamentos.forEach(l => itensPorId[l.id] = l);
+    popularOpcoesFiltro(lancamentos);
+    renderizarListasFiltradas();
+    renderizarPendentes(lancamentos);
+  } catch (e) {
+    document.getElementById("listaRenda").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    document.getElementById("listaDespesa").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+  }
+}
+
+function popularOpcoesFiltro(lancamentos){
+  const selCat = document.getElementById("filtroCategoria");
+  const catAtual = selCat.value;
+  const categorias = [...new Set(lancamentos.map(l => l.categoria).filter(Boolean))].sort();
+  selCat.innerHTML = `<option value="">Todas categorias</option>` + categorias.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  selCat.value = catAtual;
+}
+
+function aplicarFiltrosOrdenacao(lancamentos){
+  let lista = lancamentos.filter(l => {
+    if (filtros.busca && !l.descricao.toLowerCase().includes(filtros.busca.toLowerCase())) return false;
+    if (filtros.categoria && l.categoria !== filtros.categoria) return false;
+    if (filtros.conta && Number(filtros.conta) !== l.conta_id) return false;
+    if (filtros.status === "pago" && !l.pago) return false;
+    if (filtros.status === "pendente" && l.pago) return false;
+    return true;
+  });
+  const ordenacoes = {
+    "valor-desc": (a,b) => b.valor - a.valor,
+    "valor-asc": (a,b) => a.valor - b.valor,
+    "data-asc": (a,b) => (a.vencimento||"").localeCompare(b.vencimento||""),
+    "data-desc": (a,b) => (b.vencimento||"").localeCompare(a.vencimento||""),
+    "categoria": (a,b) => (a.categoria||"").localeCompare(b.categoria||""),
+  };
+  if (ordenacoes[filtros.ordenacao]) lista = [...lista].sort(ordenacoes[filtros.ordenacao]);
+  return lista;
+}
+
+function renderizarListasFiltradas(){
+  renderizarListas(aplicarFiltrosOrdenacao(lancamentosCache));
+}
+
+function ligarFiltros(){
+  let debounce;
+  document.getElementById("buscaInput").addEventListener("input", (e) => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => { filtros.busca = e.target.value; renderizarListasFiltradas(); }, 250);
+  });
+  document.getElementById("filtroCategoria").addEventListener("change", (e) => { filtros.categoria = e.target.value; renderizarListasFiltradas(); });
+  document.getElementById("filtroConta").addEventListener("change", (e) => { filtros.conta = e.target.value; renderizarListasFiltradas(); });
+  document.getElementById("filtroStatus").addEventListener("change", (e) => { filtros.status = e.target.value; renderizarListasFiltradas(); });
+  document.getElementById("ordenacaoSelect").addEventListener("change", (e) => { filtros.ordenacao = e.target.value; renderizarListasFiltradas(); });
+}
+ligarFiltros();
+
+function criarItemHTML(item){
+  const hoje = hojeISO();
+  const atrasado = item.tipo === "despesa" && !item.pago && item.vencimento && item.vencimento < hoje;
+  const div = document.createElement("div");
+  div.className = "item" + (item.tipo === "despesa" && !item.pago ? " pendente-item" : "");
+  const corCat = corPara(item.categoria);
+  if (corCat) div.style.setProperty("--cat-color", corCat);
+
+  const ehRenda = item.tipo === "renda";
+  const metaPartes = [];
+  if (item.categoria) metaPartes.push(escapeHtml(item.categoria));
+  if (item.conta) metaPartes.push(escapeHtml(item.conta));
+  if (item.vencimento) metaPartes.push((atrasado ? "Venc " : "Venc ") + formatData(item.vencimento) + (atrasado ? " (atrasado)" : ""));
+  if (item.parcela_total > 1) metaPartes.push(`${item.parcela_num}/${item.parcela_total}`);
+  if (item.pago) metaPartes.push((ehRenda ? "✓ recebido" : "✓ pago") + (item.data_pagamento ? " " + formatData(item.data_pagamento) : ""));
+  if (item.observacao) metaPartes.push("💬 " + escapeHtml(item.observacao));
+
+  // Efetivar e anexar valem para receita e despesa.
+  const checkboxHTML = `<input type="checkbox" class="pago-check" ${item.pago ? "checked" : ""}
+      title="${ehRenda ? "Marcar como recebida" : "Marcar como paga"}"
+      onchange="togglePago(${item.id}, this.checked)">`;
+
+  const comprovanteHTML = item.comprovante
+    ? `<a class="comp-link com-anexo" href="${API}/comprovante/${encodeURIComponent(item.comprovante)}" target="_blank" title="Ver comprovante anexado">📎 anexo</a>`
+    : `<label title="Anexar comprovante">📎<input type="file" onchange="enviarComprovante(${item.id}, this.files[0])"></label>`;
+
+  div.innerHTML = `
+    <div class="item-topo">
+      ${checkboxHTML}
+      <div class="desc-wrap">
+        <div class="desc">${escapeHtml(item.descricao)}${item.recorrente ? " 🔁" : ""}</div>
+        <div class="meta ${atrasado ? 'atrasado' : ''}">${metaPartes.join(" · ")}</div>
+      </div>
+      <span class="valor ${ehRenda ? 'positivo' : 'negativo'}">${formatMoeda(item.valor)}</span>
+      <div class="acoes">
+        <button class="icon" onclick="abrirEdicaoPorId(${item.id})">✎</button>
+        ${comprovanteHTML}
+        <button class="icon danger" onclick="excluir(${item.id})">✕</button>
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+function renderizarListas(lancamentos){
+  const filtroAtivo = !!(filtros.busca || filtros.categoria || filtros.conta || filtros.status);
+  const grupos = {renda:[], despesa:[]};
+  lancamentos.forEach(l => grupos[l.tipo].push(l));
+  const gruposTotal = {renda:[], despesa:[]};
+  lancamentosCache.forEach(l => gruposTotal[l.tipo].push(l));
+  for (const tipo of ["renda","despesa"]){
+    const container = document.getElementById(tipo === "renda" ? "listaRenda" : "listaDespesa");
+    container.innerHTML = "";
+    if (grupos[tipo].length === 0){
+      container.innerHTML = `<div class="empty">${filtroAtivo ? "Nenhum resultado para os filtros aplicados." : "Nenhum lançamento ainda."}</div>`;
+    }
+    grupos[tipo].forEach(item => container.appendChild(criarItemHTML(item)));
+    const total = gruposTotal[tipo].reduce((s,item) => s + item.valor, 0);
+    document.getElementById(tipo === "renda" ? "totalRenda" : "totalDespesa").textContent = formatMoeda(total);
+  }
+}
+
+function renderizarPendentes(lancamentos){
+  const pendentes = lancamentos.filter(l => l.tipo === "despesa" && !l.pago);
+  const secao = document.getElementById("secaoPendentes");
+  const container = document.getElementById("listaPendentes");
+  container.innerHTML = "";
+  if (pendentes.length === 0){ secao.style.display = "none"; return; }
+  secao.style.display = "block";
+  pendentes.forEach(item => container.appendChild(criarItemHTML(item)));
+}
+
+async function excluir(id){
+  const item = itensPorId[id];
+  // Recorrente precisa saber se é só desta vez ou a série inteira.
+  if (item && item.recorrente && item.grupo_recorrencia){
+    idParaExcluir = id;
+    document.getElementById("excluirRecTexto").textContent =
+      `"${item.descricao}" se repete todo mês. O que você quer fazer?`;
+    document.getElementById("modalExcluirRecorrente").classList.add("ativo");
+    return;
+  }
+  if (!confirm("Excluir este lançamento?")) return;
+  await executarExclusao(id, "este");
+}
+
+let idParaExcluir = null;
+
+async function executarExclusao(id, escopo){
+  try {
+    await apiFetch(`${API}/lancamentos/${id}?escopo=${escopo}`, {method:"DELETE"},
+      {sucesso: escopo === "todos" ? "Recorrência excluída de todos os meses" : "Lançamento excluído",
+       erro:"Não foi possível excluir o lançamento"});
+    carregarTudo();
+  } catch (e) {}
+}
+
+document.getElementById("excluirSoEsteMes").addEventListener("click", async () => {
+  document.getElementById("modalExcluirRecorrente").classList.remove("ativo");
+  if (idParaExcluir) await executarExclusao(idParaExcluir, "este");
+  idParaExcluir = null;
+});
+document.getElementById("excluirTodosMeses").addEventListener("click", async () => {
+  if (!confirm("Isso remove esse lançamento de TODOS os meses, inclusive os passados. Confirmar?")) return;
+  document.getElementById("modalExcluirRecorrente").classList.remove("ativo");
+  if (idParaExcluir) await executarExclusao(idParaExcluir, "todos");
+  idParaExcluir = null;
+});
+document.getElementById("excluirRecCancelar").addEventListener("click", () => {
+  document.getElementById("modalExcluirRecorrente").classList.remove("ativo");
+  idParaExcluir = null;
+});
+async function togglePago(id, pago){
+  try {
+    await apiFetch(`${API}/lancamentos/${id}/pagamento`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({pago, data_pagamento: pago ? hojeISO() : ""})},
+      {sucesso: pago ? "Marcado como pago" : "Marcado como pendente", erro:"Não foi possível atualizar o pagamento"});
+    carregarTudo();
+  } catch (e) { carregarTudo(); }
+}
+async function atualizarDataPagamento(id, data){
+  try {
+    await apiFetch(`${API}/lancamentos/${id}/pagamento`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({pago: true, data_pagamento: data})},
+      {sucesso:"Data de pagamento atualizada", erro:"Não foi possível atualizar a data"});
+    carregarTudo();
+  } catch (e) {}
+}
+async function enviarComprovante(id, arquivo){
+  if (!arquivo) return;
+  const formData = new FormData();
+  formData.append("arquivo", arquivo);
+  try {
+    await apiFetch(`${API}/lancamentos/${id}/comprovante`, {method:"POST", body: formData}, {sucesso:"Comprovante enviado", erro:"Não foi possível enviar o comprovante"});
+    carregarTudo();
+  } catch (e) {}
+}
+
+document.getElementById("mesSelect").addEventListener("change", (e) => { mesAtual = e.target.value; carregarTudo(); });
+
+// ---------- Dashboard ----------
+async function carregarDashboard(){
+  document.getElementById("dashCards").innerHTML = Array(7).fill('<div class="card"><div class="skeleton" style="height:2.2rem;"></div></div>').join("");
+  let d;
+  try {
+    const res = await apiFetch(`${API}/dashboard?mes=${mesAtual}`, undefined, {erro:"Não foi possível carregar o dashboard"});
+    d = await res.json();
+  } catch (e) {
+    document.getElementById("dashCards").innerHTML = `<div class="empty">Não foi possível carregar o dashboard.</div>`;
+    return;
+  }
+
+  const temContas = d.contas && d.contas.length > 0;
+  const destaqueContasEl = document.getElementById("destaqueSaldoContas");
+  destaqueContasEl.innerHTML = temContas
+    ? `<div class="valor-grande ${d.saldo_total_contas>=0?'':'negativo'}">🏦 ${formatMoeda(d.saldo_total_contas)}</div>
+       <div class="texto">saldo real somando todas as suas contas · toque para ver</div>`
+    : `<div class="valor-grande">🏦 Cadastre suas contas</div>
+       <div class="texto">toque aqui para ir até "Contas" e ver seu saldo real de banco/carteira</div>`;
+  destaqueContasEl.classList.add("clicavel");
+  destaqueContasEl.onclick = () => document.querySelector('.nav-item[data-tab="contas"]').click();
+
+  const cardsHTML = `
+    <div class="card clicavel" onclick="abrirExplicacao('saldo_mes')"><div class="label">📆 Saldo do mês (recebido − pago)</div><div class="valor ${d.saldo_atual>=0?'positivo':'negativo'}">${formatMoeda(d.saldo_atual)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('disponivel')"><div class="label">📊 Dinheiro disponível (mês)</div><div class="valor ${d.disponivel>=0?'positivo':'negativo'}">${formatMoeda(d.disponivel)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('receitas')"><div class="label">📈 Receitas do mês</div><div class="valor positivo">${formatMoeda(d.receita_total)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('despesas')"><div class="label">📉 Despesas do mês</div><div class="valor negativo">${formatMoeda(d.despesa_total)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('gasto_pago')"><div class="label">🧾 Já gastou (pago)</div><div class="valor negativo">${formatMoeda(d.despesa_paga)}</div></div>
+    <div class="card clicavel" onclick="abrirExplicacao('ainda_pode_gastar')"><div class="label">✅ Ainda pode gastar</div><div class="valor ${d.ainda_pode_gastar>=0?'positivo':'negativo'}">${formatMoeda(d.ainda_pode_gastar)}</div></div>
+    <div class="card clicavel" style="grid-column:1/-1;" onclick="abrirExplicacao('previsao')"><div class="label">🔮 Previsão de saldo no fim do mês</div><div class="valor ${d.previsao_fim_mes>=0?'positivo':'negativo'}">${formatMoeda(d.previsao_fim_mes)}</div></div>
+  `;
+  document.getElementById("dashCards").innerHTML = cardsHTML;
+
+  const destaqueDiarioEl = document.getElementById("destaqueDiario");
+  destaqueDiarioEl.className = "destaque clicavel";
+  destaqueDiarioEl.onclick = () => abrirExplicacao("gasto_diario");
+  destaqueDiarioEl.innerHTML = `
+    <div class="valor-grande">✨ Você pode gastar até ${formatMoeda(d.gasto_diario_disponivel)} por dia</div>
+    <div class="texto">até o fim do mês (${d.dias_restantes} dia(s) restante(s)) · toque para ver como chegamos nesse número</div>
+  `;
+
+  // Contas vencendo — usa o mesmo item da lista, então dá pra marcar como paga e editar aqui
+  const vencContainer = document.getElementById("listaVencendo");
+  vencContainer.innerHTML = "";
+  if (d.contas_vencendo.length === 0){
+    vencContainer.innerHTML = `<div class="empty">Nenhuma conta vencendo nos próximos 7 dias.</div>`;
+  } else {
+    // Podem ser de outro mês, então registra no cache para a edição encontrá-las.
+    d.contas_vencendo.forEach(item => { itensPorId[item.id] = item; });
+    d.contas_vencendo.forEach(item => vencContainer.appendChild(criarItemHTML(item)));
+  }
+
+  // Parcelas futuras
+  const parcContainer = document.getElementById("listaParcelasFuturas");
+  parcContainer.innerHTML = "";
+  if (d.parcelas_futuras.length === 0){
+    parcContainer.innerHTML = `<div class="empty">Nenhuma parcela futura cadastrada.</div>`;
+  } else {
+    d.parcelas_futuras.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "simple-card";
+      div.innerHTML = `<div><div class="nome">${escapeHtml(item.descricao)}</div><div class="sub">${formatMes(item.mes)} · parcela ${item.parcela_num}/${item.parcela_total}</div></div><div class="valor negativo">${formatMoeda(item.valor)}</div>`;
+      parcContainer.appendChild(div);
+    });
+  }
+
+  // Gráfico comparação
+  const claro = document.documentElement.getAttribute("data-tema") === "claro";
+  const corTexto = claro ? "#1c2438" : "#e8ecf5";
+  const corMuted = claro ? "#6b7694" : "#8b96b3";
+  const corGrade = claro ? "#e1e6f2" : "#2a3450";
+
+  const ctxComp = document.getElementById("chartComparacao").getContext("2d");
+  if (chartComparacao) chartComparacao.destroy();
+  chartComparacao = new Chart(ctxComp, {
+    type: "bar",
+    data: {
+      labels: ["Saldo atual", "Receitas", "Despesas", "Saldo previsto"],
+      datasets: [{
+        data: [d.saldo_atual, d.receita_total, d.despesa_total, d.previsao_fim_mes],
+        backgroundColor: [
+          d.saldo_atual >= 0 ? "#5b8def" : "#ff6b6b",
+          "#3ecf8e",
+          "#ff6b6b",
+          d.previsao_fim_mes >= 0 ? "#5b8def" : "#ff6b6b",
+        ],
+        borderRadius: 6,
+      }]
+    },
+    options: {responsive:true, maintainAspectRatio:false,
+      onClick: (evt, elementos) => {
+        if (!elementos.length) return;
+        // Mesma explicação dos cards do dashboard, na ordem das colunas.
+        const chaves = ["saldo_mes", "receitas", "despesas", "previsao"];
+        abrirExplicacao(chaves[elementos[0].index]);
+      },
+      onHover: (evt, elementos) => {
+        evt.native.target.style.cursor = elementos.length ? "pointer" : "default";
+      },
+      scales:{x:{ticks:{color:corMuted}, grid:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade}}},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label: (ctx) => formatMoeda(ctx.parsed.y)}}}}
+  });
+
+  // Gráfico categoria
+  const ctxCat = document.getElementById("chartCategoria").getContext("2d");
+  if (chartCategoria) chartCategoria.destroy();
+  chartCategoria = new Chart(ctxCat, {
+    type: "doughnut",
+    data: {
+      labels: d.grafico_categoria.map(c => c.categoria),
+      datasets: [{data: d.grafico_categoria.map(c => c.total), backgroundColor: d.grafico_categoria.map(c => corPara(c.categoria) || "#5b8def")}]
+    },
+    options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right", labels:{color:corTexto, boxWidth:12, font:{size:10}}}}}
+  });
+
+  // Resumo por conta
+  const contasContainer = document.getElementById("listaContasResumo");
+  contasContainer.innerHTML = "";
+  if (!d.contas || d.contas.length === 0){
+    contasContainer.innerHTML = `<div class="empty">Nenhuma conta cadastrada ainda.</div>`;
+  } else {
+    d.contas.forEach(c => contasContainer.appendChild(criarContaResumoHTML(c)));
+  }
+}
+
+function criarContaResumoHTML(c){
+  const div = document.createElement("div");
+  div.className = "simple-card";
+  div.innerHTML = `
+    <div>
+      <div class="nome">${escapeHtml(c.nome)}</div>
+      <div class="sub">Receitas: ${formatMoeda(c.receitas_mes)} · Despesas: ${formatMoeda(c.despesas_mes)} · Previsto: ${formatMoeda(c.saldo_previsto)}</div>
+    </div>
+    <div class="valor ${c.saldo_atual>=0?'positivo':'negativo'}">${formatMoeda(c.saldo_atual)}</div>
+  `;
+  return div;
+}
+
+// ---------- Explicação dos cards do dashboard ----------
+function somaValor(itens){
+  return itens.reduce((s, l) => s + l.valor, 0);
+}
+
+function formulaLinha(label, valor, classe){
+  return `<div class="linha ${classe||''}"><span>${escapeHtml(label)}</span><span>${formatMoeda(valor)}</span></div>`;
+}
+
+function adicionarGrupoExplicacao(container, titulo, itens){
+  if (itens.length === 0) return;
+  const div = document.createElement("div");
+  div.className = "explicacao-grupo";
+  div.innerHTML = `<h2>${escapeHtml(titulo)} (${itens.length})</h2>`;
+  const lista = document.createElement("div");
+  itens.forEach(item => lista.appendChild(criarItemHTML(item)));
+  div.appendChild(lista);
+  container.appendChild(div);
+}
+
+function abrirExplicacao(chave){
+  const tituloEl = document.getElementById("explicacaoTitulo");
+  const formulaEl = document.getElementById("explicacaoFormula");
+  const listasEl = document.getElementById("explicacaoListas");
+  listasEl.innerHTML = "";
+
+  const receitasPagas = lancamentosCache.filter(l => l.tipo === "renda" && l.pago);
+  const receitasPendentes = lancamentosCache.filter(l => l.tipo === "renda" && !l.pago);
+  const despesasPagas = lancamentosCache.filter(l => l.tipo === "despesa" && l.pago);
+  const despesasPendentes = lancamentosCache.filter(l => l.tipo === "despesa" && !l.pago);
+  const todasReceitas = lancamentosCache.filter(l => l.tipo === "renda");
+  const todasDespesas = lancamentosCache.filter(l => l.tipo === "despesa");
+
+  if (chave === "receitas"){
+    tituloEl.textContent = "📈 Receitas do mês";
+    formulaEl.innerHTML = formulaLinha("Total de receitas do mês", somaValor(todasReceitas), "total");
+    adicionarGrupoExplicacao(listasEl, "Recebidas", receitasPagas);
+    adicionarGrupoExplicacao(listasEl, "Pendentes", receitasPendentes);
+  } else if (chave === "despesas"){
+    tituloEl.textContent = "📉 Despesas do mês";
+    formulaEl.innerHTML = formulaLinha("Total de despesas do mês", somaValor(todasDespesas), "total");
+    adicionarGrupoExplicacao(listasEl, "Pagas", despesasPagas);
+    adicionarGrupoExplicacao(listasEl, "Pendentes", despesasPendentes);
+  } else if (chave === "saldo_mes"){
+    tituloEl.textContent = "📆 Saldo do mês (recebido − pago)";
+    const r = somaValor(receitasPagas), d = somaValor(despesasPagas);
+    formulaEl.innerHTML =
+      formulaLinha("Receitas recebidas", r) +
+      formulaLinha("− Despesas pagas", -d) +
+      formulaLinha("= Saldo do mês", r - d, "total");
+    adicionarGrupoExplicacao(listasEl, "Receitas recebidas", receitasPagas);
+    adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
+  } else if (chave === "disponivel" || chave === "ainda_pode_gastar"){
+    tituloEl.textContent = chave === "disponivel" ? "📊 Dinheiro disponível (mês)" : "✅ Ainda pode gastar";
+    const r = somaValor(todasReceitas), d = somaValor(todasDespesas);
+    const resultado = chave === "ainda_pode_gastar" ? Math.max(r - d, 0) : r - d;
+    formulaEl.innerHTML =
+      formulaLinha("Total de receitas do mês", r) +
+      formulaLinha("− Total de despesas do mês", -d) +
+      formulaLinha(chave === "ainda_pode_gastar" ? "= Ainda pode gastar" : "= Disponível", resultado, "total");
+    adicionarGrupoExplicacao(listasEl, "Receitas do mês", todasReceitas);
+    adicionarGrupoExplicacao(listasEl, "Despesas do mês", todasDespesas);
+  } else if (chave === "gasto_pago"){
+    tituloEl.textContent = "🧾 Já gastou (pago)";
+    formulaEl.innerHTML = formulaLinha("Total de despesas já pagas", somaValor(despesasPagas), "total");
+    adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
+  } else if (chave === "previsao"){
+    tituloEl.textContent = "🔮 Previsão de saldo no fim do mês";
+    const r = somaValor(receitasPagas), d = somaValor(despesasPagas);
+    const rp = somaValor(receitasPendentes), dp = somaValor(despesasPendentes);
+    const saldoMes = r - d;
+    formulaEl.innerHTML =
+      formulaLinha("Saldo do mês (recebido − pago)", saldoMes) +
+      formulaLinha("+ Receitas pendentes", rp) +
+      formulaLinha("− Despesas pendentes", -dp) +
+      formulaLinha("= Previsão fim do mês", saldoMes + rp - dp, "total");
+    adicionarGrupoExplicacao(listasEl, "Receitas recebidas", receitasPagas);
+    adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
+    adicionarGrupoExplicacao(listasEl, "Receitas pendentes", receitasPendentes);
+    adicionarGrupoExplicacao(listasEl, "Despesas pendentes", despesasPendentes);
+  } else if (chave === "gasto_diario"){
+    tituloEl.textContent = "✨ Quanto pode gastar por dia";
+    const r = somaValor(receitasPagas), d = somaValor(despesasPagas);
+    const saldoMes = r - d;
+    const dp = somaValor(despesasPendentes);
+    const livre = Math.max(saldoMes - dp, 0);
+    formulaEl.innerHTML =
+      formulaLinha("Saldo do mês (recebido − pago)", saldoMes) +
+      formulaLinha("− Despesas pendentes", -dp) +
+      formulaLinha("= Livre para gastar", livre, "total");
+    adicionarGrupoExplicacao(listasEl, "Despesas pendentes (a descontar)", despesasPendentes);
+  }
+
+  if (listasEl.children.length === 0){
+    listasEl.innerHTML = `<div class="empty">Nenhum lançamento neste grupo.</div>`;
+  }
+  document.getElementById("modalExplicacao").classList.add("ativo");
+}
+document.getElementById("explicacaoFechar").addEventListener("click", () => {
+  document.getElementById("modalExplicacao").classList.remove("ativo");
+});
+
+// ---------- Cartões ----------
+let cartoesCache = [];
+
+async function carregarCartoes(){
+  document.getElementById("listaCartoes").innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const res = await apiFetch(`${API}/cartoes`, undefined, {erro:"Não foi possível carregar os cartões"});
+    cartoesCache = await res.json();
+  } catch (e) {
+    document.getElementById("listaCartoes").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    return;
+  }
+  const container = document.getElementById("listaCartoes");
+  container.innerHTML = "";
+  if (cartoesCache.length === 0){ container.innerHTML = `<div class="empty">Nenhum cartão cadastrado.</div>`; return; }
+  cartoesCache.forEach(c => {
+    const cor = corPara(c.nome) || "#5b8def";
+    const inicial = (c.nome || "?").trim().slice(0, 2).toUpperCase();
+    const uso = c.limite > 0 ? Math.min(100, Math.round((c.fatura_atual / c.limite) * 100)) : 0;
+    const corBarra = uso >= 90 ? "var(--red)" : uso >= 60 ? "var(--yellow)" : "var(--green)";
+    const div = document.createElement("div");
+    div.className = "cartao-card";
+    div.innerHTML = `
+      <div class="cartao-topo">
+        <div class="cartao-icone" style="background:${cor}">${escapeHtml(inicial)}</div>
+        <div>
+          <div class="cartao-nome">${escapeHtml(c.nome)}</div>
+          <div class="cartao-sub">${c.conta_nome ? "Conta: " + escapeHtml(c.conta_nome) : "Sem conta vinculada"}</div>
+        </div>
+        <div class="cartao-acoes">
+          <button class="icon" onclick="abrirEdicaoCartao(${c.id})" title="Editar">✎</button>
+          <button class="icon danger" onclick="excluirCartao(${c.id})" title="Excluir">✕</button>
+        </div>
+      </div>
+      <div class="cartao-grid">
+        <div class="item-info"><div class="rotulo">Limite</div><div class="valor-info">${formatMoeda(c.limite)}</div></div>
+        <div class="item-info"><div class="rotulo">Fatura atual</div><div class="valor-info">${formatMoeda(c.fatura_atual)}</div></div>
+        <div class="item-info"><div class="rotulo">Vencimento</div><div class="valor-info">${c.dia_vencimento ? "dia " + c.dia_vencimento : "-"}</div></div>
+      </div>
+      <div class="barra-progresso"><div class="fill" style="width:${uso}%; background:${corBarra};"></div></div>
+      <div class="cartao-rodape">
+        <span class="badge ${c.fatura_paga ? 'paga' : 'aberta'}">${c.fatura_paga ? '✓ Fatura paga' : 'Fatura aberta'}</span>
+        <button class="secondary" onclick="alternarFaturaCartao(${c.id}, ${c.fatura_paga ? 0 : 1})">${c.fatura_paga ? 'Reabrir fatura' : 'Marcar como paga'}</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+document.getElementById("cartaoForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = {
+    nome: document.getElementById("cartaoNome").value,
+    limite: document.getElementById("cartaoLimite").value,
+    fatura_atual: document.getElementById("cartaoFatura").value,
+    dia_vencimento: document.getElementById("cartaoDiaVenc").value,
+    conta_id: document.getElementById("cartaoConta").value || null,
+  };
+  try {
+    await apiFetch(`${API}/cartoes`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Cartão adicionado", erro:"Não foi possível adicionar o cartão"});
+    e.target.reset();
+    carregarCartoes();
+    carregarDashboard();
+  } catch (e) {}
+});
+
+function abrirEdicaoCartao(id){
+  const c = cartoesCache.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById("editCartaoId").value = c.id;
+  document.getElementById("editCartaoNome").value = c.nome;
+  document.getElementById("editCartaoLimite").value = c.limite;
+  document.getElementById("editCartaoFatura").value = c.fatura_atual;
+  document.getElementById("editCartaoDiaVenc").value = c.dia_vencimento || "";
+  document.getElementById("editCartaoConta").value = c.conta_id || "";
+  document.getElementById("modalEdicaoCartao").classList.add("ativo");
+}
+document.getElementById("editCartaoCancelar").addEventListener("click", () => {
+  document.getElementById("modalEdicaoCartao").classList.remove("ativo");
+});
+document.getElementById("editCartaoSalvar").addEventListener("click", async () => {
+  const id = document.getElementById("editCartaoId").value;
+  const body = {
+    nome: document.getElementById("editCartaoNome").value,
+    limite: document.getElementById("editCartaoLimite").value,
+    fatura_atual: document.getElementById("editCartaoFatura").value,
+    dia_vencimento: document.getElementById("editCartaoDiaVenc").value,
+    conta_id: document.getElementById("editCartaoConta").value || null,
+  };
+  try {
+    await apiFetch(`${API}/cartoes/${id}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Cartão atualizado", erro:"Não foi possível salvar o cartão"});
+    document.getElementById("modalEdicaoCartao").classList.remove("ativo");
+    carregarCartoes();
+    carregarDashboard();
+  } catch (e) {}
+});
+
+async function alternarFaturaCartao(id, pago){
+  try {
+    await apiFetch(`${API}/cartoes/${id}/fatura-pagamento`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({pago})},
+      {sucesso: pago ? "Fatura marcada como paga" : "Fatura reaberta", erro:"Não foi possível atualizar a fatura"});
+    carregarCartoes();
+  } catch (e) {}
+}
+
+async function excluirCartao(id){
+  if (!confirm("Excluir este cartão?")) return;
+  try {
+    await apiFetch(`${API}/cartoes/${id}`, {method:"DELETE"}, {sucesso:"Cartão excluído", erro:"Não foi possível excluir o cartão"});
+    carregarCartoes();
+    carregarDashboard();
+  } catch (e) {}
+}
+
+// ---------- Dívidas ----------
+async function carregarDividas(){
+  document.getElementById("listaDividas").innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  let dividas;
+  try {
+    const res = await apiFetch(`${API}/dividas`, undefined, {erro:"Não foi possível carregar as dívidas"});
+    dividas = await res.json();
+  } catch (e) {
+    document.getElementById("listaDividas").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    return;
+  }
+  const container = document.getElementById("listaDividas");
+  container.innerHTML = "";
+  if (dividas.length === 0){ container.innerHTML = `<div class="empty">Nenhuma dívida cadastrada.</div>`; return; }
+  dividas.forEach(dv => {
+    const div = document.createElement("div");
+    div.className = "simple-card";
+    div.innerHTML = `
+      <div>
+        <div class="nome">${escapeHtml(dv.descricao)}</div>
+        <div class="sub">Total: ${formatMoeda(dv.valor_total)} · Restante: ${formatMoeda(dv.valor_restante)} · Parcela: ${formatMoeda(dv.parcela_mensal)}${dv.dia_vencimento ? " · dia " + dv.dia_vencimento : ""}</div>
+      </div>
+      <button class="danger" onclick="excluirDivida(${dv.id})">✕</button>
+    `;
+    container.appendChild(div);
+  });
+}
+document.getElementById("dividaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = {
+    descricao: document.getElementById("dividaDesc").value,
+    valor_total: document.getElementById("dividaTotal").value,
+    valor_restante: document.getElementById("dividaRestante").value,
+    parcela_mensal: document.getElementById("dividaParcela").value,
+    dia_vencimento: document.getElementById("dividaDiaVenc").value,
+  };
+  try {
+    await apiFetch(`${API}/dividas`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Dívida adicionada", erro:"Não foi possível adicionar a dívida"});
+    e.target.reset();
+    carregarDividas();
+    carregarDashboard();
+  } catch (e) {}
+});
+async function excluirDivida(id){
+  if (!confirm("Excluir esta dívida?")) return;
+  try {
+    await apiFetch(`${API}/dividas/${id}`, {method:"DELETE"}, {sucesso:"Dívida excluída", erro:"Não foi possível excluir a dívida"});
+    carregarDividas();
+    carregarDashboard();
+  } catch (e) {}
+}
+
+// ---------- Edição de lançamento ----------
+function fecharTodosOsModais(){
+  document.querySelectorAll(".modal-overlay.ativo").forEach(m => m.classList.remove("ativo"));
+}
+
+function abrirEdicaoPorId(id){
+  const item = itensPorId[id];
+  if (!item) return;
+  // Sem isso, abrir a edição a partir de outro modal (ex: detalhe do dashboard)
+  // deixaria a edição escondida atrás dele.
+  fecharTodosOsModais();
+  document.getElementById("editId").value = item.id;
+  document.getElementById("editDesc").value = item.descricao;
+  document.getElementById("editValor").value = item.valor;
+  document.getElementById("editVenc").value = item.vencimento || "";
+  document.getElementById("editConta").value = item.conta_id || "";
+  document.getElementById("editObs").value = item.observacao || "";
+  document.getElementById("editRec").checked = !!item.recorrente;
+
+  // Marcar como efetivado e definir a data valem tanto para despesa quanto receita.
+  const ehRenda = item.tipo === "renda";
+  document.getElementById("editPago").checked = !!item.pago;
+  document.getElementById("editPagoLabel").textContent = ehRenda ? "✅ Já recebida" : "✅ Já paga";
+  document.getElementById("editDataPagLabel").textContent =
+    ehRenda ? "Data do recebimento" : "Data do pagamento";
+  atualizarVisibilidadeDataPagamento();
+  document.getElementById("editDataPag").value = item.data_pagamento || "";
+
+  const selCat = document.getElementById("editCategoria");
+  const lista = ehRenda ? categoriasCache.receita : categoriasCache.despesa;
+  selCat.innerHTML = lista.map(c => `<option value="${escapeHtml(c)}" ${c === item.categoria ? "selected" : ""}>${escapeHtml(c)}</option>`).join("");
+
+  document.getElementById("modalEdicao").classList.add("ativo");
+}
+
+function atualizarVisibilidadeDataPagamento(){
+  const marcado = document.getElementById("editPago").checked;
+  const mostrar = marcado ? "block" : "none";
+  document.getElementById("editDataPagLabel").style.display = mostrar;
+  document.getElementById("editDataPag").style.display = mostrar;
+  if (marcado && !document.getElementById("editDataPag").value){
+    document.getElementById("editDataPag").value = hojeISO();
+  }
+}
+document.getElementById("editPago").addEventListener("change", atualizarVisibilidadeDataPagamento);
+
+document.getElementById("editCancelar").addEventListener("click", () => {
+  document.getElementById("modalEdicao").classList.remove("ativo");
+});
+
+document.getElementById("editSalvar").addEventListener("click", async () => {
+  const id = document.getElementById("editId").value;
+  const item = itensPorId[id];
+  const body = {
+    descricao: document.getElementById("editDesc").value,
+    valor: document.getElementById("editValor").value,
+    categoria: document.getElementById("editCategoria").value,
+    vencimento: document.getElementById("editVenc").value,
+    conta_id: document.getElementById("editConta").value || null,
+    observacao: document.getElementById("editObs").value,
+    recorrente: document.getElementById("editRec").checked,
+  };
+  const pago = document.getElementById("editPago").checked;
+  const dataPagamento = pago ? document.getElementById("editDataPag").value : "";
+  try {
+    await apiFetch(`${API}/lancamentos/${id}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {erro:"Não foi possível salvar as alterações"});
+
+    // Efetivado e data valem para despesa e receita.
+    if (item && (!!item.pago !== pago || (pago && item.data_pagamento !== dataPagamento))){
+      await apiFetch(`${API}/lancamentos/${id}/pagamento`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({pago, data_pagamento: dataPagamento})},
+        {erro:"Não foi possível salvar o status de pagamento"});
+    }
+    showToast("Alterações salvas", "ok");
+    document.getElementById("modalEdicao").classList.remove("ativo");
+    carregarTudo();
+  } catch (e) {}
+});
+
+// ---------- Calendário ----------
+async function carregarCalendario(){
+  const lancamentos = lancamentosCache;
+  lancamentos.forEach(l => itensPorId[l.id] = l);
+
+  const [ano, mes] = mesAtual.split("-").map(Number);
+  document.getElementById("calTitulo").textContent = formatMes(mesAtual);
+
+  const primeiroDiaSemana = new Date(ano, mes - 1, 1).getDay();
+  const totalDias = new Date(ano, mes, 0).getDate();
+  const hojeStr = hojeISO();
+
+  const porDia = {};
+  lancamentos.forEach(l => {
+    if (!l.vencimento) return;
+    if (!porDia[l.vencimento]) porDia[l.vencimento] = [];
+    porDia[l.vencimento].push(l);
+  });
+
+  const nomesDias = ["D","S","T","Q","Q","S","S"];
+  const grid = document.getElementById("calGrid");
+  grid.innerHTML = nomesDias.map(n => `<div class="cal-diasemana">${n}</div>`).join("");
+
+  for (let i = 0; i < primeiroDiaSemana; i++){
+    grid.innerHTML += `<div class="cal-dia vazio"></div>`;
+  }
+
+  for (let dia = 1; dia <= totalDias; dia++){
+    const dataStr = `${ano}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
+    const itensDia = porDia[dataStr] || [];
+    const temRenda = itensDia.some(i => i.tipo === "renda");
+    const temDespesaPaga = itensDia.some(i => i.tipo === "despesa" && i.pago);
+    const temDespesaPendente = itensDia.some(i => i.tipo === "despesa" && !i.pago);
+
+    const classes = ["cal-dia"];
+    if (dataStr === hojeStr) classes.push("hoje");
+    if (dataStr === diaSelecionadoCalendario) classes.push("selecionado");
+
+    const dots = `
+      ${temRenda ? '<div class="cal-dot renda"></div>' : ""}
+      ${temDespesaPaga ? '<div class="cal-dot despesa"></div>' : ""}
+      ${temDespesaPendente ? '<div class="cal-dot pendente"></div>' : ""}
+    `;
+
+    const el = document.createElement("div");
+    el.className = classes.join(" ");
+    el.innerHTML = `<div class="num">${dia}</div><div class="cal-dots">${dots}</div>`;
+    el.addEventListener("click", () => {
+      diaSelecionadoCalendario = dataStr;
+      renderizarListaDiaCalendario(porDia[dataStr] || [], dataStr);
+      carregarCalendario();
+    });
+    grid.appendChild(el);
+  }
+
+  if (diaSelecionadoCalendario && porDia[diaSelecionadoCalendario]){
+    renderizarListaDiaCalendario(porDia[diaSelecionadoCalendario], diaSelecionadoCalendario);
+  } else if (!diaSelecionadoCalendario){
+    document.getElementById("calLista").innerHTML = `<div class="empty">Toque em um dia para ver os lançamentos.</div>`;
+  }
+}
+
+function renderizarListaDiaCalendario(itens, dataStr){
+  const container = document.getElementById("calLista");
+  container.innerHTML = `<h2 style="font-size:0.9rem; color:var(--muted); margin-bottom:8px;">${formatData(dataStr)}</h2>`;
+  if (itens.length === 0){
+    container.innerHTML += `<div class="empty">Nenhum lançamento nesse dia.</div>`;
+    return;
+  }
+  itens.forEach(item => container.appendChild(criarItemHTML(item)));
+}
+
+document.querySelectorAll(".nav-item").forEach(btn => {
+  if (btn.dataset.tab === "calendario"){
+    btn.addEventListener("click", carregarCalendario);
+  }
+});
+
+// ---------- Sessão / usuários ----------
+function urlFoto(nomeArquivo){
+  // cache-busting simples pra foto nova aparecer na hora
+  return `${API}/usuario-foto/${encodeURIComponent(nomeArquivo)}?v=${Date.now()}`;
+}
+
+function pintarAvatar(elemento, usuario){
+  elemento.style.background = "";
+  if (usuario.foto){
+    elemento.textContent = "";
+    elemento.style.backgroundImage = `url("${urlFoto(usuario.foto)}")`;
+  } else {
+    elemento.textContent = (usuario.nome || "?").trim().slice(0, 2).toUpperCase();
+    elemento.style.backgroundImage = "";
+    elemento.style.backgroundColor = corPara(usuario.nome) || "var(--accent)";
+  }
+}
+
+async function carregarUsuarioAtual(){
+  try {
+    const res = await apiFetch(`${API}/usuario-atual`, undefined, {erro:"Não foi possível identificar o usuário"});
+    usuarioAtual = await res.json();
+    pintarAvatar(document.getElementById("usuarioAvatar"), usuarioAtual);
+    document.getElementById("usuarioNomeLabel").textContent = usuarioAtual.nome;
+  } catch (e) {}
+}
+
+async function carregarUsuarios(){
+  try {
+    const res = await apiFetch(`${API}/usuarios`, undefined, {erro:"Não foi possível carregar os usuários"});
+    usuariosCache = await res.json();
+  } catch (e) {}
+}
+
+document.getElementById("btnSair").addEventListener("click", async () => {
+  try {
+    await apiFetch(`${API}/logout`, {method:"POST"}, {});
+  } catch (e) {}
+  window.location.href = "/login";
+});
+
+document.getElementById("sidebarUsuario").addEventListener("click", () => {
+  document.getElementById("senhaAtualInput").value = "";
+  document.getElementById("novaSenhaInput").value = "";
+  atualizarPreviewFotoPerfil();
+  document.getElementById("modalTrocarSenha").classList.add("ativo");
+});
+document.getElementById("trocarSenhaCancelar").addEventListener("click", () => {
+  document.getElementById("modalTrocarSenha").classList.remove("ativo");
+});
+
+// ---------- Foto de perfil ----------
+function atualizarPreviewFotoPerfil(){
+  if (!usuarioAtual) return;
+  pintarAvatar(document.getElementById("perfilFotoPreview"), usuarioAtual);
+  document.getElementById("perfilFotoRemover").style.display = usuarioAtual.foto ? "" : "none";
+}
+
+document.getElementById("perfilFotoInput").addEventListener("change", async (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  const formData = new FormData();
+  formData.append("arquivo", arquivo);
+  const label = document.getElementById("perfilFotoLabel");
+  const textoOriginal = label.firstChild.nodeValue;
+  label.firstChild.nodeValue = "Enviando...";
+  try {
+    await apiFetch(`${API}/usuarios/${usuarioAtual.id}/foto`, {method:"POST", body: formData},
+      {sucesso:"Foto atualizada", erro:"Não foi possível enviar a foto"});
+    await carregarUsuarioAtual();
+    await carregarUsuarios();
+    atualizarPreviewFotoPerfil();
+  } catch (err) {} finally {
+    label.firstChild.nodeValue = textoOriginal;
+    e.target.value = "";
+  }
+});
+
+document.getElementById("perfilFotoRemover").addEventListener("click", async () => {
+  try {
+    await apiFetch(`${API}/usuarios/${usuarioAtual.id}/foto`, {method:"DELETE"},
+      {sucesso:"Foto removida", erro:"Não foi possível remover a foto"});
+    await carregarUsuarioAtual();
+    await carregarUsuarios();
+    atualizarPreviewFotoPerfil();
+  } catch (err) {}
+});
+document.getElementById("trocarSenhaSalvar").addEventListener("click", async () => {
+  const body = {
+    senha_atual: document.getElementById("senhaAtualInput").value,
+    nova_senha: document.getElementById("novaSenhaInput").value,
+  };
+  try {
+    await apiFetch(`${API}/usuarios/${usuarioAtual.id}/senha`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Senha atualizada", erro:"Não foi possível trocar a senha"});
+    document.getElementById("modalTrocarSenha").classList.remove("ativo");
+  } catch (e) {}
+});
+
+document.getElementById("btnAdicionarUsuario").addEventListener("click", () => {
+  document.getElementById("novoUsuarioNome").value = "";
+  document.getElementById("novoUsuarioUsername").value = "";
+  document.getElementById("novoUsuarioSenha").value = "";
+  document.getElementById("modalNovoUsuario").classList.add("ativo");
+});
+document.getElementById("novoUsuarioCancelar").addEventListener("click", () => {
+  document.getElementById("modalNovoUsuario").classList.remove("ativo");
+});
+document.getElementById("novoUsuarioSalvar").addEventListener("click", async () => {
+  const body = {
+    nome: document.getElementById("novoUsuarioNome").value.trim(),
+    username: document.getElementById("novoUsuarioUsername").value.trim(),
+    senha: document.getElementById("novoUsuarioSenha").value,
+  };
+  try {
+    await apiFetch(`${API}/usuarios`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Usuário adicionado", erro:"Não foi possível adicionar o usuário"});
+    document.getElementById("modalNovoUsuario").classList.remove("ativo");
+    await carregarUsuarios();
+  } catch (e) {}
+});
+
+// ---------- PWA: registra o service worker ----------
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
+// ---------- PWA: banner de instalação ----------
+let promptInstalacao = null;
+const banner = document.getElementById("installBanner");
+
+function rodandoComoApp(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function mostrarBannerInstalacao(){
+  if (rodandoComoApp() || localStorage.getItem("installDispensado") === "1") return;
+  banner.classList.add("ativo");
+}
+
+// Chrome (Android/desktop): dá pra instalar com um clique.
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  promptInstalacao = e;
+  document.getElementById("installBtn").style.display = "";
+  document.getElementById("installDica").textContent = "Abre em tela cheia, sem a barra do navegador.";
+  mostrarBannerInstalacao();
+});
+
+document.getElementById("installBtn").addEventListener("click", async () => {
+  if (!promptInstalacao) return;
+  promptInstalacao.prompt();
+  const escolha = await promptInstalacao.userChoice;
+  promptInstalacao = null;
+  if (escolha.outcome === "accepted") banner.classList.remove("ativo");
+});
+
+document.getElementById("installFechar").addEventListener("click", () => {
+  banner.classList.remove("ativo");
+  localStorage.setItem("installDispensado", "1");
+});
+
+window.addEventListener("appinstalled", () => {
+  banner.classList.remove("ativo");
+  showToast("App instalado! 🎉", "ok");
+});
+
+// Navegadores sem instalação automática (Firefox, Safari): mostra só a instrução manual.
+setTimeout(() => {
+  if (promptInstalacao || rodandoComoApp() || banner.classList.contains("ativo")) return;
+  const ua = navigator.userAgent;
+  const ehIOS = /iPad|iPhone|iPod/.test(ua);
+  const ehFirefox = /Firefox/.test(ua);
+  if (!ehIOS && !ehFirefox) return;
+  document.getElementById("installBtn").style.display = "none";
+  document.getElementById("installDica").textContent = ehIOS
+    ? 'No Safari: botão Compartilhar → "Adicionar à Tela de Início".'
+    : 'No Firefox: menu ⋮ → "Instalar" (ou abra pelo Chrome para instalar).';
+  mostrarBannerInstalacao();
+}, 2500);
+
+(async function init(){
+  await carregarUsuarioAtual();
+  await carregarUsuarios();
+  await carregarMeses();
+  await carregarCategorias();
+  await carregarTudo();
+})();
+</script>
+</body>
+</html>
