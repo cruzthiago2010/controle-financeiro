@@ -39,8 +39,15 @@ Docker). Todos os dados ficam salvos localmente em SQLite, dentro da pasta
 
 ## Screenshots
 
-> _Em breve — adicione capturas de tela do Dashboard, Receitas & Despesas
-> e Cartões aqui._
+_Capturas feitas com o **modo demonstração** ligado — dados fictícios._
+
+| | |
+|---|---|
+| **Dashboard** | ![Dashboard](docs/screenshots/dashboard.png) |
+| **Receitas & Despesas** | ![Receitas & Despesas](docs/screenshots/lancamentos.png) |
+| **Calendário** | ![Calendário](docs/screenshots/calendario.png) |
+| **Cartões de crédito** | ![Cartões](docs/screenshots/cartoes.png) |
+| **Backup automático** | ![Backup](docs/screenshots/backup.png) |
 
 ## Como rodar (mais fácil — via terminal/SSH)
 
