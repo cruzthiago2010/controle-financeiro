@@ -47,9 +47,16 @@ Docker). Todos os dados ficam salvos localmente em SQLite, dentro da pasta
 - **Categorias** — categorias próprias de receita/despesa, com cor.
 - **Calendário** — visão mensal dos vencimentos, com indicação de pago,
   pendente e recebido.
-- **Múltiplos usuários** — cada pessoa da casa com seu próprio login; dá
-  pra ver e mover dinheiro entre as contas de todo mundo. Cada usuário pode
-  ser marcado como **somente leitura** (vê tudo, não edita nada).
+- **Múltiplos usuários por casa** — cada pessoa da sua casa (família) tem o
+  próprio login; dá pra ver e mover dinheiro entre as contas de todo mundo
+  dentro da mesma casa. Cada usuário pode ser marcado como **somente
+  leitura** (vê tudo, não edita nada).
+- **Cadastro público (`/registro`)** — qualquer pessoa pode criar a própria
+  casa, totalmente isolada da sua — sem ver nem uma categoria, conta ou
+  lançamento seus, e vice-versa. Quem cria uma casa nova já entra como
+  administrador dela. Backup completo do banco fica desativado
+  automaticamente se o servidor tiver mais de uma casa (evita vazar dado de
+  uma casa pra outra).
 - **Backup** — baixe um `.zip` com lançamentos, comprovantes, holerites e
   fotos a qualquer momento, guarde backups agendados no servidor, ou
   restaure a partir de um arquivo. É também onde fica o botão de exportar
@@ -97,8 +104,10 @@ O app exige login. No primeiro start:
   rode `docker compose logs` logo após o primeiro `docker compose up -d --build` e
   procure o bloco `USUÁRIO INICIAL CRIADO`.
 - Depois de entrar, troque a senha clicando no seu nome no rodapé do menu lateral.
-- Para adicionar outro usuário (ex: esposa/marido), clique em "Adicionar usuário"
-  no rodapé do menu lateral.
+- Para adicionar outro usuário **da sua casa** (ex: esposa/marido), clique em
+  "Adicionar usuário" no rodapé do menu lateral.
+- Pra dar acesso a alguém de **fora da sua casa** (um amigo, outra família),
+  mande o link `/registro` — a pessoa cria a própria casa, separada da sua.
 
 ## Instalar como app (PWA)
 
@@ -110,6 +119,7 @@ inicial" — ele abre em tela cheia, como um app instalado.
 - `app.py` — backend Flask (API REST + serve o site + autenticação)
 - `static/index.html` — frontend do app (uma página só)
 - `static/login.html` — tela de login
+- `static/registro.html` — tela de cadastro público (cria uma casa nova)
 - `static/manifest.json`, `static/sw.js`, `static/icon*.svg` — arquivos do PWA
 - `Dockerfile` / `docker-compose.yml` — empacotamento (inclui `tesseract-ocr`
   para a leitura de nota fiscal)

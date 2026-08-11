@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Entrar — Controle Financeiro</title>
+<title>Criar casa — Controle Financeiro</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#0b0f19">
 <style>
@@ -23,7 +23,7 @@
     color:var(--text); padding:20px;
   }
   .login-box{
-    width:100%; max-width:360px; background:linear-gradient(160deg, var(--card), var(--card2));
+    width:100%; max-width:380px; background:linear-gradient(160deg, var(--card), var(--card2));
     border:1px solid var(--border); border-radius:20px; padding:32px 26px;
     box-shadow:0 20px 60px rgba(0,0,0,0.4);
   }
@@ -51,51 +51,62 @@
   .erro.ativo{display:block;}
   .rodape{text-align:center; margin-top:18px; font-size:0.82rem; color:var(--muted);}
   .rodape a{color:var(--accent); text-decoration:none;}
+  .aviso{
+    margin-top:14px; background:rgba(91,141,239,0.08); border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px; font-size:0.78rem; color:var(--muted); line-height:1.4;
+  }
 </style>
 </head>
 <body>
 
 <div class="login-box">
   <div class="logo">💰 Controle Financeiro</div>
-  <div class="subtitulo">Entre com seu usuário e senha</div>
-  <form id="loginForm">
-    <label>Usuário</label>
-    <input type="text" id="username" autocomplete="username" required autofocus>
-    <label>Senha</label>
-    <input type="password" id="senha" autocomplete="current-password" required>
-    <div class="erro" id="loginErro"></div>
-    <button type="submit" id="loginBtn">Entrar</button>
+  <div class="subtitulo">Crie a sua própria casa — isolada de qualquer outra</div>
+  <form id="registroForm">
+    <label>Nome da casa (ex: "Família Silva")</label>
+    <input type="text" id="nomeCasa" required autofocus>
+    <label>Seu nome</label>
+    <input type="text" id="nome" required>
+    <label>Usuário (pra fazer login)</label>
+    <input type="text" id="username" autocomplete="username" required>
+    <label>Senha (mín. 4 caracteres)</label>
+    <input type="password" id="senha" autocomplete="new-password" required minlength="4">
+    <div class="erro" id="registroErro"></div>
+    <button type="submit" id="registroBtn">Criar minha casa</button>
   </form>
-  <div class="rodape">Não tem conta? <a href="/registro">Criar minha casa</a></div>
+  <div class="aviso">Você vira o administrador dessa casa. Ninguém de outra casa vê seus dados, e você não vê os de ninguém.</div>
+  <div class="rodape">Já tem conta? <a href="/login">Entrar</a></div>
 </div>
 
 <script>
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
+document.getElementById("registroForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const erroEl = document.getElementById("loginErro");
-  const btn = document.getElementById("loginBtn");
+  const erroEl = document.getElementById("registroErro");
+  const btn = document.getElementById("registroBtn");
   erroEl.classList.remove("ativo");
   btn.disabled = true;
-  btn.textContent = "Entrando...";
+  btn.textContent = "Criando...";
   try {
-    const res = await fetch("/api/login", {
+    const res = await fetch("/api/registro", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
+        nome_casa: document.getElementById("nomeCasa").value,
+        nome: document.getElementById("nome").value,
         username: document.getElementById("username").value,
         senha: document.getElementById("senha").value,
       }),
     });
     if (!res.ok){
       const j = await res.json().catch(() => ({}));
-      throw new Error(j.erro || "Não foi possível entrar");
+      throw new Error(j.erro || "Não foi possível criar a casa");
     }
     window.location.href = "/";
   } catch (err) {
     erroEl.textContent = err.message;
     erroEl.classList.add("ativo");
     btn.disabled = false;
-    btn.textContent = "Entrar";
+    btn.textContent = "Criar minha casa";
   }
 });
 </script>

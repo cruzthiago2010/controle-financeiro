@@ -57,7 +57,7 @@ def obter_secret_key():
 
 app.secret_key = obter_secret_key()
 
-ROTAS_PUBLICAS = {"/login", "/api/login", "/manifest.json", "/sw.js"}
+ROTAS_PUBLICAS = {"/login", "/api/login", "/registro", "/api/registro", "/manifest.json", "/sw.js"}
 
 
 # Rotas de escrita liberadas pra usuário somente-leitura: alternar modo demo,
@@ -111,28 +111,18 @@ def pertence_ao_usuario(conn, tabela, item_id):
     return row is not None and row["usuario_id"] == uid()
 
 
+def minha_casa_id(conn):
+    row = conn.execute("SELECT casa_id FROM usuarios WHERE id = ?", (uid(),)).fetchone()
+    return row["casa_id"] if row else None
+
+
 def eh_administrador(conn):
-    """O 'administrador' é o primeiro usuário criado na instalação (id mais baixo) —
+    """O 'administrador' de uma casa é o primeiro usuário dela (id mais baixo) —
     mesma convenção já usada no bootstrap inicial do app."""
-    row = conn.execute("SELECT MIN(id) as menor FROM usuarios").fetchone()
+    row = conn.execute(
+        "SELECT MIN(id) as menor FROM usuarios WHERE casa_id = ?", (minha_casa_id(conn),)
+    ).fetchone()
     return row is not None and row["menor"] == uid()
-
-
-def ler_config_consignados():
-    caminho = os.path.join(os.path.dirname(DB_PATH), "consignados-config.json")
-    if os.path.exists(caminho):
-        try:
-            with open(caminho) as f:
-                return {**{"habilitado": False}, **json.load(f)}
-        except (ValueError, OSError):
-            pass
-    return {"habilitado": False}
-
-
-def gravar_config_consignados(config):
-    caminho = os.path.join(os.path.dirname(DB_PATH), "consignados-config.json")
-    with open(caminho, "w") as f:
-        json.dump(config, f)
 
 
 CATEGORIAS_RECEITA_PADRAO = ["Salário", "Vale/Benefícios", "Freelance", "Pix recebido",
@@ -190,19 +180,15 @@ def init_db(caminho=None, criar_usuario_inicial=True):
     else:
         conn = get_db()
     aplicar_migracoes(conn)
-    ja_tem_categorias = conn.execute("SELECT COUNT(*) as n FROM categorias").fetchone()["n"]
-    if not ja_tem_categorias:
-        for nome in CATEGORIAS_RECEITA_PADRAO:
-            conn.execute("INSERT OR IGNORE INTO categorias (nome, tipo) VALUES (?, 'receita')", (nome,))
-        for nome in CATEGORIAS_DESPESA_PADRAO:
-            conn.execute("INSERT OR IGNORE INTO categorias (nome, tipo) VALUES (?, 'despesa')", (nome,))
-        conn.commit()
+    migrar_categorias_por_casa(conn)
     remover_recorrentes_duplicados(conn)
     migrar_contas_de_texto_livre(conn)
     if criar_usuario_inicial:
         bootstrap_usuario_inicial(conn)
+    garantir_categorias_padrao(conn)
     migrar_contas_nome_unico_por_usuario(conn)
     migrar_series_de_recorrencia(conn)
+    migrar_config_consignados_para_casas(conn)
     conn.close()
 
 
@@ -270,6 +256,89 @@ def migrar_contas_nome_unico_por_usuario(conn):
     conn.commit()
 
 
+def migrar_categorias_por_casa(conn):
+    """Categorias eram globais (compartilhadas por todo mundo no app); agora cada
+    casa tem as próprias. Precisa recriar a tabela porque o SQLite não altera um
+    UNIQUE já existente — mesma técnica usada em migrar_contas_nome_unico_por_usuario."""
+    schema = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='categorias'"
+    ).fetchone()
+    precisa_recriar = schema and "casa_id" not in schema["sql"]
+    if not precisa_recriar:
+        return
+
+    primeira_casa = conn.execute("SELECT id FROM casas ORDER BY id LIMIT 1").fetchone()
+    casa_id_padrao = primeira_casa["id"] if primeira_casa else None
+
+    conn.execute("BEGIN")
+    try:
+        conn.execute(
+            """CREATE TABLE categorias_nova (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                tipo TEXT NOT NULL,
+                cor TEXT,
+                casa_id INTEGER,
+                UNIQUE(nome, tipo, casa_id)
+            )"""
+        )
+        conn.execute(
+            "INSERT INTO categorias_nova (id, nome, tipo, cor, casa_id) "
+            "SELECT id, nome, tipo, cor, ? FROM categorias",
+            (casa_id_padrao,),
+        )
+        conn.execute("DROP TABLE categorias")
+        conn.execute("ALTER TABLE categorias_nova RENAME TO categorias")
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+
+
+def garantir_categorias_padrao(conn):
+    """Toda casa (nova ou recém-migrada) recebe seu próprio conjunto de
+    categorias padrão, uma única vez."""
+    casas_sem_categoria = conn.execute(
+        "SELECT id FROM casas WHERE id NOT IN ("
+        "  SELECT DISTINCT casa_id FROM categorias WHERE casa_id IS NOT NULL"
+        ")"
+    ).fetchall()
+    for c in casas_sem_categoria:
+        for nome in CATEGORIAS_RECEITA_PADRAO:
+            conn.execute(
+                "INSERT OR IGNORE INTO categorias (nome, tipo, casa_id) VALUES (?, 'receita', ?)",
+                (nome, c["id"]),
+            )
+        for nome in CATEGORIAS_DESPESA_PADRAO:
+            conn.execute(
+                "INSERT OR IGNORE INTO categorias (nome, tipo, casa_id) VALUES (?, 'despesa', ?)",
+                (nome, c["id"]),
+            )
+    conn.commit()
+
+
+def migrar_config_consignados_para_casas(conn):
+    """A configuração de Consignados era um arquivo .json solto (valia pro app
+    inteiro); agora é uma coluna por casa. Lê o arquivo antigo uma vez, se existir,
+    e aplica o valor na primeira casa — depois o arquivo não é mais usado."""
+    caminho = os.path.join(os.path.dirname(DB_PATH), "consignados-config.json")
+    if not os.path.exists(caminho):
+        return
+    try:
+        with open(caminho) as f:
+            config_antiga = json.load(f)
+    except (ValueError, OSError):
+        config_antiga = {}
+    primeira_casa = conn.execute("SELECT id FROM casas ORDER BY id LIMIT 1").fetchone()
+    if primeira_casa:
+        conn.execute(
+            "UPDATE casas SET consignados_habilitado = ? WHERE id = ?",
+            (1 if config_antiga.get("habilitado") else 0, primeira_casa["id"]),
+        )
+        conn.commit()
+    os.remove(caminho)
+
+
 def bootstrap_usuario_inicial(conn):
     """Cria o primeiro usuário no primeiro start, e garante que todo dado tenha um dono."""
     ja_tem_usuarios = conn.execute("SELECT COUNT(*) as n FROM usuarios").fetchone()["n"]
@@ -279,9 +348,14 @@ def bootstrap_usuario_inicial(conn):
         senha_foi_gerada = not admin_pass
         if not admin_pass:
             admin_pass = secrets.token_urlsafe(9)
+        cur = conn.execute(
+            "INSERT INTO casas (nome, criado_em) VALUES (?, ?)",
+            ("Minha Casa", datetime.now().isoformat()),
+        )
+        casa_id = cur.lastrowid
         conn.execute(
-            "INSERT INTO usuarios (nome, username, senha_hash, criado_em) VALUES (?, ?, ?, ?)",
-            ("Administrador", admin_user, generate_password_hash(admin_pass), datetime.now().isoformat()),
+            "INSERT INTO usuarios (nome, username, senha_hash, casa_id, criado_em) VALUES (?, ?, ?, ?, ?)",
+            ("Administrador", admin_user, generate_password_hash(admin_pass), casa_id, datetime.now().isoformat()),
         )
         conn.commit()
         if senha_foi_gerada:
@@ -661,6 +735,13 @@ def login_page():
     return send_from_directory("static", "login.html")
 
 
+@app.route("/registro")
+def registro_page():
+    if session.get("usuario_id"):
+        return redirect("/")
+    return send_from_directory("static", "registro.html")
+
+
 @app.route("/manifest.json")
 def manifest():
     return send_from_directory("static", "manifest.json")
@@ -697,6 +778,46 @@ def login():
     })
 
 
+@app.route("/api/registro", methods=["POST"])
+def registro():
+    """Cria uma casa nova (isolada de todas as outras) e o primeiro usuário dela,
+    que já nasce administrador. Rota pública — não exige login."""
+    data = request.get_json(force=True)
+    nome_casa = (data.get("nome_casa") or "").strip()
+    nome = (data.get("nome") or "").strip()
+    username = (data.get("username") or "").strip().lower()
+    senha = data.get("senha") or ""
+    if not nome_casa or not nome or not username or len(senha) < 4:
+        return jsonify({"erro": "nome da casa, seu nome, usuário e senha (mín. 4 caracteres) são obrigatórios"}), 400
+
+    conn = get_db()
+    try:
+        cur = conn.execute(
+            "INSERT INTO casas (nome, criado_em) VALUES (?, ?)",
+            (nome_casa, datetime.now().isoformat()),
+        )
+        casa_id = cur.lastrowid
+        cur = conn.execute(
+            "INSERT INTO usuarios (nome, username, senha_hash, casa_id, criado_em) VALUES (?, ?, ?, ?, ?)",
+            (nome, username, generate_password_hash(senha), casa_id, datetime.now().isoformat()),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({"erro": "esse usuário já existe"}), 400
+
+    garantir_categorias_padrao(conn)
+    usuario_id = cur.lastrowid
+    conn.close()
+
+    session.clear()
+    session["usuario_id"] = usuario_id
+    session["usuario_nome"] = nome
+    session["somente_leitura"] = False
+    session.permanent = True
+    return jsonify({"ok": True}), 201
+
+
 @app.route("/api/logout", methods=["POST"])
 def logout():
     session.clear()
@@ -724,7 +845,9 @@ def usuario_atual():
 def listar_usuarios():
     conn = get_db()
     rows = conn.execute(
-        "SELECT id, nome, username, criado_em, foto, somente_leitura FROM usuarios ORDER BY nome"
+        "SELECT id, nome, username, criado_em, foto, somente_leitura FROM usuarios "
+        "WHERE casa_id = ? ORDER BY nome",
+        (minha_casa_id(conn),),
     ).fetchall()
     conn.close()
     usuarios = [dict(r) for r in rows]
@@ -745,8 +868,10 @@ def criar_usuario():
     conn = get_db()
     try:
         conn.execute(
-            "INSERT INTO usuarios (nome, username, senha_hash, criado_em, somente_leitura) VALUES (?, ?, ?, ?, ?)",
-            (nome, username, generate_password_hash(senha), datetime.now().isoformat(), int(somente_leitura)),
+            "INSERT INTO usuarios (nome, username, senha_hash, casa_id, criado_em, somente_leitura) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (nome, username, generate_password_hash(senha), minha_casa_id(conn),
+             datetime.now().isoformat(), int(somente_leitura)),
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -761,6 +886,10 @@ def alternar_somente_leitura(item_id):
     data = request.get_json(force=True)
     somente_leitura = bool(data.get("somente_leitura"))
     conn = get_db()
+    alvo = conn.execute("SELECT casa_id FROM usuarios WHERE id = ?", (item_id,)).fetchone()
+    if not alvo or alvo["casa_id"] != minha_casa_id(conn):
+        conn.close()
+        return jsonify({"erro": "usuário não encontrado"}), 404
     conn.execute("UPDATE usuarios SET somente_leitura = ? WHERE id = ?", (int(somente_leitura), item_id))
     conn.commit()
     conn.close()
@@ -850,10 +979,17 @@ def baixar_foto_perfil(nome_arquivo):
     return send_from_directory(FOTOS_DIR, nome_arquivo)
 
 
+def pertence_a_minha_casa(conn, tabela, item_id):
+    row = conn.execute(f"SELECT casa_id FROM {tabela} WHERE id = ?", (item_id,)).fetchone()
+    return row is not None and row["casa_id"] == minha_casa_id(conn)
+
+
 @app.route("/api/categorias", methods=["GET"])
 def categorias():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM categorias ORDER BY nome").fetchall()
+    rows = conn.execute(
+        "SELECT * FROM categorias WHERE casa_id = ? ORDER BY nome", (minha_casa_id(conn),)
+    ).fetchall()
     conn.close()
     receita = [dict(r) for r in rows if r["tipo"] == "receita"]
     despesa = [dict(r) for r in rows if r["tipo"] == "despesa"]
@@ -874,7 +1010,10 @@ def criar_categoria():
     if not nome or tipo not in ("receita", "despesa"):
         return jsonify({"erro": "nome e tipo (receita/despesa) são obrigatórios"}), 400
     conn = get_db()
-    conn.execute("INSERT OR IGNORE INTO categorias (nome, tipo, cor) VALUES (?, ?, ?)", (nome, tipo, cor))
+    conn.execute(
+        "INSERT OR IGNORE INTO categorias (nome, tipo, cor, casa_id) VALUES (?, ?, ?, ?)",
+        (nome, tipo, cor, minha_casa_id(conn)),
+    )
     conn.commit()
     conn.close()
     return jsonify({"ok": True}), 201
@@ -888,6 +1027,9 @@ def editar_categoria(item_id):
     if not nome:
         return jsonify({"erro": "nome é obrigatório"}), 400
     conn = get_db()
+    if not pertence_a_minha_casa(conn, "categorias", item_id):
+        conn.close()
+        return jsonify({"erro": "categoria não encontrada"}), 404
     try:
         conn.execute("UPDATE categorias SET nome = ?, cor = ? WHERE id = ?", (nome, cor, item_id))
         conn.commit()
@@ -901,6 +1043,9 @@ def editar_categoria(item_id):
 @app.route("/api/categorias/<int:item_id>", methods=["DELETE"])
 def deletar_categoria(item_id):
     conn = get_db()
+    if not pertence_a_minha_casa(conn, "categorias", item_id):
+        conn.close()
+        return jsonify({"erro": "categoria não encontrada"}), 404
     conn.execute("DELETE FROM categorias WHERE id = ?", (item_id,))
     conn.commit()
     conn.close()
@@ -1385,14 +1530,18 @@ def criar_transferencia():
         return jsonify({"erro": "valor deve ser maior que zero"}), 400
 
     conn = get_db()
-    # A origem tem que ser sua; o destino pode ser a conta de outro usuário
-    # (ex: transferir da sua conta para a da sua esposa).
+    # A origem tem que ser sua; o destino pode ser a conta de outro usuário,
+    # mas só se for da mesma casa (ex: transferir da sua conta pra da sua esposa —
+    # nunca pra conta de alguém de fora da sua casa).
     origem = conn.execute(
         "SELECT id, nome, usuario_id FROM contas WHERE id = ? AND usuario_id = ?",
         (conta_origem_id, uid()),
     ).fetchone()
     destino = conn.execute(
-        "SELECT id, nome, usuario_id FROM contas WHERE id = ?", (conta_destino_id,)
+        "SELECT contas.id, contas.nome, contas.usuario_id FROM contas "
+        "JOIN usuarios ON usuarios.id = contas.usuario_id "
+        "WHERE contas.id = ? AND usuarios.casa_id = ?",
+        (conta_destino_id, minha_casa_id(conn)),
     ).fetchone()
     if not origem:
         conn.close()
@@ -1430,12 +1579,15 @@ def criar_transferencia():
 @app.route("/api/contas-transferencia", methods=["GET"])
 def contas_para_transferencia():
     """Contas disponíveis numa transferência: as suas (origem/destino) e as dos
-    outros usuários (só destino). Expõe apenas id, nome e dono — nenhum saldo."""
+    outros usuários da mesma casa (só destino). Expõe apenas id, nome e dono —
+    nenhum saldo, e nada de fora da sua casa."""
     conn = get_db()
     rows = conn.execute(
         "SELECT contas.id, contas.nome, contas.usuario_id, usuarios.nome as usuario_nome "
         "FROM contas LEFT JOIN usuarios ON usuarios.id = contas.usuario_id "
-        "ORDER BY usuarios.nome, contas.nome"
+        "WHERE usuarios.casa_id = ? "
+        "ORDER BY usuarios.nome, contas.nome",
+        (minha_casa_id(conn),),
     ).fetchall()
     conn.close()
     meu_id = uid()
@@ -1599,18 +1751,27 @@ def deletar_meta(item_id):
 
 @app.route("/api/consignados/config", methods=["GET"])
 def obter_config_consignados():
-    return jsonify(ler_config_consignados())
+    conn = get_db()
+    row = conn.execute(
+        "SELECT consignados_habilitado FROM casas WHERE id = ?", (minha_casa_id(conn),)
+    ).fetchone()
+    conn.close()
+    return jsonify({"habilitado": bool(row["consignados_habilitado"]) if row else False})
 
 
 @app.route("/api/consignados/config", methods=["PUT"])
 def definir_config_consignados():
     conn = get_db()
-    permitido = eh_administrador(conn)
-    conn.close()
-    if not permitido:
+    if not eh_administrador(conn):
+        conn.close()
         return jsonify({"erro": "só o administrador pode alterar essa configuração"}), 403
     data = request.get_json(force=True)
-    gravar_config_consignados({"habilitado": bool(data.get("habilitado"))})
+    conn.execute(
+        "UPDATE casas SET consignados_habilitado = ? WHERE id = ?",
+        (1 if data.get("habilitado") else 0, minha_casa_id(conn)),
+    )
+    conn.commit()
+    conn.close()
     return jsonify({"ok": True})
 
 
@@ -2101,11 +2262,18 @@ def _semear_demo():
     conn = sqlite3.connect(DEMO_DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("DELETE FROM usuarios")
-    conn.execute(
-        "INSERT INTO usuarios (id, nome, username, senha_hash, criado_em) VALUES (1, ?, ?, ?, ?)",
-        ("Visitante (demo)", "demo", generate_password_hash(secrets.token_urlsafe(16)),
-         datetime.now().isoformat()),
+    cur = conn.execute(
+        "INSERT INTO casas (nome, criado_em) VALUES (?, ?)",
+        ("Casa demo", datetime.now().isoformat()),
     )
+    casa_demo_id = cur.lastrowid
+    conn.execute(
+        "INSERT INTO usuarios (id, nome, username, senha_hash, casa_id, criado_em) VALUES (1, ?, ?, ?, ?, ?)",
+        ("Visitante (demo)", "demo", generate_password_hash(secrets.token_urlsafe(16)),
+         casa_demo_id, datetime.now().isoformat()),
+    )
+    conn.commit()
+    garantir_categorias_padrao(conn)
 
     # Saldos escolhidos para que, depois dos meses de histórico abaixo,
     # o saldo somado das contas fique em torno de R$ 20 mil.
@@ -2329,6 +2497,11 @@ def listar_backups_automaticos():
 
 def criar_backup_automatico():
     """Gera um backup em disco e apaga os mais antigos além do limite."""
+    conn = get_db()
+    n_casas = conn.execute("SELECT COUNT(*) as n FROM casas").fetchone()["n"]
+    conn.close()
+    if n_casas > 1:
+        return None
     os.makedirs(BACKUPS_DIR, exist_ok=True)
     nome = f"backup-{datetime.now().strftime('%Y-%m-%d-%H%M%S')}.zip"
     caminho = os.path.join(BACKUPS_DIR, nome)
@@ -2354,7 +2527,8 @@ def _loop_backup_automatico():
                 ultimo = existentes[0]["criado_em_ts"] if existentes else 0
                 if (datetime.now().timestamp() - ultimo) >= intervalo:
                     nome = criar_backup_automatico()
-                    print(f"[backup] backup automático criado: {nome}", flush=True)
+                    if nome:
+                        print(f"[backup] backup automático criado: {nome}", flush=True)
         except Exception as e:
             print(f"[backup] falha ao gerar backup automático: {e}", flush=True)
         time.sleep(600)  # confere a cada 10 minutos
@@ -2367,6 +2541,15 @@ def iniciar_agendador_backup():
 
 @app.route("/api/backup", methods=["GET"])
 def baixar_backup():
+    conn = get_db()
+    n_casas = conn.execute("SELECT COUNT(*) as n FROM casas").fetchone()["n"]
+    conn.close()
+    if n_casas > 1:
+        return jsonify({
+            "erro": "esse servidor tem mais de uma casa cadastrada — o backup completo do "
+                    "banco incluiria dados de outras casas, então está desligado por segurança. "
+                    "Use a exportação de CSV pra levar seus lançamentos."
+        }), 403
     memoria = io.BytesIO()
     escrever_zip_backup(memoria)
     memoria.seek(0)
@@ -2475,6 +2658,12 @@ def info_backup():
 def aplicar_backup(origem_arquivo):
     """Valida e aplica um backup. Retorna None se deu certo, ou a mensagem de erro.
     Usado tanto pelo upload manual quanto pela restauração de um backup automático."""
+    conn = get_db()
+    n_casas = conn.execute("SELECT COUNT(*) as n FROM casas").fetchone()["n"]
+    conn.close()
+    if n_casas > 1:
+        return ("esse servidor tem mais de uma casa cadastrada — restaurar um backup "
+                "substituiria os dados de todas elas, então está desligado por segurança")
     with tempfile.TemporaryDirectory() as tmp:
         caminho_zip = os.path.join(tmp, "backup.zip")
         if hasattr(origem_arquivo, "save"):
