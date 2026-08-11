@@ -173,6 +173,29 @@
   .meta-card .meta-acoes input{flex:1;}
   .metas-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:10px;}
 
+  /* Holerite */
+  .holerite-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card);}
+  .holerite-card .holerite-topo{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;}
+  .holerite-card .holerite-nome{font-weight:700; flex:1; min-width:0;}
+  .holerite-card .holerite-topo-acoes{display:flex; gap:2px; flex:none;}
+  .holerite-card .holerite-campos{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px;}
+  .holerite-card .holerite-campos label{display:flex; flex-direction:column; gap:3px; font-size:0.7rem; color:var(--muted); min-width:0;}
+  .holerite-card .holerite-campos label small{font-size:0.62rem; opacity:0.75; font-weight:400;}
+  .holerite-card .holerite-campos input{font-size:0.85rem; width:100%; min-width:0;}
+  .holerite-card.holerite-faltando{border-style:dashed; display:flex; flex-direction:column; align-items:flex-start;}
+  .holerite-card.holerite-faltando p{font-size:0.82rem; color:var(--muted); margin:6px 0 12px;}
+  .holerite-card .holerite-acoes{margin-top:10px;}
+  .holerite-card .holerite-tag{margin-top:8px; font-size:0.72rem; color:var(--green); font-weight:700;}
+  .holerite-card .holerite-lancamentos{margin-top:12px; padding-top:10px; border-top:1px solid var(--border);}
+  .holerite-card .holerite-lancamentos-titulo{font-size:0.7rem; text-transform:uppercase; letter-spacing:0.03em; color:var(--muted); margin-bottom:6px; font-weight:700;}
+  .holerite-card .holerite-lancamento-linha{display:flex; justify-content:space-between; gap:8px; font-size:0.78rem; color:var(--text); padding:4px 0;}
+  .holerites-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:10px;}
+
+  /* Itens da nota fiscal escaneada */
+  .nf-item-linha{display:flex; gap:6px; margin-bottom:6px; align-items:center;}
+  .nf-item-linha input[type="text"]{flex:3;}
+  .nf-item-linha input[type="number"]{flex:1; min-width:0;}
+
   /* Cartão perto/passando do limite */
   .aviso-limite{margin-top:8px; font-size:0.76rem; font-weight:700; color:var(--yellow);}
   .aviso-limite.estourado{color:var(--red);}
@@ -186,6 +209,8 @@
   body.somente-leitura .conta-acoes,
   body.somente-leitura .orcamento-card .orcamento-acoes,
   body.somente-leitura .meta-card .meta-acoes,
+  body.somente-leitura .holerite-card .holerite-acoes,
+  body.somente-leitura .holerite-card .holerite-excluir,
   body.somente-leitura #btnAbrirTransferencia,
   body.somente-leitura #btnAdicionarUsuario,
   body.somente-leitura .orcamento-form{
@@ -486,6 +511,8 @@
   .fab-mini-icone.despesa{background:linear-gradient(135deg, var(--red), #e05353);}
   .fab-mini-icone.receita{background:linear-gradient(135deg, var(--green), #2fb377);}
   .fab-mini-icone.transferencia{background:linear-gradient(135deg, var(--accent), var(--accent2));}
+  .fab-mini-icone.comprovante{background:linear-gradient(135deg, var(--purple), #7c5cd4);}
+  #comprovantePendenteAviso{display:none; align-items:center; gap:6px; background:rgba(167,139,250,0.15); border:1px solid var(--purple); color:var(--purple); font-size:0.78rem; font-weight:600; padding:6px 10px; border-radius:8px; margin-bottom:10px;}
 
   /* Toggle switch */
   .toggle-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; font-size:0.85rem; color:var(--text);}
@@ -584,6 +611,8 @@
       <button class="nav-item" data-tab="calendario" title="Calendário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendario"/></svg></span><span class="nav-label">Calendário</span></button>
       <button class="nav-item" data-tab="cartoes" title="Cartões"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cartao"/></svg></span><span class="nav-label">Cartões</span></button>
       <button class="nav-item" data-tab="metas" title="Metas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bussola"/></svg></span><span class="nav-label">Metas</span></button>
+      <button class="nav-item" data-tab="holerites" title="Holerite"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg></span><span class="nav-label">Holerite</span></button>
+      <button class="nav-item" data-tab="consignados" title="Consignados" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label">Consignados</span></button>
       <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
     </nav>
     <div class="sidebar-rodape">
@@ -651,6 +680,11 @@
     </div>
 
     <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Fluxo de caixa diário <span style="text-transform:none; font-weight:400; opacity:0.7;">· entradas, saídas e saldo acumulado dia a dia</span></h2>
+      <div class="chart-box"><canvas id="chartFluxoCaixa"></canvas></div>
+    </div>
+
+    <div class="secao">
       <h2>Gastos por categoria</h2>
       <div class="chart-box"><canvas id="chartCategoria"></canvas></div>
     </div>
@@ -694,12 +728,6 @@
 
   <!-- ===================== LANÇAMENTOS ===================== -->
   <section class="painel" id="painel-lancamentos">
-
-    <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-      <a class="secondary" id="btnExportarCsv" href="#" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:9px 14px; border-radius:var(--radius-sm);">
-        <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Exportar CSV
-      </a>
-    </div>
 
     <div class="secao pendentes" id="secaoPendentes" style="display:none;">
       <h2 style="color:var(--yellow);"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> Contas pendentes do mês</h2>
@@ -811,8 +839,62 @@
     </form>
   </section>
 
+  <!-- ===================== HOLERITE ===================== -->
+  <section class="painel" id="painel-holerites">
+    <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Renda e descontos por mês</h2>
+      <div class="chart-box"><canvas id="chartHolerites"></canvas></div>
+    </div>
+    <div class="secao">
+      <h2>Holerites importados</h2>
+      <div class="holerites-grid" id="listaHolerites"></div>
+    </div>
+    <form class="add-form" id="holeriteForm" enctype="multipart/form-data">
+      <input type="file" id="holeriteArquivo" accept="application/pdf" required>
+      <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; color:var(--muted);">
+        <input type="checkbox" id="holeriteLancarReceita" checked style="width:auto;">
+        Lançar automaticamente como receita
+      </label>
+      <button type="submit">Importar holerite</button>
+    </form>
+  </section>
+
+  <!-- ===================== CONSIGNADOS ===================== -->
+  <section class="painel" id="painel-consignados">
+    <div class="secao">
+      <h2>Consignados</h2>
+      <div class="metas-grid" id="listaConsignados"></div>
+    </div>
+    <form class="add-form" id="consignadoForm">
+      <input type="text" id="consignadoNome" placeholder="Nome (ex: Empréstimo Santander)" required>
+      <input type="number" id="consignadoValorParcela" placeholder="Valor da parcela (R$)" step="0.01" min="0.01" required>
+      <input type="number" id="consignadoParcelaAtual" placeholder="Parcela atual (ex: 3)" min="1">
+      <input type="number" id="consignadoParcelaTotal" placeholder="Total de parcelas (ex: 12)" min="1">
+      <button type="submit">Adicionar consignado</button>
+    </form>
+  </section>
+
   <!-- ===================== BACKUP ===================== -->
   <section class="painel" id="painel-backup">
+    <div class="secao">
+      <h2>Exportar lançamentos</h2>
+      <div class="card">
+        <p style="font-size:0.82rem; color:var(--muted); margin:0 0 10px;">Baixa em CSV os lançamentos do mês selecionado no topo (<span id="csvMesAtual"></span>).</p>
+        <a class="secondary" id="btnExportarCsv" href="#" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:9px 14px; border-radius:var(--radius-sm); width:100%; justify-content:center;">
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Exportar CSV do mês
+        </a>
+      </div>
+    </div>
+    <div class="secao" id="secaoConfigAdmin" style="display:none;">
+      <h2>Configurações administrativas</h2>
+      <div class="card">
+        <label class="toggle-row">
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> Habilitar aba Consignados</span>
+          <span class="toggle-switch"><input type="checkbox" id="toggleConsignados"><span class="toggle-slider"></span></span>
+        </label>
+        <p style="font-size:0.78rem; color:var(--muted); margin:8px 0 0;">Só o administrador (primeiro usuário criado) vê e altera isso. Quando ligado, a aba Consignados aparece pra todos os usuários.</p>
+      </div>
+    </div>
     <div class="secao">
       <h2>Backup automático</h2>
       <div class="card">
@@ -936,6 +1018,16 @@
 <!-- Botão flutuante (speed-dial: despesa / receita / transferência) -->
 <div class="fab-container">
   <div class="fab-opcoes" id="fabOpcoes">
+    <input type="file" id="comprovanteFabInput" accept="image/*,application/pdf" style="display:none;">
+    <input type="file" id="notaFiscalFabInput" accept="image/*" capture="environment" style="display:none;">
+    <button class="fab-mini" id="fabNotaFiscal" type="button">
+      <span class="fab-mini-label">Escanear nota fiscal</span>
+      <span class="fab-mini-icone comprovante"><svg class="ico" viewBox="0 0 24 24"><use href="#i-camera"/></svg></span>
+    </button>
+    <button class="fab-mini" id="fabComprovante" type="button">
+      <span class="fab-mini-label">Importar comprovante</span>
+      <span class="fab-mini-icone comprovante"><svg class="ico" viewBox="0 0 24 24"><use href="#i-clipe"/></svg></span>
+    </button>
     <button class="fab-mini" id="fabTransferencia" type="button">
       <span class="fab-mini-label">Transferência</span>
       <span class="fab-mini-icone transferencia"><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg></span>
@@ -955,6 +1047,7 @@
 <div class="modal-overlay" id="modalNovoLancamento">
   <div class="modal-box">
     <h3>Novo lançamento</h3>
+    <div id="comprovantePendenteAviso"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-clipe"/></svg> <span id="comprovantePendenteNome"></span></div>
     <div class="segmented" id="tipoSegmented">
       <button type="button" class="ativo despesa" data-tipo="despesa">Despesa</button>
       <button type="button" class="renda" data-tipo="renda">Receita</button>
@@ -1055,6 +1148,33 @@
     <div class="modal-acoes">
       <button class="secondary" type="button" id="transfCancelar">Cancelar</button>
       <button type="button" id="transfSalvar">Transferir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de revisão da nota fiscal escaneada -->
+<div class="modal-overlay" id="modalNotaFiscal">
+  <div class="modal-box">
+    <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg> Nota fiscal escaneada</h3>
+    <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px;">A leitura é automática e pode errar alguns dígitos — confira tudo antes de lançar.</p>
+    <label>Loja</label>
+    <input type="text" id="notaFiscalLoja" placeholder="Nome do local">
+    <label>Data da compra</label>
+    <input type="date" id="notaFiscalData">
+    <label>Categoria</label>
+    <select id="notaFiscalCategoria"></select>
+    <label>Itens</label>
+    <div id="notaFiscalItens"></div>
+    <button type="button" class="secondary" id="notaFiscalAdicionarItem" style="width:100%; margin-top:6px;">+ Adicionar item</button>
+    <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--muted); margin-top:12px;">
+      <span>Soma dos itens</span>
+      <span id="notaFiscalSomaItens">R$ 0,00</span>
+    </div>
+    <label>Valor total da despesa (R$)</label>
+    <input type="number" id="notaFiscalValorTotal" step="0.01" placeholder="0,00">
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="notaFiscalCancelar">Cancelar</button>
+      <button type="button" id="notaFiscalSalvar">Lançar despesa</button>
     </div>
   </div>
 </div>
@@ -1184,7 +1304,7 @@ const ICO = {
 };
 let mesAtual = null;
 let categoriasCache = {receita:[], despesa:[]};
-let chartComparacao = null, chartCategoria = null, chartTendencia = null;
+let chartComparacao = null, chartCategoria = null, chartTendencia = null, chartFluxoCaixa = null, chartHolerites = null;
 let itensPorId = {};
 let diaSelecionadoCalendario = null;
 let lancamentosCache = [];
@@ -1671,6 +1791,8 @@ document.querySelectorAll("#modoValorSegmented button").forEach(btn => {
 document.getElementById("parcelasInput").addEventListener("input", atualizarPreviewParcela);
 document.getElementById("valorInput").addEventListener("input", atualizarPreviewParcela);
 
+let comprovantePendente = null;
+
 function abrirModalNovoLancamento(tipoInicial){
   tipoInicial = tipoInicial || "despesa";
   document.getElementById("descInput").value = "";
@@ -1701,6 +1823,8 @@ function abrirModalNovoLancamento(tipoInicial){
     ? "linear-gradient(135deg, var(--green), #2fb377)"
     : "linear-gradient(135deg, var(--red), #e05353)";
   atualizarSelectCategoria();
+  comprovantePendente = null;
+  document.getElementById("comprovantePendenteAviso").style.display = "none";
   document.getElementById("modalNovoLancamento").classList.add("ativo");
 }
 document.getElementById("novoCancelar").addEventListener("click", () => {
@@ -1728,8 +1852,121 @@ document.getElementById("fabTransferencia").addEventListener("click", () => {
   fecharFabOpcoes();
   abrirModalTransferencia();
 });
+document.getElementById("fabComprovante").addEventListener("click", () => {
+  fecharFabOpcoes();
+  document.getElementById("comprovanteFabInput").click();
+});
+document.getElementById("comprovanteFabInput").addEventListener("change", (e) => {
+  const arquivo = e.target.files[0];
+  if (!arquivo) return;
+  abrirModalNovoLancamento("despesa");
+  comprovantePendente = arquivo;
+  document.getElementById("comprovantePendenteNome").textContent = `Comprovante anexado: ${arquivo.name} — preencha os dados da despesa`;
+  document.getElementById("comprovantePendenteAviso").style.display = "flex";
+  e.target.value = "";
+});
 document.addEventListener("click", (e) => {
   if (!e.target.closest(".fab-container")) fecharFabOpcoes();
+});
+
+// ---------- Escanear nota fiscal ----------
+let notaFiscalArquivoAtual = null;
+
+function linhaItemNotaFiscalHTML(descricao, valor){
+  const linha = document.createElement("div");
+  linha.className = "nf-item-linha";
+  linha.innerHTML = `
+    <input type="text" placeholder="Descrição do item" value="${escapeHtml(descricao || "")}">
+    <input type="number" step="0.01" placeholder="0,00" value="${valor ?? ""}">
+    <button type="button" class="icon danger" title="Remover item">${ICO.x}</button>
+  `;
+  linha.querySelector("button").addEventListener("click", () => {
+    linha.remove();
+    atualizarSomaItensNotaFiscal();
+  });
+  linha.querySelector('input[type="number"]').addEventListener("input", atualizarSomaItensNotaFiscal);
+  return linha;
+}
+function atualizarSomaItensNotaFiscal(){
+  const soma = [...document.querySelectorAll("#notaFiscalItens .nf-item-linha")]
+    .reduce((acc, linha) => acc + (Number(linha.querySelector('input[type="number"]').value) || 0), 0);
+  document.getElementById("notaFiscalSomaItens").textContent = formatMoeda(soma);
+}
+document.getElementById("notaFiscalAdicionarItem").addEventListener("click", () => {
+  document.getElementById("notaFiscalItens").appendChild(linhaItemNotaFiscalHTML("", ""));
+});
+
+document.getElementById("fabNotaFiscal").addEventListener("click", () => {
+  fecharFabOpcoes();
+  document.getElementById("notaFiscalFabInput").click();
+});
+document.getElementById("notaFiscalFabInput").addEventListener("change", async (e) => {
+  const arquivo = e.target.files[0];
+  e.target.value = "";
+  if (!arquivo) return;
+  notaFiscalArquivoAtual = arquivo;
+  showToast("Lendo a nota fiscal...", "ok");
+  const formData = new FormData();
+  formData.append("arquivo", arquivo);
+  let dados;
+  try {
+    const res = await apiFetch(`${API}/notas-fiscais/analisar`, {method:"POST", body: formData}, {erro:"Não foi possível ler a nota fiscal"});
+    dados = await res.json();
+  } catch (err) { return; }
+
+  document.getElementById("notaFiscalLoja").value = dados.loja || "";
+  document.getElementById("notaFiscalData").value = dados.data || hojeISO();
+  document.getElementById("notaFiscalValorTotal").value = dados.valor_total ?? "";
+  const listaCategorias = categoriasCache.despesa || [];
+  const selCategoria = document.getElementById("notaFiscalCategoria");
+  selCategoria.innerHTML = listaCategorias.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  if (listaCategorias.includes("Mercado")) selCategoria.value = "Mercado";
+  const listaItens = document.getElementById("notaFiscalItens");
+  listaItens.innerHTML = "";
+  (dados.itens || []).forEach(i => listaItens.appendChild(linhaItemNotaFiscalHTML(i.descricao, i.valor_total)));
+  atualizarSomaItensNotaFiscal();
+  document.getElementById("modalNotaFiscal").classList.add("ativo");
+});
+document.getElementById("notaFiscalCancelar").addEventListener("click", () => {
+  document.getElementById("modalNotaFiscal").classList.remove("ativo");
+  notaFiscalArquivoAtual = null;
+});
+document.getElementById("notaFiscalSalvar").addEventListener("click", async () => {
+  const loja = document.getElementById("notaFiscalLoja").value.trim();
+  const valorTotal = Number(document.getElementById("notaFiscalValorTotal").value) || 0;
+  const data = document.getElementById("notaFiscalData").value;
+  if (!loja){ showToast("Informe o nome da loja", "erro"); return; }
+  if (!valorTotal || valorTotal <= 0){ showToast("Informe um valor total válido", "erro"); return; }
+  const itens = [...document.querySelectorAll("#notaFiscalItens .nf-item-linha")].map(linha => ({
+    descricao: linha.querySelector('input[type="text"]').value.trim(),
+    valor: Number(linha.querySelector('input[type="number"]').value) || 0,
+  })).filter(i => i.descricao || i.valor);
+  const observacao = itens.length
+    ? `Itens:\n${itens.map(i => `${i.descricao || "Item"} - ${formatMoeda(i.valor)}`).join("\n")}`
+    : "";
+
+  const btn = document.getElementById("notaFiscalSalvar");
+  btn.disabled = true;
+  try {
+    const res = await apiFetch(`${API}/lancamentos`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({
+      mes: data ? data.slice(0, 7) : mesAtual,
+      tipo: "despesa",
+      descricao: loja,
+      valor: valorTotal,
+      vencimento: data,
+      categoria: document.getElementById("notaFiscalCategoria").value,
+      pago: true,
+      data_pagamento: data,
+      observacao,
+    })}, {sucesso:"Despesa lançada", erro:"Não foi possível lançar a despesa"});
+    if (notaFiscalArquivoAtual){
+      const criado = await res.json();
+      if (criado.id) await enviarComprovante(criado.id, notaFiscalArquivoAtual);
+    }
+    notaFiscalArquivoAtual = null;
+    document.getElementById("modalNotaFiscal").classList.remove("ativo");
+    carregarTudo();
+  } catch (err) {} finally { btn.disabled = false; }
 });
 
 // ---------- Transferência entre contas ----------
@@ -1826,8 +2063,13 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
   const btn = document.getElementById("novoSalvar");
   btn.disabled = true;
   try {
-    await apiFetch(`${API}/lancamentos`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+    const res = await apiFetch(`${API}/lancamentos`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
       {sucesso:"Lançamento adicionado", erro:"Não foi possível adicionar o lançamento"});
+    if (comprovantePendente){
+      const criado = await res.json();
+      if (criado.id) await enviarComprovante(criado.id, comprovantePendente);
+      comprovantePendente = null;
+    }
     document.getElementById("modalNovoLancamento").classList.remove("ativo");
     carregarTudo();
   } catch (e) {} finally { btn.disabled = false; }
@@ -1966,6 +2208,7 @@ async function carregarLancamentos(){
   document.getElementById("listaRenda").innerHTML = `<div class="loading-msg">Carregando...</div>`;
   document.getElementById("listaDespesa").innerHTML = `<div class="loading-msg">Carregando...</div>`;
   document.getElementById("btnExportarCsv").href = `${API}/lancamentos/exportar-csv?mes=${mesAtual}`;
+  document.getElementById("csvMesAtual").textContent = formatMes(mesAtual);
   try {
     const [lancRes] = await Promise.all([
       apiFetch(`${API}/lancamentos?mes=${mesAtual}`, undefined, {erro:"Não foi possível carregar os lançamentos"}),
@@ -2305,6 +2548,35 @@ async function carregarDashboard(){
     });
   } catch (e) { /* toast já exibido pelo apiFetch */ }
 
+  // Gráfico de fluxo de caixa diário
+  try {
+    const resFluxo = await apiFetch(`${API}/fluxo-caixa?mes=${mesAtual}`, undefined, {erro:"Não foi possível carregar o fluxo de caixa"});
+    const fluxo = await resFluxo.json();
+    const ctxFluxo = document.getElementById("chartFluxoCaixa").getContext("2d");
+    if (chartFluxoCaixa) chartFluxoCaixa.destroy();
+    chartFluxoCaixa = new Chart(ctxFluxo, {
+      data: {
+        labels: fluxo.map(f => f.dia),
+        datasets: [
+          {type:"bar", label:"Entradas", data: fluxo.map(f => f.entradas), backgroundColor:"#3ecf8e", borderRadius:3, yAxisID:"y"},
+          {type:"bar", label:"Saídas", data: fluxo.map(f => -f.saidas), backgroundColor:"#ff6b6b", borderRadius:3, yAxisID:"y"},
+          {type:"line", label:"Saldo acumulado", data: fluxo.map(f => f.saldo_acumulado), borderColor:"#5b8def", backgroundColor:"rgba(91,141,239,0.15)", tension:0.3, fill:false, pointRadius:0, yAxisID:"y1"},
+        ]
+      },
+      options: {responsive:true, maintainAspectRatio:false,
+        scales:{
+          x:{ticks:{color:corMuted}, grid:{display:false}},
+          y:{ticks:{color:corMuted}, grid:{color:corGrade}},
+          y1:{position:"right", ticks:{color:corMuted}, grid:{display:false}},
+        },
+        plugins:{legend:{position:"bottom", labels:{color:corTexto, boxWidth:12, font:{size:10}}},
+          tooltip:{callbacks:{label: (ctx) => ctx.dataset.label === "Saídas"
+            ? `Saídas: ${formatMoeda(Math.abs(ctx.parsed.y))}`
+            : `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}
+      }
+    });
+  } catch (e) { /* toast já exibido pelo apiFetch */ }
+
   // Resumo por conta
   const contasContainer = document.getElementById("listaContasResumo");
   contasContainer.innerHTML = "";
@@ -2615,6 +2887,313 @@ document.getElementById("metaForm").addEventListener("submit", async (e) => {
   } catch (e) {}
 });
 
+// ---------- Consignados ----------
+async function carregarConfigConsignados(){
+  let config;
+  try {
+    const res = await apiFetch(`${API}/consignados/config`, undefined, {});
+    config = await res.json();
+  } catch (e) { config = {habilitado: false}; }
+  document.getElementById("navConsignados").style.display = config.habilitado ? "" : "none";
+  const podeConfigurar = !!(usuarioAtual && usuarioAtual.eh_administrador);
+  document.getElementById("secaoConfigAdmin").style.display = podeConfigurar ? "" : "none";
+  if (podeConfigurar) document.getElementById("toggleConsignados").checked = !!config.habilitado;
+}
+document.getElementById("toggleConsignados").addEventListener("change", async (e) => {
+  try {
+    await apiFetch(`${API}/consignados/config`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({habilitado: e.target.checked})},
+      {sucesso: e.target.checked ? "Aba Consignados habilitada" : "Aba Consignados desabilitada", erro:"Não foi possível alterar"});
+    document.getElementById("navConsignados").style.display = e.target.checked ? "" : "none";
+  } catch (err) { e.target.checked = !e.target.checked; }
+});
+
+async function carregarConsignados(){
+  const container = document.getElementById("listaConsignados");
+  container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  let consignados;
+  try {
+    const res = await apiFetch(`${API}/consignados`, undefined, {erro:"Não foi possível carregar os consignados"});
+    consignados = await res.json();
+  } catch (e) {
+    container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    return;
+  }
+  container.innerHTML = "";
+  if (consignados.length === 0){ container.innerHTML = `<div class="empty">Nenhum consignado cadastrado ainda.</div>`; return; }
+  consignados.forEach(c => container.appendChild(criarConsignadoCardHTML(c)));
+}
+
+function criarConsignadoCardHTML(c){
+  const temParcelas = c.parcela_total > 0;
+  const pct = temParcelas ? Math.min(100, ((c.parcela_atual || 0) / c.parcela_total) * 100) : 0;
+  const div = document.createElement("div");
+  div.className = "meta-card";
+  div.innerHTML = `
+    <div class="meta-topo">
+      <span class="meta-nome">${escapeHtml(c.nome)}${c.ativo ? "" : " · quitado"}</span>
+      <button class="icon danger" title="Excluir consignado">${ICO.x}</button>
+    </div>
+    ${temParcelas ? `<div class="meta-prazo">Parcela ${c.parcela_atual || 0} de ${c.parcela_total}</div>` : ""}
+    ${temParcelas ? `<div class="orcamento-barra" style="margin-top:8px;"><div class="preenchido" style="width:${pct}%"></div></div>` : ""}
+    <div class="meta-valores"><span>Parcela: ${formatMoeda(c.valor_parcela)}</span></div>
+    <div class="meta-acoes">
+      <button type="button" class="secondary" style="flex:1;">+1 parcela paga</button>
+    </div>
+  `;
+  div.querySelector(".meta-topo button").addEventListener("click", async () => {
+    if (!confirm("Excluir este consignado?")) return;
+    try {
+      await apiFetch(`${API}/consignados/${c.id}`, {method:"DELETE"}, {sucesso:"Consignado excluído", erro:"Não foi possível excluir"});
+      carregarConsignados();
+    } catch (e) {}
+  });
+  div.querySelector(".meta-acoes button").addEventListener("click", async () => {
+    const novaParcela = (c.parcela_atual || 0) + 1;
+    const body = {parcela_atual: novaParcela};
+    if (c.parcela_total && novaParcela >= c.parcela_total) body.ativo = false;
+    try {
+      await apiFetch(`${API}/consignados/${c.id}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+        {sucesso:"Parcela atualizada", erro:"Não foi possível atualizar"});
+      carregarConsignados();
+    } catch (e) {}
+  });
+  return div;
+}
+
+document.getElementById("consignadoForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = {
+    nome: document.getElementById("consignadoNome").value.trim(),
+    valor_parcela: document.getElementById("consignadoValorParcela").value,
+    parcela_atual: document.getElementById("consignadoParcelaAtual").value || null,
+    parcela_total: document.getElementById("consignadoParcelaTotal").value || null,
+  };
+  try {
+    await apiFetch(`${API}/consignados`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Consignado adicionado", erro:"Não foi possível adicionar o consignado"});
+    e.target.reset();
+    carregarConsignados();
+  } catch (e) {}
+});
+
+document.querySelectorAll(".nav-item").forEach(btn => {
+  if (btn.dataset.tab === "consignados") btn.addEventListener("click", carregarConsignados);
+});
+
+// ---------- Holerite ----------
+function renderizarChartHolerites(holerites){
+  // Meses atípicos (ex: férias) podem ter mais de um holerite na mesma referência —
+  // soma tudo por mês pra virar uma barra só, em vez de duplicar o rótulo no eixo.
+  const porMes = {};
+  holerites.filter(h => h.referencia).forEach(h => {
+    if (!porMes[h.referencia]) porMes[h.referencia] = {proventos:0, descontos:0, liquido:0};
+    porMes[h.referencia].proventos += h.total_proventos || 0;
+    porMes[h.referencia].descontos += h.total_descontos || 0;
+    porMes[h.referencia].liquido += (h.adiantamento || 0) + (h.total_liquido || 0);
+  });
+  const meses = Object.keys(porMes).sort();
+  const ctx = document.getElementById("chartHolerites").getContext("2d");
+  if (chartHolerites) chartHolerites.destroy();
+  if (meses.length === 0) return;
+  const claro = document.documentElement.getAttribute("data-tema") === "claro";
+  const corTexto = claro ? "#1c2438" : "#e8ecf5";
+  const corMuted = claro ? "#6b7694" : "#8b96b3";
+  const corGrade = claro ? "#e1e6f2" : "#2a3450";
+  chartHolerites = new Chart(ctx, {
+    data: {
+      labels: meses.map(formatMes),
+      datasets: [
+        {type:"bar", label:"Proventos", data: meses.map(m => porMes[m].proventos), backgroundColor:"#3ecf8e", borderRadius:4},
+        {type:"bar", label:"Descontos", data: meses.map(m => porMes[m].descontos), backgroundColor:"#ff6b6b", borderRadius:4},
+        {type:"bar", label:"Salário líquido", data: meses.map(m => porMes[m].liquido), backgroundColor:"#5b8def", borderRadius:4},
+      ]
+    },
+    options: {responsive:true, maintainAspectRatio:false,
+      onClick: (evt, elementos) => {
+        if (!elementos.length) return;
+        const {datasetIndex, index} = elementos[0];
+        const mes = meses[index];
+        if (datasetIndex === 0) abrirExplicacaoHolerite("provento", mes, holerites);
+        else if (datasetIndex === 1) abrirExplicacaoHolerite("desconto", mes, holerites);
+      },
+      onHover: (evt, elementos) => {
+        evt.native.target.style.cursor = elementos.length && elementos[0].datasetIndex < 2 ? "pointer" : "default";
+      },
+      scales:{x:{ticks:{color:corMuted}, grid:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade}}},
+      plugins:{legend:{position:"bottom", labels:{color:corTexto, boxWidth:12, font:{size:10}}},
+        tooltip:{callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
+  });
+}
+
+function abrirExplicacaoHolerite(tipo, mes, holerites){
+  const itens = [];
+  holerites.filter(h => h.referencia === mes).forEach(h => (h.itens || []).forEach(i => { if (i.tipo === tipo) itens.push(i); }));
+
+  const tituloEl = document.getElementById("explicacaoTitulo");
+  const formulaEl = document.getElementById("explicacaoFormula");
+  const listasEl = document.getElementById("explicacaoListas");
+  tituloEl.textContent = `${tipo === "provento" ? "Proventos" : "Descontos"} — ${formatMes(mes)}`;
+  const total = itens.reduce((s, i) => s + (i.valor || 0), 0);
+  formulaEl.innerHTML = formulaLinha(`Total de ${tipo === "provento" ? "proventos" : "descontos"} (itens identificados)`, total, "total");
+  listasEl.innerHTML = "";
+  if (itens.length === 0){
+    listasEl.innerHTML = `<div class="empty">Não foi possível identificar os itens deste holerite — baixe o PDF na aba Holerite pra conferir.</div>`;
+  } else {
+    const grupo = document.createElement("div");
+    grupo.className = "explicacao-grupo";
+    grupo.innerHTML = `<h2>Itens (${itens.length})</h2>`;
+    const lista = document.createElement("div");
+    itens.forEach(i => {
+      const div = document.createElement("div");
+      div.className = "simple-card";
+      div.innerHTML = `<div class="nome">${escapeHtml(i.descricao)}</div><div class="valor">${formatMoeda(i.valor)}</div>`;
+      lista.appendChild(div);
+    });
+    grupo.appendChild(lista);
+    listasEl.appendChild(grupo);
+  }
+  document.getElementById("modalExplicacao").classList.add("ativo");
+}
+
+async function carregarHolerites(){
+  const container = document.getElementById("listaHolerites");
+  container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  let holerites;
+  try {
+    const res = await apiFetch(`${API}/holerites`, undefined, {erro:"Não foi possível carregar os holerites"});
+    holerites = await res.json();
+  } catch (e) {
+    container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    return;
+  }
+  container.innerHTML = "";
+  renderizarChartHolerites(holerites);
+  if (holerites.length === 0){ container.innerHTML = `<div class="empty">Nenhum holerite importado ainda.</div>`; return; }
+  const referencias = holerites.map(h => h.referencia).filter(Boolean);
+  const faltando = calcularMesesFaltando(referencias);
+  if (referencias.length){
+    const proximoMes = mesSeguinteStr([...referencias].sort().at(-1));
+    if (!referencias.includes(proximoMes)) faltando.push(proximoMes);
+  }
+  const itens = [
+    ...holerites.map(h => ({referencia: h.referencia, render: () => criarHoleriteCardHTML(h)})),
+    ...faltando.map(mes => ({referencia: mes, render: () => criarHoleriteFaltandoHTML(mes)})),
+  ].sort((a, b) => (b.referencia || "").localeCompare(a.referencia || ""));
+  itens.forEach(item => container.appendChild(item.render()));
+}
+
+function calcularMesesFaltando(referencias){
+  const ordenadas = [...new Set(referencias)].sort();
+  if (ordenadas.length < 2) return [];
+  const faltando = [];
+  let atual = ordenadas[0];
+  const ultimo = ordenadas[ordenadas.length - 1];
+  while (atual < ultimo){
+    atual = mesSeguinteStr(atual);
+    if (atual < ultimo && !ordenadas.includes(atual)) faltando.push(atual);
+  }
+  return faltando;
+}
+
+function criarHoleriteFaltandoHTML(mes){
+  const div = document.createElement("div");
+  div.className = "holerite-card holerite-faltando";
+  div.innerHTML = `
+    <div class="holerite-topo"><span class="holerite-nome">${formatMes(mes)}</span></div>
+    <p>Nenhum holerite importado para este mês.</p>
+    <button type="button" class="secondary" style="width:100%;">Importar holerite deste mês</button>
+  `;
+  div.querySelector("button").addEventListener("click", () => {
+    document.getElementById("holeriteForm").scrollIntoView({behavior:"smooth", block:"center"});
+    document.getElementById("holeriteArquivo").click();
+  });
+  return div;
+}
+
+function irParaLancamentosDoMes(mes){
+  if (!mes) return;
+  irParaMes(mes);
+  document.querySelector('.nav-item[data-tab="lancamentos"]').click();
+}
+
+function criarHoleriteCardHTML(h){
+  const div = document.createElement("div");
+  div.className = "holerite-card";
+  const lancamentos = h.lancamentos || [];
+  const listaLancamentos = lancamentos.length
+    ? `<div class="holerite-lancamentos">
+        <div class="holerite-lancamentos-titulo">Lançamentos gerados</div>
+        ${lancamentos.map(l => `
+          <div class="holerite-lancamento-linha">
+            <span>${escapeHtml(l.descricao)} · ${formatData(l.data_pagamento)}</span>
+            <span>${formatMoeda(l.valor)}</span>
+          </div>
+        `).join("")}
+        <button type="button" class="secondary holerite-ver-lancamentos" style="width:100%; margin-top:6px;">Ver e editar na aba Receitas &amp; Despesas</button>
+      </div>`
+    : "";
+  div.innerHTML = `
+    <div class="holerite-topo">
+      <span class="holerite-nome">${h.referencia ? formatMes(h.referencia) : "Referência não identificada"}</span>
+      <span class="holerite-topo-acoes">
+        <a class="icon" href="${API}/holerites/${h.id}/arquivo" target="_blank" title="Baixar PDF">${ICO.baixar}</a>
+        <button type="button" class="icon danger holerite-excluir" title="Excluir holerite">${ICO.x}</button>
+      </span>
+    </div>
+    <div class="holerite-campos">
+      <label>Referência <input type="month" data-campo="referencia" value="${h.referencia || ""}"></label>
+      <label>Recebido em <input type="date" data-campo="recebido_em" value="${h.recebido_em || ""}"></label>
+      <label>Proventos <input type="number" step="0.01" data-campo="total_proventos" value="${h.total_proventos ?? ""}"></label>
+      <label>Descontos <input type="number" step="0.01" data-campo="total_descontos" value="${h.total_descontos ?? ""}"></label>
+      <label>Líquido <small>recebido no fim do mês</small><input type="number" step="0.01" data-campo="total_liquido" value="${h.total_liquido ?? ""}"></label>
+      <label>Adiantamento <small>recebido dia 15</small><input type="number" step="0.01" data-campo="adiantamento" value="${h.adiantamento ?? ""}"></label>
+    </div>
+    <div class="holerite-acoes">
+      <button type="button" class="secondary" style="width:100%;">Salvar alterações</button>
+    </div>
+    ${listaLancamentos}
+  `;
+  div.querySelector(".holerite-excluir").addEventListener("click", async () => {
+    if (!confirm(lancamentos.length
+      ? "Excluir este holerite também remove o(s) lançamento(s) de receita gerado(s) a partir dele. Continuar?"
+      : "Excluir este holerite?")) return;
+    try {
+      await apiFetch(`${API}/holerites/${h.id}`, {method:"DELETE"}, {sucesso:"Holerite excluído", erro:"Não foi possível excluir"});
+      carregarHolerites();
+      carregarTudo();
+    } catch (e) {}
+  });
+  div.querySelector(".holerite-acoes button").addEventListener("click", async () => {
+    const body = {};
+    div.querySelectorAll(".holerite-campos input").forEach(input => { body[input.dataset.campo] = input.value; });
+    try {
+      await apiFetch(`${API}/holerites/${h.id}`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+        {sucesso:"Holerite atualizado", erro:"Não foi possível atualizar"});
+      carregarHolerites();
+      carregarTudo();
+    } catch (e) {}
+  });
+  const btnVer = div.querySelector(".holerite-ver-lancamentos");
+  if (btnVer) btnVer.addEventListener("click", () => irParaLancamentosDoMes(h.referencia));
+  return div;
+}
+
+document.getElementById("holeriteForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const arquivoInput = document.getElementById("holeriteArquivo");
+  if (!arquivoInput.files[0]) return;
+  const formData = new FormData();
+  formData.append("arquivo", arquivoInput.files[0]);
+  formData.append("lancar_receita", document.getElementById("holeriteLancarReceita").checked ? "true" : "false");
+  try {
+    await apiFetch(`${API}/holerites`, {method:"POST", body: formData}, {sucesso:"Holerite importado", erro:"Não foi possível importar o holerite"});
+    e.target.reset();
+    document.getElementById("holeriteLancarReceita").checked = true;
+    carregarHolerites();
+    carregarTudo();
+  } catch (e) {}
+});
+
 // ---------- Edição de lançamento ----------
 function fecharTodosOsModais(){
   document.querySelectorAll(".modal-overlay.ativo").forEach(m => m.classList.remove("ativo"));
@@ -2775,6 +3354,9 @@ document.querySelectorAll(".nav-item").forEach(btn => {
   }
   if (btn.dataset.tab === "metas"){
     btn.addEventListener("click", carregarMetas);
+  }
+  if (btn.dataset.tab === "holerites"){
+    btn.addEventListener("click", carregarHolerites);
   }
 });
 
@@ -3143,6 +3725,7 @@ setTimeout(() => {
   await carregarStatusDemo();
   await carregarUsuarioAtual();
   await carregarUsuarios();
+  await carregarConfigConsignados();
   await carregarMeses();
   await carregarCategorias();
   await carregarTudo();

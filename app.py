@@ -1,4 +1,5 @@
 import io
+import re
 import csv
 import os
 import json
@@ -11,16 +12,23 @@ import calendar
 import sqlite3
 import tempfile
 import threading
+import unicodedata
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import (Flask, request, jsonify, send_from_directory, session, redirect,
                    send_file, has_request_context)
+from pypdf import PdfReader
+import fitz
+import pytesseract
+from PIL import Image, ImageOps, ImageFilter
+from pyzbar.pyzbar import decode as zbar_decode
 
 DB_PATH = os.environ.get("DB_PATH", "/data/orcamento.db")
 COMPROVANTES_DIR = os.environ.get("COMPROVANTES_DIR", "/data/comprovantes")
 FOTOS_DIR = os.environ.get("FOTOS_DIR", "/data/fotos")
 BACKUPS_DIR = os.environ.get("BACKUPS_DIR", "/data/backups")
+HOLERITES_DIR = os.environ.get("HOLERITES_DIR", "/data/holerites")
 DEMO_DB_PATH = os.environ.get("DEMO_DB_PATH", "/data/orcamento-demo.db")
 
 EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
@@ -103,6 +111,30 @@ def pertence_ao_usuario(conn, tabela, item_id):
     return row is not None and row["usuario_id"] == uid()
 
 
+def eh_administrador(conn):
+    """O 'administrador' é o primeiro usuário criado na instalação (id mais baixo) —
+    mesma convenção já usada no bootstrap inicial do app."""
+    row = conn.execute("SELECT MIN(id) as menor FROM usuarios").fetchone()
+    return row is not None and row["menor"] == uid()
+
+
+def ler_config_consignados():
+    caminho = os.path.join(os.path.dirname(DB_PATH), "consignados-config.json")
+    if os.path.exists(caminho):
+        try:
+            with open(caminho) as f:
+                return {**{"habilitado": False}, **json.load(f)}
+        except (ValueError, OSError):
+            pass
+    return {"habilitado": False}
+
+
+def gravar_config_consignados(config):
+    caminho = os.path.join(os.path.dirname(DB_PATH), "consignados-config.json")
+    with open(caminho, "w") as f:
+        json.dump(config, f)
+
+
 CATEGORIAS_RECEITA_PADRAO = ["Salário", "Vale/Benefícios", "Freelance", "Pix recebido",
                               "Venda de produtos", "Rendimentos", "Outros"]
 CATEGORIAS_DESPESA_PADRAO = ["Mercado", "Combustível", "Aluguel", "Energia", "Água",
@@ -126,6 +158,7 @@ def init_db(caminho=None, criar_usuario_inicial=True):
     os.makedirs(COMPROVANTES_DIR, exist_ok=True)
     os.makedirs(FOTOS_DIR, exist_ok=True)
     os.makedirs(BACKUPS_DIR, exist_ok=True)
+    os.makedirs(HOLERITES_DIR, exist_ok=True)
     if caminho:
         conn = sqlite3.connect(caminho)
         conn.row_factory = sqlite3.Row
@@ -230,6 +263,40 @@ def init_db(caminho=None, criar_usuario_inicial=True):
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS holerites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            referencia TEXT,
+            recebido_em TEXT,
+            total_proventos REAL,
+            total_descontos REAL,
+            total_liquido REAL,
+            adiantamento REAL,
+            itens_json TEXT,
+            arquivo TEXT NOT NULL,
+            lancamento_id INTEGER,
+            lancamento_adiantamento_id INTEGER,
+            criado_em TEXT
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS consignados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER,
+            nome TEXT NOT NULL,
+            valor_parcela REAL NOT NULL,
+            parcela_atual INTEGER,
+            parcela_total INTEGER,
+            ativo INTEGER DEFAULT 1,
+            observacao TEXT,
+            criado_em TEXT
+        )
+        """
+    )
     conn.commit()
     ja_tem_categorias = conn.execute("SELECT COUNT(*) as n FROM categorias").fetchone()["n"]
     if not ja_tem_categorias:
@@ -264,11 +331,20 @@ def init_db(caminho=None, criar_usuario_inicial=True):
     add_col_if_missing(conn, "categorias", "cor", "ALTER TABLE categorias ADD COLUMN cor TEXT")
     add_col_if_missing(conn, "usuarios", "foto", "ALTER TABLE usuarios ADD COLUMN foto TEXT")
     add_col_if_missing(conn, "usuarios", "somente_leitura", "ALTER TABLE usuarios ADD COLUMN somente_leitura INTEGER DEFAULT 0")
+    add_col_if_missing(conn, "holerites", "adiantamento", "ALTER TABLE holerites ADD COLUMN adiantamento REAL")
+    add_col_if_missing(conn, "holerites", "lancamento_adiantamento_id", "ALTER TABLE holerites ADD COLUMN lancamento_adiantamento_id INTEGER")
+    add_col_if_missing(conn, "holerites", "itens_json", "ALTER TABLE holerites ADD COLUMN itens_json TEXT")
     # Cada usuário tem seus próprios lançamentos, contas, cartões e dívidas.
     # Categorias, de propósito, continuam compartilhadas entre todos.
     add_col_if_missing(conn, "contas", "usuario_id", "ALTER TABLE contas ADD COLUMN usuario_id INTEGER")
     add_col_if_missing(conn, "lancamentos", "usuario_id", "ALTER TABLE lancamentos ADD COLUMN usuario_id INTEGER")
     add_col_if_missing(conn, "cartoes", "usuario_id", "ALTER TABLE cartoes ADD COLUMN usuario_id INTEGER")
+    conn.commit()
+    remover_recorrentes_duplicados(conn)
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_lancamentos_recorrencia_mes "
+        "ON lancamentos (grupo_recorrencia, mes, usuario_id) WHERE grupo_recorrencia IS NOT NULL"
+    )
     conn.commit()
     migrar_contas_de_texto_livre(conn)
     if criar_usuario_inicial:
@@ -401,11 +477,222 @@ def migrar_contas_de_texto_livre(conn):
     conn.commit()
 
 
+def remover_recorrentes_duplicados(conn):
+    """Bug já corrigido: uma corrida entre requisições paralelas podia duplicar a
+    materialização de um lançamento recorrente no mesmo mês (garantir_recorrentes
+    fazia 'verifica se existe, senão insere' sem trava). Mantém a ocorrência mais
+    antiga de cada grupo/mês/usuário e remove as repetidas."""
+    duplicados = conn.execute(
+        "SELECT grupo_recorrencia, mes, usuario_id FROM lancamentos "
+        "WHERE grupo_recorrencia IS NOT NULL "
+        "GROUP BY grupo_recorrencia, mes, usuario_id HAVING COUNT(*) > 1"
+    ).fetchall()
+    for d in duplicados:
+        ids = [r["id"] for r in conn.execute(
+            "SELECT id FROM lancamentos WHERE grupo_recorrencia = ? AND mes = ? AND usuario_id IS ? "
+            "ORDER BY criado_em, id",
+            (d["grupo_recorrencia"], d["mes"], d["usuario_id"]),
+        ).fetchall()]
+        for id_extra in ids[1:]:
+            conn.execute("DELETE FROM lancamentos WHERE id = ?", (id_extra,))
+    conn.commit()
+
+
 def mes_anterior(mes):
     ano, m = map(int, mes.split("-"))
     if m == 1:
         return f"{ano-1}-12"
     return f"{ano}-{m-1:02d}"
+
+
+MESES_ABREV = {
+    "jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
+    "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12,
+}
+
+
+def _sem_acento(texto):
+    return "".join(c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c))
+
+
+def _num_br(texto):
+    """Converte um número no formato brasileiro ('8.990,46') para float."""
+    texto = texto.strip().strip(".,")
+    try:
+        return round(float(texto.replace(".", "").replace(",", ".")), 2)
+    except ValueError:
+        return None
+
+
+def _extrair_valor_apos(texto_norm, rotulo, padrao_valor, distancia=60):
+    """Procura um rótulo (ex: 'total liquido a receber') e captura o valor
+    que aparece logo em seguida no texto extraído do PDF."""
+    m = re.search(re.escape(rotulo) + r"[\s\S]{0,%d}?(%s)" % (distancia, padrao_valor), texto_norm)
+    return m.group(1) if m else None
+
+
+# Rótulos de linhas de recapitulação/base de cálculo que aparecem misturadas com os
+# itens de verdade na tabela do contracheque, mas não são um provento ou desconto —
+# variam entre folha mensal e folha de férias, então a lista cobre os dois casos.
+LABELS_HOLERITE_IGNORAR = (
+    "base inss", "base fgts", "base liquida irrf", "base calc",
+    "salario contratual", "remuneracao fixa mensal", "remuneracao extra",
+    "res adicional assiduidade", "fgts mes", "fgts 13 salario",
+    "ind deducao simplificada", "num dias", "num meses", "qtd adicional",
+    "ano do calculo", "ano da atual", "valor nao descontado parcela credito",
+    "ao orto custo", "am custo empresa", "am saldo devedor", "sal contrib inss",
+    "reducao do irrf",
+)
+PALAVRAS_HOLERITE_DESCONTO = ("desconto", "inss", "irrf", "consignado", "contribuicao", "seguro", "amil", "afeb")
+PADRAO_VALOR_LINHA_HOLERITE = re.compile(r"^(.+?)\s+(\d[\d.]*,\d{2})\s*$")
+
+
+def _extrair_itens_holerite(texto):
+    """Lê as linhas de proventos/descontos da tabela do contracheque (não só os
+    totais), pra dar pra ver depois o que exatamente compôs cada valor."""
+    norm = _sem_acento(texto).lower()
+    inicio = norm.find("descricao")
+    fim = norm.find("total de proventos")
+    if inicio == -1 or fim == -1 or fim <= inicio:
+        return []
+    linhas_orig = texto[inicio:fim].splitlines()
+    linhas_norm = norm[inicio:fim].splitlines()
+
+    itens = []
+    for orig, normed in zip(linhas_orig, linhas_norm):
+        normed = normed.strip()
+        if not normed or normed.startswith("descricao"):
+            continue
+        if any(rotulo in normed for rotulo in LABELS_HOLERITE_IGNORAR):
+            continue
+        # "Valor Não Descontado Parcela Crédito Consignado N" quebra em duas linhas —
+        # a continuação ("Consignado 4", "Consignado 5"...) não é um desconto de verdade,
+        # é só informativo. Diferente de "Desconto Credito eConsignado N" (item real),
+        # que nunca começa a linha com a palavra solta "consignado".
+        if normed.startswith("consignado"):
+            continue
+        m = PADRAO_VALOR_LINHA_HOLERITE.match(orig.strip())
+        if not m:
+            continue
+        valor = _num_br(m.group(2))
+        if valor is None:
+            continue
+        tipo = "desconto" if any(p in normed for p in PALAVRAS_HOLERITE_DESCONTO) else "provento"
+        itens.append({"descricao": " ".join(m.group(1).split()), "valor": valor, "tipo": tipo})
+    return itens
+
+
+def extrair_dados_holerite(texto):
+    """Lê os campos principais de um contracheque em PDF. O parsing é best-effort —
+    a tela de importação sempre deixa o usuário revisar e corrigir os valores."""
+    norm = _sem_acento(texto).lower()
+    dados = {"referencia": None, "recebido_em": None, "total_proventos": None,
+             "total_descontos": None, "total_liquido": None, "adiantamento": None,
+             "eh_ferias": False, "itens": []}
+
+    v = _extrair_valor_apos(norm, "folha", r"\S+")
+    if v and "feria" in v:
+        dados["eh_ferias"] = True
+
+    v = _extrair_valor_apos(norm, "referencia", r"[a-z]{3}/\d{4}")
+    if v:
+        abrev, ano = v.split("/")
+        num_mes = MESES_ABREV.get(abrev)
+        if num_mes:
+            dados["referencia"] = f"{ano}-{num_mes:02d}"
+
+    v = _extrair_valor_apos(norm, "recebido em", r"\d{2}/\d{2}/\d{4}")
+    if v:
+        dia, mes_v, ano = v.split("/")
+        dados["recebido_em"] = f"{ano}-{mes_v}-{dia}"
+
+    v = _extrair_valor_apos(norm, "total de proventos", r"[\d\.,]+")
+    if v:
+        dados["total_proventos"] = _num_br(v)
+
+    v = _extrair_valor_apos(norm, "total de descontos", r"[\d\.,]+")
+    if v:
+        dados["total_descontos"] = _num_br(v)
+
+    v = _extrair_valor_apos(norm, "total liquido a receber", r"[\d\.,]+")
+    if v:
+        dados["total_liquido"] = _num_br(v)
+
+    v = _extrair_valor_apos(norm, "adiantamento quinzenal", r"[\d\.,]+")
+    if v:
+        dados["adiantamento"] = _num_br(v)
+
+    dados["itens"] = _extrair_itens_holerite(texto)
+
+    return dados
+
+
+# O DANFE-NFC-e imprime cada item em duas linhas (padrão comum a muitos PDVs/ERPs no
+# Brasil, por causa da Lei 12.741/2012 — "Trib:" aparece em quase toda nota fiscal do país):
+#   1 16364 PAO DE ALHO COPACOL 400GR TRA
+#   1UN X 15,99  Trib: 0,00                                15,99
+# Em cupom térmico fotografado o OCR quase sempre erra a coluna do número/código do
+# item (primeira linha) — por isso o regex só exige a segunda linha (qtd/preço), que
+# sai muito mais estável, e pega a descrição da linha anterior por posição.
+PADRAO_LINHA_PRECO_ITEM = re.compile(
+    r"(?P<qtd>[\d]*[.,]?[\d]*)\s*[a-zA-Z]{1,3}\s*[xX]\s*(?P<valor_unit>[\d]+[.,][\d]+)"
+    r"\s+trib:?\s*\S+\s+(?P<valor_total>[\d]+[.,][\d]+)",
+    re.IGNORECASE,
+)
+
+
+def _limpar_descricao_item(linha):
+    return re.sub(r"^[^A-Za-zÀ-ÿ]*\d*\s*", "", linha).strip()
+
+
+def extrair_dados_nota_fiscal(texto, chave_acesso_qr=None):
+    """Lê loja, data, valor total e itens de um cupom fiscal (NFC-e) a partir do
+    texto reconhecido por OCR. Assim como no holerite, é best-effort — a tela de
+    importação sempre deixa o usuário revisar e corrigir tudo antes de lançar."""
+    linhas = [l.strip() for l in texto.splitlines() if l.strip()]
+    loja = linhas[0] if linhas else None
+
+    m = re.search(r"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}", texto)
+    cnpj = m.group(0) if m else None
+
+    m = re.search(r"\d{2}/\d{2}/\d{4}", texto)
+    data = None
+    if m:
+        dia, mes_v, ano = m.group(0).split("/")
+        data = f"{ano}-{mes_v}-{dia}"
+
+    norm = _sem_acento(texto).lower()
+    v = _extrair_valor_apos(norm, "valor total r$", r"[\d\.,]+")
+    valor_total = _num_br(v) if v else None
+
+    itens = []
+    for i, linha in enumerate(linhas):
+        item = PADRAO_LINHA_PRECO_ITEM.search(linha)
+        if not item:
+            continue
+        descricao = _limpar_descricao_item(linhas[i - 1]) if i > 0 else ""
+        itens.append({
+            "descricao": descricao or "Item",
+            "qtd": item.group("qtd") or "1",
+            "valor_unitario": _num_br(item.group("valor_unit")),
+            "valor_total": _num_br(item.group("valor_total")),
+        })
+
+    if valor_total is None and itens:
+        valor_total = round(sum(i["valor_total"] or 0 for i in itens), 2)
+
+    chave_acesso = chave_acesso_qr
+    if not chave_acesso:
+        m = re.search(r"chave de acesso[\s\S]{0,20}?((?:\d[\s.]*){44})", norm)
+        if m:
+            digitos = re.sub(r"\D", "", m.group(1))
+            if len(digitos) == 44:
+                chave_acesso = digitos
+
+    return {
+        "loja": loja, "cnpj": cnpj, "data": data, "valor_total": valor_total,
+        "chave_acesso": chave_acesso, "itens": itens,
+    }
 
 
 def totais_do_mes(conn, mes_ref, usuario_id):
@@ -493,7 +780,7 @@ def garantir_recorrentes(conn, mes, usuario_id):
         if modelo["recorrencia_ate"] and mes > modelo["recorrencia_ate"]:
             continue
         conn.execute(
-            """INSERT INTO lancamentos
+            """INSERT OR IGNORE INTO lancamentos
                (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
                 pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia,
                 recorrencia_ate)
@@ -570,12 +857,14 @@ def usuario_atual():
     row = conn.execute(
         "SELECT id, nome, username, foto, somente_leitura FROM usuarios WHERE id = ?", (uid(),)
     ).fetchone()
-    conn.close()
     if not row:
+        conn.close()
         session.clear()
         return jsonify({"erro": "não autenticado"}), 401
     d = dict(row)
     d["somente_leitura"] = bool(d["somente_leitura"])
+    d["eh_administrador"] = eh_administrador(conn)
+    conn.close()
     return jsonify(d)
 
 
@@ -1454,6 +1743,316 @@ def deletar_meta(item_id):
     return jsonify({"ok": True})
 
 
+# ---------------- Consignados ----------------
+
+@app.route("/api/consignados/config", methods=["GET"])
+def obter_config_consignados():
+    return jsonify(ler_config_consignados())
+
+
+@app.route("/api/consignados/config", methods=["PUT"])
+def definir_config_consignados():
+    conn = get_db()
+    permitido = eh_administrador(conn)
+    conn.close()
+    if not permitido:
+        return jsonify({"erro": "só o administrador pode alterar essa configuração"}), 403
+    data = request.get_json(force=True)
+    gravar_config_consignados({"habilitado": bool(data.get("habilitado"))})
+    return jsonify({"ok": True})
+
+
+@app.route("/api/consignados", methods=["GET"])
+def listar_consignados():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM consignados WHERE usuario_id = ? ORDER BY ativo DESC, criado_em", (uid(),)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/consignados", methods=["POST"])
+def criar_consignado():
+    data = request.get_json(force=True)
+    nome = (data.get("nome") or "").strip()
+    valor_parcela = data.get("valor_parcela")
+    if not nome or not valor_parcela:
+        return jsonify({"erro": "nome e valor da parcela são obrigatórios"}), 400
+    try:
+        valor_parcela = float(valor_parcela)
+    except (TypeError, ValueError):
+        return jsonify({"erro": "valor da parcela inválido"}), 400
+    conn = get_db()
+    conn.execute(
+        """INSERT INTO consignados
+           (usuario_id, nome, valor_parcela, parcela_atual, parcela_total, ativo, observacao, criado_em)
+           VALUES (?, ?, ?, ?, ?, 1, ?, ?)""",
+        (uid(), nome, valor_parcela, data.get("parcela_atual") or None, data.get("parcela_total") or None,
+         (data.get("observacao") or "").strip(), datetime.now().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/consignados/<int:item_id>", methods=["PUT"])
+def editar_consignado(item_id):
+    data = request.get_json(force=True)
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "consignados", item_id):
+        conn.close()
+        return jsonify({"erro": "consignado não encontrado"}), 404
+    campos, valores = [], []
+    if "nome" in data:
+        campos.append("nome = ?")
+        valores.append((data.get("nome") or "").strip())
+    if "valor_parcela" in data:
+        campos.append("valor_parcela = ?")
+        valores.append(float(data["valor_parcela"]))
+    if "parcela_atual" in data:
+        campos.append("parcela_atual = ?")
+        valores.append(data.get("parcela_atual") or None)
+    if "parcela_total" in data:
+        campos.append("parcela_total = ?")
+        valores.append(data.get("parcela_total") or None)
+    if "ativo" in data:
+        campos.append("ativo = ?")
+        valores.append(1 if data.get("ativo") else 0)
+    if "observacao" in data:
+        campos.append("observacao = ?")
+        valores.append((data.get("observacao") or "").strip())
+    if campos:
+        valores.append(item_id)
+        conn.execute(f"UPDATE consignados SET {', '.join(campos)} WHERE id = ?", valores)
+        conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/consignados/<int:item_id>", methods=["DELETE"])
+def deletar_consignado(item_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "consignados", item_id):
+        conn.close()
+        return jsonify({"erro": "consignado não encontrado"}), 404
+    conn.execute("DELETE FROM consignados WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+# ---------------- Holerites ----------------
+
+@app.route("/api/holerites", methods=["GET"])
+def listar_holerites():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM holerites WHERE usuario_id = ? ORDER BY COALESCE(referencia,'') DESC, criado_em DESC",
+        (uid(),),
+    ).fetchall()
+    resultado = []
+    for r in rows:
+        h = dict(r)
+        ids = [i for i in (h.get("lancamento_id"), h.get("lancamento_adiantamento_id")) if i]
+        lancamentos = []
+        if ids:
+            placeholders = ",".join("?" * len(ids))
+            lancamentos = [dict(x) for x in conn.execute(
+                f"SELECT id, descricao, valor, data_pagamento, pago FROM lancamentos "
+                f"WHERE id IN ({placeholders}) ORDER BY data_pagamento",
+                ids,
+            ).fetchall()]
+        h["lancamentos"] = lancamentos
+        try:
+            h["itens"] = json.loads(h.pop("itens_json") or "[]")
+        except ValueError:
+            h["itens"] = []
+        resultado.append(h)
+    conn.close()
+    return jsonify(resultado)
+
+
+@app.route("/api/holerites", methods=["POST"])
+def enviar_holerite():
+    if "arquivo" not in request.files:
+        return jsonify({"erro": "nenhum arquivo enviado"}), 400
+    arquivo = request.files["arquivo"]
+    if arquivo.filename == "":
+        return jsonify({"erro": "arquivo sem nome"}), 400
+    if not arquivo.filename.lower().endswith(".pdf"):
+        return jsonify({"erro": "envie um arquivo PDF"}), 400
+
+    nome_seguro = secure_filename(arquivo.filename)
+    nome_final = f"{uid()}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{nome_seguro}"
+    os.makedirs(HOLERITES_DIR, exist_ok=True)
+    caminho = os.path.join(HOLERITES_DIR, nome_final)
+    arquivo.save(caminho)
+
+    try:
+        leitor = PdfReader(caminho)
+        texto = "\n".join((pagina.extract_text() or "") for pagina in leitor.pages)
+    except Exception:
+        texto = ""
+    dados = extrair_dados_holerite(texto)
+
+    lancar_receita = request.form.get("lancar_receita", "true").lower() != "false"
+    lancamento_id = None
+    lancamento_adiantamento_id = None
+    conn = get_db()
+    if lancar_receita and dados["referencia"]:
+        ano_r, mes_r = dados["referencia"].split("-")
+        rotulo = "Férias" if dados["eh_ferias"] else "Salário"
+        if dados["total_liquido"]:
+            cur = conn.execute(
+                """INSERT INTO lancamentos
+                   (mes, tipo, descricao, valor, vencimento, categoria, pago, data_pagamento, criado_em, usuario_id)
+                   VALUES (?, 'renda', ?, ?, '', 'Salário', 1, ?, ?, ?)""",
+                (dados["referencia"], f"{rotulo} ({mes_r}/{ano_r})", dados["total_liquido"],
+                 dados["recebido_em"] or "", datetime.now().isoformat(), uid()),
+            )
+            lancamento_id = cur.lastrowid
+        if dados["adiantamento"]:
+            cur = conn.execute(
+                """INSERT INTO lancamentos
+                   (mes, tipo, descricao, valor, vencimento, categoria, pago, data_pagamento, criado_em, usuario_id)
+                   VALUES (?, 'renda', ?, ?, '', 'Salário', 1, ?, ?, ?)""",
+                (dados["referencia"], f"Adiantamento quinzenal ({mes_r}/{ano_r})", dados["adiantamento"],
+                 f"{dados['referencia']}-15", datetime.now().isoformat(), uid()),
+            )
+            lancamento_adiantamento_id = cur.lastrowid
+
+    cur = conn.execute(
+        """INSERT INTO holerites
+           (usuario_id, referencia, recebido_em, total_proventos, total_descontos, total_liquido,
+            adiantamento, itens_json, arquivo, lancamento_id, lancamento_adiantamento_id, criado_em)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (uid(), dados["referencia"], dados["recebido_em"], dados["total_proventos"],
+         dados["total_descontos"], dados["total_liquido"], dados["adiantamento"],
+         json.dumps(dados["itens"]), nome_final, lancamento_id, lancamento_adiantamento_id,
+         datetime.now().isoformat()),
+    )
+    conn.commit()
+    novo_id = cur.lastrowid
+    row = dict(conn.execute("SELECT * FROM holerites WHERE id = ?", (novo_id,)).fetchone())
+    row["itens"] = json.loads(row.pop("itens_json") or "[]")
+    conn.close()
+    return jsonify(row), 201
+
+
+@app.route("/api/holerites/<int:item_id>", methods=["PUT"])
+def editar_holerite(item_id):
+    data = request.get_json(force=True)
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "holerites", item_id):
+        conn.close()
+        return jsonify({"erro": "holerite não encontrado"}), 404
+    campos, valores = [], []
+    for campo in ("referencia", "recebido_em"):
+        if campo in data:
+            campos.append(f"{campo} = ?")
+            valores.append(data.get(campo) or None)
+    for campo in ("total_proventos", "total_descontos", "total_liquido", "adiantamento"):
+        if campo in data:
+            campos.append(f"{campo} = ?")
+            valores.append(float(data[campo]) if data[campo] not in (None, "") else None)
+    if campos:
+        valores.append(item_id)
+        conn.execute(f"UPDATE holerites SET {', '.join(campos)} WHERE id = ?", valores)
+        row = conn.execute("SELECT * FROM holerites WHERE id = ?", (item_id,)).fetchone()
+        if row["lancamento_id"] and "total_liquido" in data:
+            conn.execute(
+                "UPDATE lancamentos SET valor = ?, mes = ?, data_pagamento = ? WHERE id = ? AND usuario_id = ?",
+                (row["total_liquido"], row["referencia"], row["recebido_em"] or "", row["lancamento_id"], uid()),
+            )
+        if row["lancamento_adiantamento_id"] and "adiantamento" in data:
+            conn.execute(
+                "UPDATE lancamentos SET valor = ?, mes = ? WHERE id = ? AND usuario_id = ?",
+                (row["adiantamento"], row["referencia"], row["lancamento_adiantamento_id"], uid()),
+            )
+        conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/holerites/<int:item_id>", methods=["DELETE"])
+def deletar_holerite(item_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "holerites", item_id):
+        conn.close()
+        return jsonify({"erro": "holerite não encontrado"}), 404
+    row = conn.execute("SELECT * FROM holerites WHERE id = ?", (item_id,)).fetchone()
+    if row["lancamento_id"]:
+        conn.execute("DELETE FROM lancamentos WHERE id = ? AND usuario_id = ?", (row["lancamento_id"], uid()))
+    if row["lancamento_adiantamento_id"]:
+        conn.execute("DELETE FROM lancamentos WHERE id = ? AND usuario_id = ?", (row["lancamento_adiantamento_id"], uid()))
+    conn.execute("DELETE FROM holerites WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    caminho = os.path.join(HOLERITES_DIR, row["arquivo"])
+    if os.path.exists(caminho):
+        os.remove(caminho)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/notas-fiscais/analisar", methods=["POST"])
+def analisar_nota_fiscal():
+    """Lê uma foto/PDF de cupom fiscal via OCR e devolve os dados encontrados —
+    não grava nada; a criação da despesa é um POST normal em /api/lancamentos."""
+    if "arquivo" not in request.files:
+        return jsonify({"erro": "nenhum arquivo enviado"}), 400
+    arquivo = request.files["arquivo"]
+    if arquivo.filename == "":
+        return jsonify({"erro": "arquivo sem nome"}), 400
+
+    conteudo = arquivo.read()
+    nome = arquivo.filename.lower()
+    try:
+        if nome.endswith(".pdf"):
+            doc = fitz.open(stream=conteudo, filetype="pdf")
+            pix = doc[0].get_pixmap(dpi=500, colorspace=fitz.csRGB, alpha=False)
+            img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        else:
+            img = Image.open(io.BytesIO(conteudo)).convert("RGB")
+    except Exception:
+        return jsonify({"erro": "não foi possível ler o arquivo — envie um PDF ou uma foto (JPG/PNG)"}), 400
+
+    chave_acesso_qr = None
+    try:
+        for resultado in zbar_decode(img):
+            m = re.search(r"p=(\d{44})\|", resultado.data.decode("utf-8", "ignore"))
+            if m:
+                chave_acesso_qr = m.group(1)
+                break
+    except Exception:
+        pass
+
+    # Cupons térmicos fotografados saem com contraste baixo — preto e branco puro
+    # (com um leve realce de nitidez) ajuda bastante o OCR a acertar os dígitos.
+    try:
+        preparada = ImageOps.autocontrast(ImageOps.grayscale(img), cutoff=1)
+        preparada = preparada.point(lambda p: 255 if p > 150 else 0).filter(ImageFilter.SHARPEN)
+        texto = pytesseract.image_to_string(preparada, lang="por", config="--psm 6")
+    except Exception:
+        texto = ""
+
+    dados = extrair_dados_nota_fiscal(texto, chave_acesso_qr)
+    dados["texto_bruto"] = texto[:3000]
+    return jsonify(dados)
+
+
+@app.route("/api/holerites/<int:item_id>/arquivo", methods=["GET"])
+def baixar_holerite(item_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT arquivo FROM holerites WHERE id = ? AND usuario_id = ?", (item_id, uid())
+    ).fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"erro": "holerite não encontrado"}), 404
+    return send_from_directory(HOLERITES_DIR, row["arquivo"])
+
+
 # ---------------- Dashboard ----------------
 
 @app.route("/api/dashboard", methods=["GET"])
@@ -1567,6 +2166,50 @@ def tendencia():
             "saldo": t["receita_total"] - t["despesa_total"],
         })
     conn.close()
+    return jsonify(resultado)
+
+
+@app.route("/api/fluxo-caixa", methods=["GET"])
+def fluxo_caixa():
+    """Entradas, saídas e saldo acumulado dia a dia no mês, pro gráfico de fluxo de caixa."""
+    mes = request.args.get("mes", datetime.now().strftime("%Y-%m"))
+    ano, m = map(int, mes.split("-"))
+    ultimo_dia = calendar.monthrange(ano, m)[1]
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT tipo, valor, COALESCE(NULLIF(data_pagamento,''), vencimento) as data_efetiva "
+        "FROM lancamentos WHERE mes = ? AND eh_transferencia = 0 AND usuario_id = ?",
+        (mes, uid()),
+    ).fetchall()
+    conn.close()
+
+    entradas_dia = [0.0] * (ultimo_dia + 1)
+    saidas_dia = [0.0] * (ultimo_dia + 1)
+    for r in rows:
+        if not r["data_efetiva"]:
+            continue
+        try:
+            dia = int(r["data_efetiva"].split("-")[2])
+        except (ValueError, IndexError):
+            continue
+        if dia < 1 or dia > ultimo_dia:
+            continue
+        if r["tipo"] == "renda":
+            entradas_dia[dia] += r["valor"]
+        else:
+            saidas_dia[dia] += r["valor"]
+
+    resultado = []
+    saldo = 0.0
+    for dia in range(1, ultimo_dia + 1):
+        saldo += entradas_dia[dia] - saidas_dia[dia]
+        resultado.append({
+            "dia": dia,
+            "entradas": round(entradas_dia[dia], 2),
+            "saidas": round(saidas_dia[dia], 2),
+            "saldo_acumulado": round(saldo, 2),
+        })
     return jsonify(resultado)
 
 
@@ -1783,13 +2426,13 @@ def copia_consistente_do_banco(destino):
 
 
 def escrever_zip_backup(destino_stream_ou_caminho):
-    """Monta o .zip com banco + comprovantes + fotos."""
+    """Monta o .zip com banco + comprovantes + fotos + holerites."""
     with tempfile.TemporaryDirectory() as tmp:
         copia_banco = os.path.join(tmp, ARQUIVO_BANCO_NO_ZIP)
         copia_consistente_do_banco(copia_banco)
         with zipfile.ZipFile(destino_stream_ou_caminho, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.write(copia_banco, ARQUIVO_BANCO_NO_ZIP)
-            for pasta, prefixo in ((COMPROVANTES_DIR, "comprovantes"), (FOTOS_DIR, "fotos")):
+            for pasta, prefixo in ((COMPROVANTES_DIR, "comprovantes"), (FOTOS_DIR, "fotos"), (HOLERITES_DIR, "holerites")):
                 if not os.path.isdir(pasta):
                     continue
                 for nome in os.listdir(pasta):
@@ -1967,11 +2610,13 @@ def info_backup():
 
     n_comp, bytes_comp = tamanho_pasta(COMPROVANTES_DIR)
     n_fotos, bytes_fotos = tamanho_pasta(FOTOS_DIR)
+    n_holerites, bytes_holerites = tamanho_pasta(HOLERITES_DIR)
     bytes_banco = os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0
     return jsonify({
         "comprovantes": n_comp,
         "fotos": n_fotos,
-        "tamanho_total_bytes": bytes_banco + bytes_comp + bytes_fotos,
+        "holerites": n_holerites,
+        "tamanho_total_bytes": bytes_banco + bytes_comp + bytes_fotos + bytes_holerites,
     })
 
 
@@ -2018,7 +2663,7 @@ def aplicar_backup(origem_arquivo):
             shutil.copy2(DB_PATH, f"{DB_PATH}.antes-de-restaurar-{carimbo}")
         shutil.copy2(banco_novo, DB_PATH)
 
-        for prefixo, pasta in (("comprovantes", COMPROVANTES_DIR), ("fotos", FOTOS_DIR)):
+        for prefixo, pasta in (("comprovantes", COMPROVANTES_DIR), ("fotos", FOTOS_DIR), ("holerites", HOLERITES_DIR)):
             origem = os.path.join(extraido, prefixo)
             if not os.path.isdir(origem):
                 continue
