@@ -10,14 +10,10 @@ services:
       - "8420:5000"
     volumes:
       - ./data:/data
-    # Para escolher suas próprias credenciais do primeiro usuário, descomente
-    # o bloco abaixo (as DUAS linhas: "environment:" e as variáveis).
-    # Se deixar comentado, uma senha aleatória é gerada sozinha e aparece
-    # no log (docker compose logs) no primeiro start.
-    #
-    # environment:
-    #   ADMIN_USERNAME: admin
-    #   ADMIN_PASSWORD: escolha-uma-senha-forte
-    #   # Opcional: chave de sessão fixa (32+ caracteres aleatórios).
-    #   # Se não definir, é gerada automaticamente em data/.secret_key.
-    #   SECRET_KEY: cole-aqui-uma-chave-aleatoria-longa
+    # Lê as variáveis do arquivo .env (copie o .env.example e preencha).
+    # Sem o .env, ou com alguma variável em branco, o app usa valores padrão
+    # sozinho — ver comentários no .env.example.
+    environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SECRET_KEY: ${SECRET_KEY:-}

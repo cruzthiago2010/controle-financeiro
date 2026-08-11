@@ -4,6 +4,7 @@ data/
 *.sqlite
 *.sqlite3
 .secret_key
+.env
 
 # Logs e artefatos
 *.log
