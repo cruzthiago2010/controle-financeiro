@@ -1,4 +1,5 @@
 import io
+import csv
 import os
 import json
 import time
@@ -51,6 +52,11 @@ app.secret_key = obter_secret_key()
 ROTAS_PUBLICAS = {"/login", "/api/login", "/manifest.json", "/sw.js"}
 
 
+# Rotas de escrita liberadas pra usuário somente-leitura: alternar modo demo,
+# sair, e mexer na própria conta (senha/foto) — não conta como "editar dados".
+PREFIXOS_ESCRITA_LIBERADOS_LEITURA = ("/api/demo", "/api/logout", "/api/usuarios/")
+
+
 @app.before_request
 def exigir_login():
     if request.path.startswith("/static/") or request.path in ROTAS_PUBLICAS:
@@ -62,6 +68,13 @@ def exigir_login():
     if request.path.startswith("/api/"):
         if not session.get("usuario_id"):
             return jsonify({"erro": "não autenticado"}), 401
+        if (
+            request.method not in ("GET", "HEAD", "OPTIONS")
+            and not em_demo()
+            and session.get("somente_leitura")
+            and not request.path.startswith(PREFIXOS_ESCRITA_LIBERADOS_LEITURA)
+        ):
+            return jsonify({"erro": "acesso somente leitura — essa conta não pode fazer alterações"}), 403
         return None
     return None
 
@@ -193,6 +206,30 @@ def init_db(caminho=None, criar_usuario_inicial=True):
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS orcamentos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            categoria TEXT NOT NULL,
+            limite REAL NOT NULL,
+            usuario_id INTEGER,
+            UNIQUE(categoria, usuario_id)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS metas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            valor_alvo REAL NOT NULL,
+            valor_atual REAL DEFAULT 0,
+            prazo TEXT,
+            criado_em TEXT,
+            usuario_id INTEGER
+        )
+        """
+    )
     conn.commit()
     ja_tem_categorias = conn.execute("SELECT COUNT(*) as n FROM categorias").fetchone()["n"]
     if not ja_tem_categorias:
@@ -226,6 +263,7 @@ def init_db(caminho=None, criar_usuario_inicial=True):
         add_col_if_missing(conn, "cartoes", coluna, ddl)
     add_col_if_missing(conn, "categorias", "cor", "ALTER TABLE categorias ADD COLUMN cor TEXT")
     add_col_if_missing(conn, "usuarios", "foto", "ALTER TABLE usuarios ADD COLUMN foto TEXT")
+    add_col_if_missing(conn, "usuarios", "somente_leitura", "ALTER TABLE usuarios ADD COLUMN somente_leitura INTEGER DEFAULT 0")
     # Cada usuário tem seus próprios lançamentos, contas, cartões e dívidas.
     # Categorias, de propósito, continuam compartilhadas entre todos.
     add_col_if_missing(conn, "contas", "usuario_id", "ALTER TABLE contas ADD COLUMN usuario_id INTEGER")
@@ -370,6 +408,25 @@ def mes_anterior(mes):
     return f"{ano}-{m-1:02d}"
 
 
+def totais_do_mes(conn, mes_ref, usuario_id):
+    rows = conn.execute(
+        "SELECT tipo, pago, COALESCE(SUM(valor),0) as total FROM lancamentos "
+        "WHERE mes = ? AND eh_transferencia = 0 AND usuario_id = ? GROUP BY tipo, pago",
+        (mes_ref, usuario_id),
+    ).fetchall()
+    t = {"receita_total": 0.0, "receita_recebida": 0.0, "despesa_total": 0.0, "despesa_paga": 0.0}
+    for r in rows:
+        if r["tipo"] == "renda":
+            t["receita_total"] += r["total"]
+            if r["pago"]:
+                t["receita_recebida"] += r["total"]
+        else:
+            t["despesa_total"] += r["total"]
+            if r["pago"]:
+                t["despesa_paga"] += r["total"]
+    return t
+
+
 def mes_seguinte(mes):
     ano, m = map(int, mes.split("-"))
     if m == 12:
@@ -490,8 +547,15 @@ def login():
     session.clear()
     session["usuario_id"] = row["id"]
     session["usuario_nome"] = row["nome"]
+    session["somente_leitura"] = bool(row["somente_leitura"])
     session.permanent = True
-    return jsonify({"ok": True, "usuario": {"id": row["id"], "nome": row["nome"], "username": row["username"]}})
+    return jsonify({
+        "ok": True,
+        "usuario": {
+            "id": row["id"], "nome": row["nome"], "username": row["username"],
+            "somente_leitura": bool(row["somente_leitura"]),
+        },
+    })
 
 
 @app.route("/api/logout", methods=["POST"])
@@ -503,20 +567,29 @@ def logout():
 @app.route("/api/usuario-atual", methods=["GET"])
 def usuario_atual():
     conn = get_db()
-    row = conn.execute("SELECT id, nome, username, foto FROM usuarios WHERE id = ?", (uid(),)).fetchone()
+    row = conn.execute(
+        "SELECT id, nome, username, foto, somente_leitura FROM usuarios WHERE id = ?", (uid(),)
+    ).fetchone()
     conn.close()
     if not row:
         session.clear()
         return jsonify({"erro": "não autenticado"}), 401
-    return jsonify(dict(row))
+    d = dict(row)
+    d["somente_leitura"] = bool(d["somente_leitura"])
+    return jsonify(d)
 
 
 @app.route("/api/usuarios", methods=["GET"])
 def listar_usuarios():
     conn = get_db()
-    rows = conn.execute("SELECT id, nome, username, criado_em, foto FROM usuarios ORDER BY nome").fetchall()
+    rows = conn.execute(
+        "SELECT id, nome, username, criado_em, foto, somente_leitura FROM usuarios ORDER BY nome"
+    ).fetchall()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    usuarios = [dict(r) for r in rows]
+    for u in usuarios:
+        u["somente_leitura"] = bool(u["somente_leitura"])
+    return jsonify(usuarios)
 
 
 @app.route("/api/usuarios", methods=["POST"])
@@ -525,13 +598,14 @@ def criar_usuario():
     nome = data.get("nome", "").strip()
     username = (data.get("username") or "").strip().lower()
     senha = data.get("senha") or ""
+    somente_leitura = bool(data.get("somente_leitura"))
     if not nome or not username or len(senha) < 4:
         return jsonify({"erro": "nome, usuário e senha (mín. 4 caracteres) são obrigatórios"}), 400
     conn = get_db()
     try:
         conn.execute(
-            "INSERT INTO usuarios (nome, username, senha_hash, criado_em) VALUES (?, ?, ?, ?)",
-            (nome, username, generate_password_hash(senha), datetime.now().isoformat()),
+            "INSERT INTO usuarios (nome, username, senha_hash, criado_em, somente_leitura) VALUES (?, ?, ?, ?, ?)",
+            (nome, username, generate_password_hash(senha), datetime.now().isoformat(), int(somente_leitura)),
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -539,6 +613,19 @@ def criar_usuario():
         return jsonify({"erro": "esse usuário já existe"}), 400
     conn.close()
     return jsonify({"ok": True}), 201
+
+
+@app.route("/api/usuarios/<int:item_id>/somente-leitura", methods=["PUT"])
+def alternar_somente_leitura(item_id):
+    data = request.get_json(force=True)
+    somente_leitura = bool(data.get("somente_leitura"))
+    conn = get_db()
+    conn.execute("UPDATE usuarios SET somente_leitura = ? WHERE id = ?", (int(somente_leitura), item_id))
+    conn.commit()
+    conn.close()
+    if item_id == uid():
+        session["somente_leitura"] = somente_leitura
+    return jsonify({"ok": True})
 
 
 @app.route("/api/usuarios/<int:item_id>/senha", methods=["PUT"])
@@ -679,6 +766,64 @@ def deletar_categoria(item_id):
     return jsonify({"ok": True})
 
 
+# ---------------- Orçamento por categoria ----------------
+
+@app.route("/api/orcamentos", methods=["GET"])
+def listar_orcamentos():
+    mes = request.args.get("mes", datetime.now().strftime("%Y-%m"))
+    conn = get_db()
+    orcamentos = conn.execute(
+        "SELECT categoria, limite FROM orcamentos WHERE usuario_id = ?", (uid(),)
+    ).fetchall()
+    gastos = conn.execute(
+        "SELECT COALESCE(NULLIF(categoria,''),'Sem categoria') as categoria, COALESCE(SUM(valor),0) as gasto "
+        "FROM lancamentos WHERE mes = ? AND tipo = 'despesa' AND eh_transferencia = 0 AND usuario_id = ? "
+        "GROUP BY categoria",
+        (mes, uid()),
+    ).fetchall()
+    conn.close()
+    gasto_por_categoria = {r["categoria"]: r["gasto"] for r in gastos}
+    resultado = []
+    for o in orcamentos:
+        resultado.append({
+            "categoria": o["categoria"],
+            "limite": o["limite"],
+            "gasto": gasto_por_categoria.get(o["categoria"], 0.0),
+        })
+    return jsonify(resultado)
+
+
+@app.route("/api/orcamentos", methods=["POST"])
+def definir_orcamento():
+    data = request.get_json(force=True)
+    categoria = (data.get("categoria") or "").strip()
+    limite = data.get("limite")
+    if not categoria or limite is None:
+        return jsonify({"erro": "categoria e limite são obrigatórios"}), 400
+    try:
+        limite = float(limite)
+    except (TypeError, ValueError):
+        return jsonify({"erro": "limite inválido"}), 400
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO orcamentos (categoria, limite, usuario_id) VALUES (?, ?, ?) "
+        "ON CONFLICT(categoria, usuario_id) DO UPDATE SET limite = excluded.limite",
+        (categoria, limite, uid()),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/orcamentos/<path:categoria>", methods=["DELETE"])
+def remover_orcamento(categoria):
+    conn = get_db()
+    conn.execute("DELETE FROM orcamentos WHERE categoria = ? AND usuario_id = ?", (categoria, uid()))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/meses", methods=["GET"])
 def listar_meses():
     conn = get_db()
@@ -704,6 +849,42 @@ def listar_lancamentos():
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/lancamentos/exportar-csv", methods=["GET"])
+def exportar_lancamentos_csv():
+    mes = request.args.get("mes", datetime.now().strftime("%Y-%m"))
+    conn = get_db()
+    garantir_recorrentes(conn, mes, uid())
+    rows = conn.execute(
+        "SELECT tipo, descricao, valor, vencimento, categoria, conta, pago, data_pagamento, observacao "
+        "FROM lancamentos WHERE mes = ? AND usuario_id = ? AND eh_transferencia = 0 ORDER BY tipo, vencimento",
+        (mes, uid()),
+    ).fetchall()
+    conn.close()
+
+    saida = io.StringIO()
+    escritor = csv.writer(saida, delimiter=";")
+    escritor.writerow(["Tipo", "Descrição", "Valor", "Vencimento", "Categoria", "Conta", "Pago", "Data pagamento", "Observação"])
+    for r in rows:
+        escritor.writerow([
+            "Receita" if r["tipo"] == "renda" else "Despesa",
+            r["descricao"],
+            f"{r['valor']:.2f}".replace(".", ","),
+            r["vencimento"] or "",
+            r["categoria"] or "",
+            r["conta"] or "",
+            "Sim" if r["pago"] else "Não",
+            r["data_pagamento"] or "",
+            r["observacao"] or "",
+        ])
+
+    conteudo = "﻿" + saida.getvalue()  # BOM pra acentuação abrir certo no Excel
+    return app.response_class(
+        conteudo,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="lancamentos-{mes}.csv"'},
+    )
 
 
 def resolver_conta(conn, conta_id):
@@ -1198,6 +1379,81 @@ def deletar_cartao(item_id):
     return jsonify({"ok": True})
 
 
+# ---------------- Metas de economia ----------------
+
+@app.route("/api/metas", methods=["GET"])
+def listar_metas():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM metas WHERE usuario_id = ? ORDER BY criado_em", (uid(),)
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/metas", methods=["POST"])
+def criar_meta():
+    data = request.get_json(force=True)
+    nome = (data.get("nome") or "").strip()
+    valor_alvo = data.get("valor_alvo")
+    prazo = data.get("prazo") or None
+    if not nome or not valor_alvo:
+        return jsonify({"erro": "nome e valor alvo são obrigatórios"}), 400
+    try:
+        valor_alvo = float(valor_alvo)
+    except (TypeError, ValueError):
+        return jsonify({"erro": "valor alvo inválido"}), 400
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO metas (nome, valor_alvo, valor_atual, prazo, criado_em, usuario_id) "
+        "VALUES (?, ?, 0, ?, ?, ?)",
+        (nome, valor_alvo, prazo, datetime.now().isoformat(), uid()),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/metas/<int:item_id>", methods=["PUT"])
+def editar_meta(item_id):
+    data = request.get_json(force=True)
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "metas", item_id):
+        conn.close()
+        return jsonify({"erro": "meta não encontrada"}), 404
+    campos, valores = [], []
+    if "nome" in data:
+        campos.append("nome = ?")
+        valores.append((data.get("nome") or "").strip())
+    if "valor_alvo" in data:
+        campos.append("valor_alvo = ?")
+        valores.append(float(data["valor_alvo"]))
+    if "valor_atual" in data:
+        campos.append("valor_atual = ?")
+        valores.append(float(data["valor_atual"]))
+    if "prazo" in data:
+        campos.append("prazo = ?")
+        valores.append(data.get("prazo") or None)
+    if campos:
+        valores.append(item_id)
+        conn.execute(f"UPDATE metas SET {', '.join(campos)} WHERE id = ?", valores)
+        conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/metas/<int:item_id>", methods=["DELETE"])
+def deletar_meta(item_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "metas", item_id):
+        conn.close()
+        return jsonify({"erro": "meta não encontrada"}), 404
+    conn.execute("DELETE FROM metas WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
 # ---------------- Dashboard ----------------
 
 @app.route("/api/dashboard", methods=["GET"])
@@ -1213,26 +1469,8 @@ def dashboard():
     conn = get_db()
     garantir_recorrentes(conn, mes, uid())
 
-    def totais_do_mes(mes_ref):
-        rows = conn.execute(
-            "SELECT tipo, pago, COALESCE(SUM(valor),0) as total FROM lancamentos "
-            "WHERE mes = ? AND eh_transferencia = 0 AND usuario_id = ? GROUP BY tipo, pago",
-            (mes_ref, uid()),
-        ).fetchall()
-        t = {"receita_total": 0.0, "receita_recebida": 0.0, "despesa_total": 0.0, "despesa_paga": 0.0}
-        for r in rows:
-            if r["tipo"] == "renda":
-                t["receita_total"] += r["total"]
-                if r["pago"]:
-                    t["receita_recebida"] += r["total"]
-            else:
-                t["despesa_total"] += r["total"]
-                if r["pago"]:
-                    t["despesa_paga"] += r["total"]
-        return t
-
-    atual = totais_do_mes(mes)
-    anterior = totais_do_mes(mes_anterior(mes))
+    atual = totais_do_mes(conn, mes, uid())
+    anterior = totais_do_mes(conn, mes_anterior(mes), uid())
 
     receita_total = atual["receita_total"]
     receita_recebida = atual["receita_recebida"]
@@ -1300,6 +1538,36 @@ def dashboard():
         "mes_anterior": {"receita": anterior["receita_total"], "despesa": anterior["despesa_total"]},
         "mes_atual_grafico": {"receita": receita_total, "despesa": despesa_total},
     })
+
+
+@app.route("/api/tendencia", methods=["GET"])
+def tendencia():
+    """Receita, despesa e saldo dos últimos N meses (padrão 6), pro gráfico de tendência."""
+    mes_final = request.args.get("mes", datetime.now().strftime("%Y-%m"))
+    try:
+        n_meses = max(2, min(24, int(request.args.get("meses", 6))))
+    except (TypeError, ValueError):
+        n_meses = 6
+
+    meses = []
+    m = mes_final
+    for _ in range(n_meses):
+        meses.append(m)
+        m = mes_anterior(m)
+    meses.reverse()
+
+    conn = get_db()
+    resultado = []
+    for m in meses:
+        t = totais_do_mes(conn, m, uid())
+        resultado.append({
+            "mes": m,
+            "receita": t["receita_total"],
+            "despesa": t["despesa_total"],
+            "saldo": t["receita_total"] - t["despesa_total"],
+        })
+    conn.close()
+    return jsonify(resultado)
 
 
 @app.route("/api/resumo", methods=["GET"])

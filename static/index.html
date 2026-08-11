@@ -58,7 +58,7 @@
   }
   button:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(91,141,239,0.35);}
   button:active{transform:translateY(0) scale(0.98);}
-  button.secondary{background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;}
+  button.secondary, a.secondary{background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;}
   button.secondary:hover{background:var(--card3); box-shadow:none;}
   button.danger{background:transparent; color:var(--red); padding:4px 8px; font-size:0.85rem; box-shadow:none;}
   button.danger:hover{background:rgba(255,107,107,0.1); transform:none; box-shadow:none;}
@@ -151,6 +151,51 @@
   .categoria-card .dot{width:16px; height:16px; border-radius:50%; flex:none; border:2px solid var(--card2);}
   .categoria-card .nome{flex:1; min-width:0; font-weight:600; font-size:0.87rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .categoria-card .acoes{display:flex; gap:1px; flex:none;}
+
+  /* Orçamento por categoria */
+  .orcamento-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; box-shadow:var(--shadow-card);}
+  .orcamento-card .orcamento-topo{display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; margin-bottom:8px; gap:8px;}
+  .orcamento-card .orcamento-nome{font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .orcamento-card .orcamento-valores{color:var(--muted); font-size:0.8rem; flex:none;}
+  .orcamento-barra{height:8px; border-radius:999px; background:var(--card2); overflow:hidden;}
+  .orcamento-barra .preenchido{height:100%; border-radius:999px; background:var(--green); transition:width 0.3s;}
+  .orcamento-barra .preenchido.alerta{background:var(--yellow);}
+  .orcamento-barra .preenchido.estourado{background:var(--red);}
+  .orcamento-card .orcamento-acoes{display:flex; gap:1px; flex:none;}
+
+  /* Metas de economia */
+  .meta-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card);}
+  .meta-card .meta-topo{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px;}
+  .meta-card .meta-nome{font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .meta-card .meta-prazo{font-size:0.72rem; color:var(--muted);}
+  .meta-card .meta-valores{display:flex; justify-content:space-between; font-size:0.82rem; margin:8px 0 6px; color:var(--muted);}
+  .meta-card .meta-acoes{display:flex; gap:6px; margin-top:10px;}
+  .meta-card .meta-acoes input{flex:1;}
+  .metas-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:10px;}
+
+  /* Cartão perto/passando do limite */
+  .aviso-limite{margin-top:8px; font-size:0.76rem; font-weight:700; color:var(--yellow);}
+  .aviso-limite.estourado{color:var(--red);}
+
+  /* Acesso somente-leitura: esconde tudo que edita/cria/exclui dado */
+  body.somente-leitura .add-form,
+  body.somente-leitura .fab-container,
+  body.somente-leitura .item .acoes,
+  body.somente-leitura .categoria-card .acoes,
+  body.somente-leitura .cartao-acoes,
+  body.somente-leitura .conta-acoes,
+  body.somente-leitura .orcamento-card .orcamento-acoes,
+  body.somente-leitura .meta-card .meta-acoes,
+  body.somente-leitura #btnAbrirTransferencia,
+  body.somente-leitura #btnAdicionarUsuario,
+  body.somente-leitura .orcamento-form{
+    display:none !important;
+  }
+  .badge-leitura{
+    display:none; align-items:center; gap:6px; background:rgba(245,196,81,0.15); border:1px solid var(--yellow);
+    color:var(--yellow); font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px; margin-left:8px;
+  }
+  body.somente-leitura .badge-leitura{display:inline-flex;}
 
   button.icon{background:transparent; color:var(--muted); padding:4px 6px; font-size:0.9rem; box-shadow:none;}
   button.icon:hover{background:var(--card2); color:var(--text); transform:none;}
@@ -538,12 +583,14 @@
       <button class="nav-item" data-tab="categorias" title="Categorias"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span><span class="nav-label">Categorias</span></button>
       <button class="nav-item" data-tab="calendario" title="Calendário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendario"/></svg></span><span class="nav-label">Calendário</span></button>
       <button class="nav-item" data-tab="cartoes" title="Cartões"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cartao"/></svg></span><span class="nav-label">Cartões</span></button>
+      <button class="nav-item" data-tab="metas" title="Metas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bussola"/></svg></span><span class="nav-label">Metas</span></button>
       <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
     </nav>
     <div class="sidebar-rodape">
       <div class="sidebar-usuario" id="sidebarUsuario" title="Trocar senha">
         <span class="usuario-avatar" id="usuarioAvatar">?</span>
         <span class="nav-label" id="usuarioNomeLabel">...</span>
+        <span class="badge-leitura" title="Somente leitura">Leitura</span>
       </div>
       <button class="nav-item" id="btnAdicionarUsuario" title="Adicionar usuário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg></span><span class="nav-label">Adicionar usuário</span></button>
       <button class="nav-item" id="btnSair" title="Sair"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sair"/></svg></span><span class="nav-label">Sair</span></button>
@@ -609,6 +656,11 @@
     </div>
 
     <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Tendência (últimos 6 meses)</h2>
+      <div class="chart-box"><canvas id="chartTendencia"></canvas></div>
+    </div>
+
+    <div class="secao">
       <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> Contas vencendo nos próximos 7 dias</h2>
       <div id="listaVencendo"></div>
     </div>
@@ -642,6 +694,12 @@
 
   <!-- ===================== LANÇAMENTOS ===================== -->
   <section class="painel" id="painel-lancamentos">
+
+    <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+      <a class="secondary" id="btnExportarCsv" href="#" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:9px 14px; border-radius:var(--radius-sm);">
+        <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Exportar CSV
+      </a>
+    </div>
 
     <div class="secao pendentes" id="secaoPendentes" style="display:none;">
       <h2 style="color:var(--yellow);"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> Contas pendentes do mês</h2>
@@ -691,6 +749,15 @@
       <h2>Categorias de Despesa</h2>
       <div class="categorias-grid" id="listaCategoriasDespesa"></div>
     </div>
+    <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-carteira"/></svg> Orçamento mensal por categoria</h2>
+      <div id="listaOrcamentos" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+    <form class="add-form orcamento-form" id="orcamentoForm">
+      <select id="orcamentoFormCategoria"></select>
+      <input type="number" id="orcamentoFormLimite" placeholder="Limite mensal (R$)" step="0.01" min="0" required>
+      <button type="submit">Definir orçamento</button>
+    </form>
     <form class="add-form" id="categoriaForm">
       <select id="categoriaFormTipo">
         <option value="despesa">Despesa</option>
@@ -727,6 +794,20 @@
       <input type="number" id="cartaoDiaVenc" placeholder="Dia de vencimento" min="1" max="31">
       <select id="cartaoConta"><option value="">Sem conta vinculada</option></select>
       <button type="submit">Adicionar cartão</button>
+    </form>
+  </section>
+
+  <!-- ===================== METAS ===================== -->
+  <section class="painel" id="painel-metas">
+    <div class="secao">
+      <h2>Metas de economia</h2>
+      <div class="metas-grid" id="listaMetas"></div>
+    </div>
+    <form class="add-form" id="metaForm">
+      <input type="text" id="metaNome" placeholder="Nome da meta (ex: Viagem, Reserva de emergência)" required>
+      <input type="number" id="metaValorAlvo" placeholder="Valor alvo (R$)" step="0.01" min="0.01" required>
+      <input type="month" id="metaPrazo" placeholder="Prazo (opcional)">
+      <button type="submit">Criar meta</button>
     </form>
   </section>
 
@@ -1032,6 +1113,10 @@
     <input type="text" id="novoUsuarioUsername" placeholder="ex: esposa" autocapitalize="off">
     <label>Senha</label>
     <input type="password" id="novoUsuarioSenha" placeholder="mínimo 4 caracteres">
+    <label class="toggle-row">
+      Somente leitura (não pode editar, só ver)
+      <span class="toggle-switch"><input type="checkbox" id="novoUsuarioSomenteLeitura"><span class="toggle-slider"></span></span>
+    </label>
     <div class="modal-acoes">
       <button class="secondary" type="button" id="novoUsuarioCancelar">Cancelar</button>
       <button type="button" id="novoUsuarioSalvar">Adicionar</button>
@@ -1099,7 +1184,7 @@ const ICO = {
 };
 let mesAtual = null;
 let categoriasCache = {receita:[], despesa:[]};
-let chartComparacao = null, chartCategoria = null;
+let chartComparacao = null, chartCategoria = null, chartTendencia = null;
 let itensPorId = {};
 let diaSelecionadoCalendario = null;
 let lancamentosCache = [];
@@ -1308,6 +1393,7 @@ async function carregarCategorias(){
     });
     atualizarSelectCategoria();
     renderizarPainelCategorias();
+    carregarOrcamentos();
   } catch (e) { /* toast já exibido pelo apiFetch */ }
 }
 
@@ -1336,7 +1422,67 @@ function renderizarPainelCategorias(){
   const listaDespesa = categoriasCache.despesa_full || [];
   if (listaDespesa.length === 0) desp.innerHTML = `<div class="empty">Nenhuma categoria de despesa ainda.</div>`;
   listaDespesa.forEach(c => desp.appendChild(criarCard(c)));
+
+  const selOrcamento = document.getElementById("orcamentoFormCategoria");
+  const valorAtual = selOrcamento.value;
+  selOrcamento.innerHTML = "";
+  listaDespesa.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c.nome; opt.textContent = c.nome;
+    selOrcamento.appendChild(opt);
+  });
+  if (valorAtual) selOrcamento.value = valorAtual;
 }
+
+async function carregarOrcamentos(){
+  const container = document.getElementById("listaOrcamentos");
+  try {
+    const res = await apiFetch(`${API}/orcamentos?mes=${mesAtual}`, undefined, {erro:"Não foi possível carregar o orçamento"});
+    const orcamentos = await res.json();
+    container.innerHTML = "";
+    if (orcamentos.length === 0){
+      container.innerHTML = `<div class="empty">Nenhum orçamento definido pra esse mês ainda.</div>`;
+      return;
+    }
+    orcamentos.forEach(o => {
+      const pct = o.limite > 0 ? Math.min(100, (o.gasto / o.limite) * 100) : 0;
+      const classe = o.gasto > o.limite ? "estourado" : (pct >= 80 ? "alerta" : "");
+      const div = document.createElement("div");
+      div.className = "orcamento-card";
+      div.innerHTML = `
+        <div class="orcamento-topo">
+          <span class="orcamento-nome">${escapeHtml(o.categoria)}</span>
+          <span class="orcamento-valores">${formatMoeda(o.gasto)} / ${formatMoeda(o.limite)}</span>
+          <div class="orcamento-acoes">
+            <button class="icon danger" title="Remover orçamento">${ICO.x}</button>
+          </div>
+        </div>
+        <div class="orcamento-barra"><div class="preenchido ${classe}" style="width:${pct}%"></div></div>
+      `;
+      div.querySelector(".orcamento-acoes button").addEventListener("click", async () => {
+        try {
+          await apiFetch(`${API}/orcamentos/${encodeURIComponent(o.categoria)}`, {method:"DELETE"},
+            {sucesso:"Orçamento removido", erro:"Não foi possível remover"});
+          carregarOrcamentos();
+        } catch (e) {}
+      });
+      container.appendChild(div);
+    });
+  } catch (e) { /* toast já exibido pelo apiFetch */ }
+}
+
+document.getElementById("orcamentoForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const categoria = document.getElementById("orcamentoFormCategoria").value;
+  const limite = parseFloat(document.getElementById("orcamentoFormLimite").value);
+  if (!categoria || !limite){ showToast("Escolha a categoria e um limite válido", "erro"); return; }
+  try {
+    await apiFetch(`${API}/orcamentos`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({categoria, limite})},
+      {sucesso:"Orçamento definido", erro:"Não foi possível definir o orçamento"});
+    document.getElementById("orcamentoFormLimite").value = "";
+    carregarOrcamentos();
+  } catch (e) {}
+});
 
 document.getElementById("categoriaForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -1690,7 +1836,7 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
 async function carregarTudo(){
   diaSelecionadoCalendario = null;
   await carregarContas();
-  await Promise.all([carregarLancamentos(), carregarDashboard(), carregarCartoes()]);
+  await Promise.all([carregarLancamentos(), carregarDashboard(), carregarCartoes(), carregarOrcamentos()]);
   if (document.getElementById("painel-calendario").classList.contains("ativo")){
     await carregarCalendario();
   }
@@ -1819,6 +1965,7 @@ async function excluirConta(id){
 async function carregarLancamentos(){
   document.getElementById("listaRenda").innerHTML = `<div class="loading-msg">Carregando...</div>`;
   document.getElementById("listaDespesa").innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  document.getElementById("btnExportarCsv").href = `${API}/lancamentos/exportar-csv?mes=${mesAtual}`;
   try {
     const [lancRes] = await Promise.all([
       apiFetch(`${API}/lancamentos?mes=${mesAtual}`, undefined, {erro:"Não foi possível carregar os lançamentos"}),
@@ -2136,6 +2283,28 @@ async function carregarDashboard(){
     options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right", labels:{color:corTexto, boxWidth:12, font:{size:10}}}}}
   });
 
+  // Gráfico de tendência (últimos meses)
+  try {
+    const resTend = await apiFetch(`${API}/tendencia?mes=${mesAtual}&meses=6`, undefined, {erro:"Não foi possível carregar a tendência"});
+    const tend = await resTend.json();
+    const ctxTend = document.getElementById("chartTendencia").getContext("2d");
+    if (chartTendencia) chartTendencia.destroy();
+    chartTendencia = new Chart(ctxTend, {
+      type: "line",
+      data: {
+        labels: tend.map(t => formatMes(t.mes)),
+        datasets: [
+          {label:"Receitas", data: tend.map(t => t.receita), borderColor:"#3ecf8e", backgroundColor:"rgba(62,207,142,0.15)", tension:0.3, fill:true},
+          {label:"Despesas", data: tend.map(t => t.despesa), borderColor:"#ff6b6b", backgroundColor:"rgba(255,107,107,0.15)", tension:0.3, fill:true},
+          {label:"Saldo", data: tend.map(t => t.saldo), borderColor:"#5b8def", backgroundColor:"rgba(91,141,239,0.15)", tension:0.3, fill:true},
+        ]
+      },
+      options: {responsive:true, maintainAspectRatio:false,
+        scales:{x:{ticks:{color:corMuted}, grid:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade}}},
+        plugins:{legend:{position:"bottom", labels:{color:corTexto, boxWidth:12, font:{size:10}}}, tooltip:{callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
+    });
+  } catch (e) { /* toast já exibido pelo apiFetch */ }
+
   // Resumo por conta
   const contasContainer = document.getElementById("listaContasResumo");
   contasContainer.innerHTML = "";
@@ -2301,6 +2470,7 @@ async function carregarCartoes(){
         <div class="item-info"><div class="rotulo">Vencimento</div><div class="valor-info">${c.dia_vencimento ? "dia " + c.dia_vencimento : "-"}</div></div>
       </div>
       <div class="barra-progresso"><div class="fill" style="width:${uso}%; background:${corBarra};"></div></div>
+      ${uso >= 100 ? `<div class="aviso-limite estourado">Limite estourado</div>` : uso >= 80 ? `<div class="aviso-limite">Perto do limite (${uso}% usado)</div>` : ""}
       <div class="cartao-rodape">
         <span class="badge ${c.fatura_paga ? 'paga' : 'aberta'}">${c.fatura_paga ? '✓ Fatura paga' : 'Fatura aberta'}</span>
         <button class="secondary" onclick="alternarFaturaCartao(${c.id}, ${c.fatura_paga ? 0 : 1})">${c.fatura_paga ? 'Reabrir fatura' : 'Marcar como paga'}</button>
@@ -2375,6 +2545,75 @@ async function excluirCartao(id){
     carregarDashboard();
   } catch (e) {}
 }
+
+// ---------- Metas de economia ----------
+let metasCache = [];
+
+async function carregarMetas(){
+  const container = document.getElementById("listaMetas");
+  container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const res = await apiFetch(`${API}/metas`, undefined, {erro:"Não foi possível carregar as metas"});
+    metasCache = await res.json();
+  } catch (e) {
+    container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    return;
+  }
+  container.innerHTML = "";
+  if (metasCache.length === 0){ container.innerHTML = `<div class="empty">Nenhuma meta criada ainda.</div>`; return; }
+  metasCache.forEach(m => {
+    const pct = m.valor_alvo > 0 ? Math.min(100, (m.valor_atual / m.valor_alvo) * 100) : 0;
+    const div = document.createElement("div");
+    div.className = "meta-card";
+    div.innerHTML = `
+      <div class="meta-topo">
+        <span class="meta-nome">${escapeHtml(m.nome)}</span>
+        <button class="icon danger" title="Excluir meta">${ICO.x}</button>
+      </div>
+      ${m.prazo ? `<div class="meta-prazo">Prazo: ${formatMes(m.prazo)}</div>` : ""}
+      <div class="orcamento-barra" style="margin-top:8px;"><div class="preenchido ${pct>=100?'':(pct>=80?'alerta':'')}" style="width:${pct}%"></div></div>
+      <div class="meta-valores"><span>${formatMoeda(m.valor_atual)}</span><span>${formatMoeda(m.valor_alvo)}</span></div>
+      <div class="meta-acoes">
+        <input type="number" step="0.01" placeholder="Adicionar valor (R$)">
+        <button type="button" class="secondary">+ Adicionar</button>
+      </div>
+    `;
+    div.querySelector(".meta-topo button").addEventListener("click", async () => {
+      if (!confirm("Excluir esta meta?")) return;
+      try {
+        await apiFetch(`${API}/metas/${m.id}`, {method:"DELETE"}, {sucesso:"Meta excluída", erro:"Não foi possível excluir"});
+        carregarMetas();
+      } catch (e) {}
+    });
+    const input = div.querySelector(".meta-acoes input");
+    div.querySelector(".meta-acoes button").addEventListener("click", async () => {
+      const valor = parseFloat(input.value);
+      if (!valor) return;
+      try {
+        await apiFetch(`${API}/metas/${m.id}`, {method:"PUT", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({valor_atual: m.valor_atual + valor})},
+          {sucesso:"Valor adicionado à meta", erro:"Não foi possível atualizar"});
+        carregarMetas();
+      } catch (e) {}
+    });
+    container.appendChild(div);
+  });
+}
+
+document.getElementById("metaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = {
+    nome: document.getElementById("metaNome").value.trim(),
+    valor_alvo: document.getElementById("metaValorAlvo").value,
+    prazo: document.getElementById("metaPrazo").value || null,
+  };
+  try {
+    await apiFetch(`${API}/metas`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Meta criada", erro:"Não foi possível criar a meta"});
+    e.target.reset();
+    carregarMetas();
+  } catch (e) {}
+});
 
 // ---------- Edição de lançamento ----------
 function fecharTodosOsModais(){
@@ -2534,6 +2773,9 @@ document.querySelectorAll(".nav-item").forEach(btn => {
   if (btn.dataset.tab === "backup"){
     btn.addEventListener("click", () => { carregarBackups(); carregarInfoBackup(); });
   }
+  if (btn.dataset.tab === "metas"){
+    btn.addEventListener("click", carregarMetas);
+  }
 });
 
 // ---------- Sessão / usuários ----------
@@ -2560,6 +2802,7 @@ async function carregarUsuarioAtual(){
     usuarioAtual = await res.json();
     pintarAvatar(document.getElementById("usuarioAvatar"), usuarioAtual);
     document.getElementById("usuarioNomeLabel").textContent = usuarioAtual.nome;
+    document.body.classList.toggle("somente-leitura", !!usuarioAtual.somente_leitura);
   } catch (e) {}
 }
 
@@ -2778,6 +3021,7 @@ document.getElementById("btnAdicionarUsuario").addEventListener("click", () => {
   document.getElementById("novoUsuarioNome").value = "";
   document.getElementById("novoUsuarioUsername").value = "";
   document.getElementById("novoUsuarioSenha").value = "";
+  document.getElementById("novoUsuarioSomenteLeitura").checked = false;
   document.getElementById("modalNovoUsuario").classList.add("ativo");
 });
 document.getElementById("novoUsuarioCancelar").addEventListener("click", () => {
@@ -2788,6 +3032,7 @@ document.getElementById("novoUsuarioSalvar").addEventListener("click", async () 
     nome: document.getElementById("novoUsuarioNome").value.trim(),
     username: document.getElementById("novoUsuarioUsername").value.trim(),
     senha: document.getElementById("novoUsuarioSenha").value,
+    somente_leitura: document.getElementById("novoUsuarioSomenteLeitura").checked,
   };
   try {
     await apiFetch(`${API}/usuarios`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
