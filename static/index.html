@@ -89,6 +89,26 @@
   .destaque .valor-grande{font-size:1.55rem; font-weight:800; color:#fff;}
   .destaque .texto{font-size:0.85rem; color:var(--muted); margin-top:5px;}
 
+  .panorama-card{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg);
+    padding:18px; margin:16px 0; box-shadow:var(--shadow-card);
+  }
+  .panorama-topo{display:flex; gap:14px; align-items:flex-start;}
+  .panorama-icone{
+    flex:none; width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-size:1.05rem; font-weight:800;
+  }
+  .panorama-titulo{font-weight:800; font-size:0.98rem; margin-bottom:4px;}
+  .panorama-texto{font-size:0.86rem; color:var(--muted); line-height:1.5;}
+  .panorama-avisos{margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); display:flex; flex-direction:column; gap:6px;}
+  .panorama-aviso{font-size:0.8rem; color:var(--yellow); line-height:1.4;}
+  .panorama-good .panorama-icone{background:rgba(62,207,142,0.15); color:var(--green);}
+  .panorama-warn .panorama-icone{background:rgba(245,196,81,0.15); color:var(--yellow);}
+  .panorama-critical .panorama-icone{background:rgba(255,107,107,0.15); color:var(--red);}
+  .panorama-good .panorama-titulo{color:var(--green);}
+  .panorama-warn .panorama-titulo{color:var(--yellow);}
+  .panorama-critical .panorama-titulo{color:var(--red);}
+
   .secao{margin:24px 0;}
   .secao h2{
     font-size:0.82rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;
@@ -668,6 +688,8 @@
 
   <!-- ===================== DASHBOARD ===================== -->
   <section class="painel ativo" id="painel-dashboard">
+    <div class="panorama-card" id="panoramaCard"></div>
+
     <div class="destaque" id="destaqueSaldoContas"></div>
 
     <div class="grid2" id="dashCards"></div>
@@ -2425,6 +2447,55 @@ async function enviarComprovante(id, arquivo){
 document.getElementById("mesSelect").addEventListener("change", (e) => { mesAtual = e.target.value; atualizarAvisoMes(); carregarTudo(); });
 
 // ---------- Dashboard ----------
+function calcularPanorama(d){
+  const sobra = d.disponivel;
+  const receita = d.receita_total;
+  const despesa = d.despesa_total;
+  const pct = receita > 0 ? (sobra / receita) : (sobra >= 0 ? 1 : -1);
+  const contasNegativas = (d.contas || []).filter(c => c.saldo_atual < 0);
+  const cartoesCriticos = (d.cartoes || []).filter(c => c.limite > 0 && (c.fatura_atual / c.limite) >= 0.9);
+
+  let tom, icone, titulo, texto;
+  if (sobra < 0){
+    tom = "critical"; icone = "✕"; titulo = "Mês no vermelho";
+    texto = `Suas despesas do mês (${formatMoeda(despesa)}) já passam a renda (${formatMoeda(receita)}) em ${formatMoeda(Math.abs(sobra))}. Nesse ritmo o mês fecha negativo — vale rever o que dá pra cortar ou adiar antes de virar dívida.`;
+  } else if (receita === 0 && despesa === 0){
+    tom = "warn"; icone = "•"; titulo = "Ainda sem lançamentos neste mês";
+    texto = "Cadastre suas receitas e despesas do mês pra eu conseguir te dizer como você está indo.";
+  } else if (pct >= 0.25){
+    tom = "good"; icone = "✓"; titulo = "Sobra confortável";
+    texto = `Você fecha o mês com ${formatMoeda(sobra)} de sobra depois de pagar tudo — isso é ${Math.round(pct * 100)}% da sua renda. Dá pra guardar uma parte ou usar pra adiantar alguma dívida.`;
+  } else {
+    tom = "warn"; icone = "⚠"; titulo = "Positivo, mas apertado";
+    texto = `Você fecha o mês no positivo, com ${formatMoeda(sobra)} de sobra (${Math.round(pct * 100)}% da renda) — mas é pouca margem pra imprevisto. Vale ficar de olho nos gastos variáveis.`;
+  }
+
+  const avisos = [];
+  contasNegativas.forEach(c => avisos.push(`A conta <strong>${escapeHtml(c.nome)}</strong> está negativa em ${formatMoeda(Math.abs(c.saldo_atual))}.`));
+  cartoesCriticos.forEach(c => avisos.push(`O cartão <strong>${escapeHtml(c.nome)}</strong> está a ${Math.round(c.fatura_atual / c.limite * 100)}% do limite.`));
+
+  return {tom, icone, titulo, texto, avisos};
+}
+
+function renderizarPanorama(d){
+  const p = calcularPanorama(d);
+  const el = document.getElementById("panoramaCard");
+  const avisosHTML = p.avisos.length
+    ? `<div class="panorama-avisos">${p.avisos.map(a => `<div class="panorama-aviso">⚠ ${a}</div>`).join("")}</div>`
+    : "";
+  el.className = `panorama-card panorama-${p.tom}`;
+  el.innerHTML = `
+    <div class="panorama-topo">
+      <span class="panorama-icone">${p.icone}</span>
+      <div>
+        <div class="panorama-titulo">${p.titulo}</div>
+        <div class="panorama-texto">${p.texto}</div>
+      </div>
+    </div>
+    ${avisosHTML}
+  `;
+}
+
 async function carregarDashboard(){
   document.getElementById("dashCards").innerHTML = Array(7).fill('<div class="card"><div class="skeleton" style="height:2.2rem;"></div></div>').join("");
   let d;
@@ -2435,6 +2506,8 @@ async function carregarDashboard(){
     document.getElementById("dashCards").innerHTML = `<div class="empty">Não foi possível carregar o dashboard.</div>`;
     return;
   }
+
+  renderizarPanorama(d);
 
   const temContas = d.contas && d.contas.length > 0;
   const destaqueContasEl = document.getElementById("destaqueSaldoContas");
