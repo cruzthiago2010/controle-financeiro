@@ -147,10 +147,35 @@ def get_db():
     return conn
 
 
-def add_col_if_missing(conn, tabela, coluna, ddl):
-    cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({tabela})").fetchall()]
-    if coluna not in cols:
-        conn.execute(ddl)
+MIGRATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "migrations")
+
+
+def aplicar_migracoes(conn):
+    """Aplica em ordem os arquivos .sql de migrations/ que ainda não rodaram nesse
+    banco, registrando cada um numa tabela de controle (schema_migrations) — assim
+    dá pra saber exatamente em que versão de schema o banco está, e cada mudança
+    futura vira um arquivo novo em vez de mexer direto no código já existente."""
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS schema_migrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL UNIQUE,
+            aplicada_em TEXT NOT NULL
+        )"""
+    )
+    conn.commit()
+    if not os.path.isdir(MIGRATIONS_DIR):
+        return
+    ja_aplicadas = {r["nome"] for r in conn.execute("SELECT nome FROM schema_migrations").fetchall()}
+    for nome in sorted(f for f in os.listdir(MIGRATIONS_DIR) if f.endswith(".sql")):
+        if nome in ja_aplicadas:
+            continue
+        with open(os.path.join(MIGRATIONS_DIR, nome), encoding="utf-8") as f:
+            conn.executescript(f.read())
+        conn.execute(
+            "INSERT INTO schema_migrations (nome, aplicada_em) VALUES (?, ?)",
+            (nome, datetime.now().isoformat()),
+        )
+        conn.commit()
 
 
 def init_db(caminho=None, criar_usuario_inicial=True):
@@ -164,140 +189,7 @@ def init_db(caminho=None, criar_usuario_inicial=True):
         conn.row_factory = sqlite3.Row
     else:
         conn = get_db()
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS lancamentos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            mes TEXT NOT NULL,
-            tipo TEXT NOT NULL,               -- renda | despesa
-            descricao TEXT NOT NULL,
-            valor REAL NOT NULL,
-            vencimento TEXT,
-            categoria TEXT,
-            conta TEXT,
-            recorrente INTEGER DEFAULT 0,
-            grupo_parcela TEXT,
-            parcela_num INTEGER,
-            parcela_total INTEGER,
-            pago INTEGER DEFAULT 0,
-            data_pagamento TEXT,
-            comprovante TEXT,
-            observacao TEXT,
-            criado_em TEXT
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS cartoes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            limite REAL DEFAULT 0,
-            fatura_atual REAL DEFAULT 0,
-            dia_vencimento INTEGER
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS categorias (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            tipo TEXT NOT NULL,   -- receita | despesa
-            UNIQUE(nome, tipo)
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS contas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            saldo_inicial REAL DEFAULT 0,
-            criado_em TEXT,
-            usuario_id INTEGER
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            username TEXT NOT NULL UNIQUE,
-            senha_hash TEXT NOT NULL,
-            criado_em TEXT
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS recorrencias_puladas (
-            grupo_recorrencia TEXT NOT NULL,
-            mes TEXT NOT NULL,
-            PRIMARY KEY (grupo_recorrencia, mes)
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS orcamentos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            categoria TEXT NOT NULL,
-            limite REAL NOT NULL,
-            usuario_id INTEGER,
-            UNIQUE(categoria, usuario_id)
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS metas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            valor_alvo REAL NOT NULL,
-            valor_atual REAL DEFAULT 0,
-            prazo TEXT,
-            criado_em TEXT,
-            usuario_id INTEGER
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS holerites (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER,
-            referencia TEXT,
-            recebido_em TEXT,
-            total_proventos REAL,
-            total_descontos REAL,
-            total_liquido REAL,
-            adiantamento REAL,
-            itens_json TEXT,
-            arquivo TEXT NOT NULL,
-            lancamento_id INTEGER,
-            lancamento_adiantamento_id INTEGER,
-            criado_em TEXT
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS consignados (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER,
-            nome TEXT NOT NULL,
-            valor_parcela REAL NOT NULL,
-            parcela_atual INTEGER,
-            parcela_total INTEGER,
-            ativo INTEGER DEFAULT 1,
-            observacao TEXT,
-            criado_em TEXT
-        )
-        """
-    )
-    conn.commit()
+    aplicar_migracoes(conn)
     ja_tem_categorias = conn.execute("SELECT COUNT(*) as n FROM categorias").fetchone()["n"]
     if not ja_tem_categorias:
         for nome in CATEGORIAS_RECEITA_PADRAO:
@@ -305,47 +197,7 @@ def init_db(caminho=None, criar_usuario_inicial=True):
         for nome in CATEGORIAS_DESPESA_PADRAO:
             conn.execute("INSERT OR IGNORE INTO categorias (nome, tipo) VALUES (?, 'despesa')", (nome,))
         conn.commit()
-    for coluna, ddl in [
-        ("categoria", "ALTER TABLE lancamentos ADD COLUMN categoria TEXT"),
-        ("conta", "ALTER TABLE lancamentos ADD COLUMN conta TEXT"),
-        ("grupo_parcela", "ALTER TABLE lancamentos ADD COLUMN grupo_parcela TEXT"),
-        ("parcela_num", "ALTER TABLE lancamentos ADD COLUMN parcela_num INTEGER"),
-        ("parcela_total", "ALTER TABLE lancamentos ADD COLUMN parcela_total INTEGER"),
-        ("pago", "ALTER TABLE lancamentos ADD COLUMN pago INTEGER DEFAULT 0"),
-        ("data_pagamento", "ALTER TABLE lancamentos ADD COLUMN data_pagamento TEXT"),
-        ("comprovante", "ALTER TABLE lancamentos ADD COLUMN comprovante TEXT"),
-        ("observacao", "ALTER TABLE lancamentos ADD COLUMN observacao TEXT"),
-        ("conta_id", "ALTER TABLE lancamentos ADD COLUMN conta_id INTEGER"),
-        ("eh_transferencia", "ALTER TABLE lancamentos ADD COLUMN eh_transferencia INTEGER DEFAULT 0"),
-        ("grupo_transferencia", "ALTER TABLE lancamentos ADD COLUMN grupo_transferencia TEXT"),
-        ("grupo_recorrencia", "ALTER TABLE lancamentos ADD COLUMN grupo_recorrencia TEXT"),
-        # Último mês da recorrência (YYYY-MM). NULL = repete para sempre.
-        ("recorrencia_ate", "ALTER TABLE lancamentos ADD COLUMN recorrencia_ate TEXT"),
-    ]:
-        add_col_if_missing(conn, "lancamentos", coluna, ddl)
-    for coluna, ddl in [
-        ("conta_id", "ALTER TABLE cartoes ADD COLUMN conta_id INTEGER"),
-        ("fatura_paga", "ALTER TABLE cartoes ADD COLUMN fatura_paga INTEGER DEFAULT 0"),
-    ]:
-        add_col_if_missing(conn, "cartoes", coluna, ddl)
-    add_col_if_missing(conn, "categorias", "cor", "ALTER TABLE categorias ADD COLUMN cor TEXT")
-    add_col_if_missing(conn, "usuarios", "foto", "ALTER TABLE usuarios ADD COLUMN foto TEXT")
-    add_col_if_missing(conn, "usuarios", "somente_leitura", "ALTER TABLE usuarios ADD COLUMN somente_leitura INTEGER DEFAULT 0")
-    add_col_if_missing(conn, "holerites", "adiantamento", "ALTER TABLE holerites ADD COLUMN adiantamento REAL")
-    add_col_if_missing(conn, "holerites", "lancamento_adiantamento_id", "ALTER TABLE holerites ADD COLUMN lancamento_adiantamento_id INTEGER")
-    add_col_if_missing(conn, "holerites", "itens_json", "ALTER TABLE holerites ADD COLUMN itens_json TEXT")
-    # Cada usuário tem seus próprios lançamentos, contas, cartões e dívidas.
-    # Categorias, de propósito, continuam compartilhadas entre todos.
-    add_col_if_missing(conn, "contas", "usuario_id", "ALTER TABLE contas ADD COLUMN usuario_id INTEGER")
-    add_col_if_missing(conn, "lancamentos", "usuario_id", "ALTER TABLE lancamentos ADD COLUMN usuario_id INTEGER")
-    add_col_if_missing(conn, "cartoes", "usuario_id", "ALTER TABLE cartoes ADD COLUMN usuario_id INTEGER")
-    conn.commit()
     remover_recorrentes_duplicados(conn)
-    conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_lancamentos_recorrencia_mes "
-        "ON lancamentos (grupo_recorrencia, mes, usuario_id) WHERE grupo_recorrencia IS NOT NULL"
-    )
-    conn.commit()
     migrar_contas_de_texto_livre(conn)
     if criar_usuario_inicial:
         bootstrap_usuario_inicial(conn)

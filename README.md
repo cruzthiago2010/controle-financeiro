@@ -113,6 +113,11 @@ inicial" — ele abre em tela cheia, como um app instalado.
 - `static/manifest.json`, `static/sw.js`, `static/icon*.svg` — arquivos do PWA
 - `Dockerfile` / `docker-compose.yml` — empacotamento (inclui `tesseract-ocr`
   para a leitura de nota fiscal)
+- `.env.example` — modelo das variáveis de ambiente aceitas; copie para
+  `.env` e preencha (o `.env` de verdade nunca é versionado)
+- `migrations/` — mudanças de schema do banco, aplicadas em ordem e
+  registradas numa tabela de controle (`schema_migrations`) toda vez que o
+  app sobe
 - `data/` — onde o banco SQLite, a chave de sessão, os comprovantes, os
   holerites e as fotos ficam salvos (fica fora do container, não perde
   dados ao atualizar)
