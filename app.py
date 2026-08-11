@@ -2240,7 +2240,9 @@ def dashboard():
     disponivel = receita_total - despesa_total
     previsao_fim_mes = saldo_atual + receita_pendente - despesa_pendente
 
-    livre_para_gastar = saldo_atual - despesa_pendente
+    # Conta a renda que ainda vai entrar no mês (ex: salário do dia 30), não só o que já foi recebido —
+    # senão esse número contradiz o "Dinheiro disponível" mostrado logo acima, que já conta o mês inteiro.
+    livre_para_gastar = saldo_atual + receita_pendente - despesa_pendente
     gasto_diario = round(max(livre_para_gastar, 0) / dias_restantes, 2) if dias_restantes > 0 else 0
 
     limite_alerta = (hoje_dt + timedelta(days=7)).strftime("%Y-%m-%d")

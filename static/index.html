@@ -2769,13 +2769,15 @@ function abrirExplicacao(chave){
   } else if (chave === "gasto_diario"){
     tituloEl.textContent = "Quanto pode gastar por dia";
     const r = somaValor(receitasPagas), d = somaValor(despesasPagas);
+    const rp = somaValor(receitasPendentes), dp = somaValor(despesasPendentes);
     const saldoMes = r - d;
-    const dp = somaValor(despesasPendentes);
-    const livre = Math.max(saldoMes - dp, 0);
+    const livre = Math.max(saldoMes + rp - dp, 0);
     formulaEl.innerHTML =
       formulaLinha("Saldo do mês (recebido − pago)", saldoMes) +
+      formulaLinha("+ Receitas pendentes", rp) +
       formulaLinha("− Despesas pendentes", -dp) +
-      formulaLinha("= Livre para gastar", livre, "total");
+      formulaLinha("= Livre para gastar (dividido pelos dias restantes)", livre, "total");
+    adicionarGrupoExplicacao(listasEl, "Receitas pendentes (a somar)", receitasPendentes);
     adicionarGrupoExplicacao(listasEl, "Despesas pendentes (a descontar)", despesasPendentes);
   }
 
