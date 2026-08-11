@@ -23,6 +23,7 @@ import fitz
 import pytesseract
 from PIL import Image, ImageOps, ImageFilter
 from pyzbar.pyzbar import decode as zbar_decode
+from authlib.integrations.flask_client import OAuth
 
 DB_PATH = os.environ.get("DB_PATH", "/data/orcamento.db")
 COMPROVANTES_DIR = os.environ.get("COMPROVANTES_DIR", "/data/comprovantes")
@@ -57,7 +58,28 @@ def obter_secret_key():
 
 app.secret_key = obter_secret_key()
 
-ROTAS_PUBLICAS = {"/login", "/api/login", "/registro", "/api/registro", "/manifest.json", "/sw.js"}
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+# Precisa bater exatamente com o URI cadastrado no Google Cloud Console.
+GOOGLE_REDIRECT_URI = os.environ.get(
+    "GOOGLE_REDIRECT_URI", "https://financeiro.danilashes.com.br/api/auth/google/callback"
+)
+GOOGLE_LOGIN_HABILITADO = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+
+oauth = OAuth(app)
+if GOOGLE_LOGIN_HABILITADO:
+    oauth.register(
+        name="google",
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid email profile"},
+    )
+
+ROTAS_PUBLICAS = {
+    "/login", "/api/login", "/registro", "/api/registro", "/manifest.json", "/sw.js",
+    "/api/auth/google/login", "/api/auth/google/callback", "/api/auth/google/status",
+}
 
 
 # Rotas de escrita liberadas pra usuário somente-leitura: alternar modo demo,
@@ -816,6 +838,79 @@ def registro():
     session["somente_leitura"] = False
     session.permanent = True
     return jsonify({"ok": True}), 201
+
+
+def gerar_username_disponivel(conn, base):
+    base = re.sub(r"[^a-z0-9]", "", base.lower()) or "usuario"
+    username = base
+    sufixo = 1
+    while conn.execute("SELECT 1 FROM usuarios WHERE username = ?", (username,)).fetchone():
+        sufixo += 1
+        username = f"{base}{sufixo}"
+    return username
+
+
+@app.route("/api/auth/google/status")
+def auth_google_status():
+    return jsonify({"habilitado": GOOGLE_LOGIN_HABILITADO})
+
+
+@app.route("/api/auth/google/login")
+def auth_google_login():
+    if not GOOGLE_LOGIN_HABILITADO:
+        return jsonify({"erro": "login com Google não está configurado nesse servidor"}), 501
+    return oauth.google.authorize_redirect(GOOGLE_REDIRECT_URI)
+
+
+@app.route("/api/auth/google/callback")
+def auth_google_callback():
+    if not GOOGLE_LOGIN_HABILITADO:
+        return redirect("/login?erro=google_indisponivel")
+    try:
+        token = oauth.google.authorize_access_token()
+        dados_google = token.get("userinfo") or oauth.google.userinfo(token=token)
+    except Exception:
+        return redirect("/login?erro=google_falhou")
+
+    google_id = dados_google.get("sub")
+    email = dados_google.get("email")
+    nome = dados_google.get("name") or email or "Usuário Google"
+    if not google_id:
+        return redirect("/login?erro=google_falhou")
+
+    conn = get_db()
+    usuario = conn.execute("SELECT * FROM usuarios WHERE google_id = ?", (google_id,)).fetchone()
+
+    if usuario:
+        usuario_id, usuario_nome, somente_leitura = usuario["id"], usuario["nome"], bool(usuario["somente_leitura"])
+        conn.close()
+    else:
+        # Primeiro login com essa conta Google: nasce uma casa nova, exatamente
+        # como no cadastro por usuário/senha — ninguém entra "dentro" da casa de
+        # outra pessoa sem ser convidado explicitamente por lá dentro.
+        username = gerar_username_disponivel(conn, (email or nome).split("@")[0])
+        cur = conn.execute(
+            "INSERT INTO casas (nome, criado_em) VALUES (?, ?)",
+            (f"Casa de {nome}", datetime.now().isoformat()),
+        )
+        casa_id = cur.lastrowid
+        cur = conn.execute(
+            "INSERT INTO usuarios (nome, username, senha_hash, google_id, email, casa_id, criado_em) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (nome, username, generate_password_hash(secrets.token_urlsafe(32)), google_id, email,
+             casa_id, datetime.now().isoformat()),
+        )
+        conn.commit()
+        garantir_categorias_padrao(conn)
+        usuario_id, usuario_nome, somente_leitura = cur.lastrowid, nome, False
+        conn.close()
+
+    session.clear()
+    session["usuario_id"] = usuario_id
+    session["usuario_nome"] = usuario_nome
+    session["somente_leitura"] = somente_leitura
+    session.permanent = True
+    return redirect("/")
 
 
 @app.route("/api/logout", methods=["POST"])

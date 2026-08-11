@@ -109,6 +109,26 @@ O app exige login. No primeiro start:
 - Pra dar acesso a alguém de **fora da sua casa** (um amigo, outra família),
   mande o link `/registro` — a pessoa cria a própria casa, separada da sua.
 
+### Login com Google (opcional)
+
+Além de usuário/senha, dá pra habilitar um botão "Entrar com Google" — quem
+usa pela primeira vez também cria a própria casa automaticamente, do mesmo
+jeito que pelo `/registro`. Pra ativar:
+
+1. Crie um "ID do cliente OAuth" (tipo **Aplicativo da Web**) em
+   [console.cloud.google.com](https://console.cloud.google.com) → APIs e
+   Serviços → Credenciais.
+2. Em "URIs de redirecionamento autorizados", cadastre
+   `https://SEU-DOMINIO/api/auth/google/callback`.
+3. Copie `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` pro seu `.env`.
+4. Enquanto a tela de consentimento OAuth do seu app estiver em modo
+   **"Teste"**, só os e-mails que você cadastrar manualmente lá conseguem
+   entrar. Pra qualquer pessoa poder usar, publique o app (status
+   "Em produção") na tela de consentimento.
+
+Sem essas variáveis definidas, o botão simplesmente não aparece — o login
+por usuário/senha continua funcionando normalmente.
+
 ## Instalar como app (PWA)
 
 No celular (Android/Chrome), acesse o app pelo navegador e use "Adicionar à tela
