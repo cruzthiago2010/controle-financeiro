@@ -862,6 +862,18 @@ def auth_google_login():
     return oauth.google.authorize_redirect(GOOGLE_REDIRECT_URI)
 
 
+@app.route("/api/auth/google/vincular")
+def auth_google_vincular():
+    """Pra quem já está logado (ex: com usuário/senha) e quer poder entrar
+    também pelo Google, na MESMA conta — não cria casa nova nenhuma."""
+    if not session.get("usuario_id"):
+        return redirect("/login")
+    if not GOOGLE_LOGIN_HABILITADO:
+        return redirect("/?erro=google_indisponivel")
+    session["google_vincular_usuario_id"] = session["usuario_id"]
+    return oauth.google.authorize_redirect(GOOGLE_REDIRECT_URI)
+
+
 @app.route("/api/auth/google/callback")
 def auth_google_callback():
     if not GOOGLE_LOGIN_HABILITADO:
@@ -870,6 +882,9 @@ def auth_google_callback():
         token = oauth.google.authorize_access_token()
         dados_google = token.get("userinfo") or oauth.google.userinfo(token=token)
     except Exception:
+        import traceback
+        print("[google-login] falhou:", flush=True)
+        traceback.print_exc()
         return redirect("/login?erro=google_falhou")
 
     google_id = dados_google.get("sub")
@@ -879,6 +894,26 @@ def auth_google_callback():
         return redirect("/login?erro=google_falhou")
 
     conn = get_db()
+    vincular_usuario_id = session.pop("google_vincular_usuario_id", None)
+
+    if vincular_usuario_id:
+        # Fluxo de "vincular": já estava logado, só associa essa conta Google
+        # à conta que já existe — não cria usuário nem casa nova.
+        em_uso_por_outro = conn.execute(
+            "SELECT id FROM usuarios WHERE google_id = ? AND id != ?",
+            (google_id, vincular_usuario_id),
+        ).fetchone()
+        if em_uso_por_outro:
+            conn.close()
+            return redirect("/?erro=google_ja_vinculado")
+        conn.execute(
+            "UPDATE usuarios SET google_id = ?, email = ? WHERE id = ?",
+            (google_id, email, vincular_usuario_id),
+        )
+        conn.commit()
+        conn.close()
+        return redirect("/?vinculado=google")
+
     usuario = conn.execute("SELECT * FROM usuarios WHERE google_id = ?", (google_id,)).fetchone()
 
     if usuario:
@@ -923,7 +958,8 @@ def logout():
 def usuario_atual():
     conn = get_db()
     row = conn.execute(
-        "SELECT id, nome, username, foto, somente_leitura FROM usuarios WHERE id = ?", (uid(),)
+        "SELECT id, nome, username, foto, somente_leitura, google_id, email FROM usuarios WHERE id = ?",
+        (uid(),),
     ).fetchone()
     if not row:
         conn.close()
@@ -2634,17 +2670,24 @@ def iniciar_agendador_backup():
     t.start()
 
 
-@app.route("/api/backup", methods=["GET"])
-def baixar_backup():
+MENSAGEM_BACKUP_BLOQUEADO = (
+    "esse servidor tem mais de uma casa cadastrada — o backup completo do banco "
+    "incluiria dados de outras casas, então está desligado por segurança. "
+    "Use a exportação de CSV pra levar seus lançamentos."
+)
+
+
+def backup_bloqueado_multi_casa():
     conn = get_db()
     n_casas = conn.execute("SELECT COUNT(*) as n FROM casas").fetchone()["n"]
     conn.close()
-    if n_casas > 1:
-        return jsonify({
-            "erro": "esse servidor tem mais de uma casa cadastrada — o backup completo do "
-                    "banco incluiria dados de outras casas, então está desligado por segurança. "
-                    "Use a exportação de CSV pra levar seus lançamentos."
-        }), 403
+    return n_casas > 1
+
+
+@app.route("/api/backup", methods=["GET"])
+def baixar_backup():
+    if backup_bloqueado_multi_casa():
+        return jsonify({"erro": MENSAGEM_BACKUP_BLOQUEADO}), 403
     memoria = io.BytesIO()
     escrever_zip_backup(memoria)
     memoria.seek(0)
@@ -2655,6 +2698,11 @@ def baixar_backup():
 
 @app.route("/api/backups", methods=["GET"])
 def listar_backups():
+    if backup_bloqueado_multi_casa():
+        return jsonify({
+            "config": ler_config_backup(), "periodos": list(PERIODOS_BACKUP.keys()),
+            "backups": [], "erro": MENSAGEM_BACKUP_BLOQUEADO,
+        })
     return jsonify({
         "config": ler_config_backup(),
         "periodos": list(PERIODOS_BACKUP.keys()),
@@ -2682,6 +2730,8 @@ def salvar_config_backup():
 
 @app.route("/api/backups/agora", methods=["POST"])
 def gerar_backup_agora():
+    if backup_bloqueado_multi_casa():
+        return jsonify({"erro": MENSAGEM_BACKUP_BLOQUEADO}), 403
     nome = criar_backup_automatico()
     return jsonify({"ok": True, "nome": nome}), 201
 
@@ -2699,6 +2749,8 @@ def caminho_backup_valido(nome_arquivo):
 
 @app.route("/api/backups/<path:nome_arquivo>", methods=["GET"])
 def baixar_backup_salvo(nome_arquivo):
+    if backup_bloqueado_multi_casa():
+        return jsonify({"erro": MENSAGEM_BACKUP_BLOQUEADO}), 403
     caminho = caminho_backup_valido(nome_arquivo)
     if not caminho:
         return jsonify({"erro": "backup não encontrado"}), 404
@@ -2707,6 +2759,8 @@ def baixar_backup_salvo(nome_arquivo):
 
 @app.route("/api/backups/<path:nome_arquivo>", methods=["DELETE"])
 def excluir_backup_salvo(nome_arquivo):
+    if backup_bloqueado_multi_casa():
+        return jsonify({"erro": MENSAGEM_BACKUP_BLOQUEADO}), 403
     caminho = caminho_backup_valido(nome_arquivo)
     if not caminho:
         return jsonify({"erro": "backup não encontrado"}), 404
@@ -2718,6 +2772,8 @@ def excluir_backup_salvo(nome_arquivo):
 def restaurar_backup_salvo(nome_arquivo):
     if em_demo():
         return jsonify({"erro": "desligue o modo demonstração antes de restaurar"}), 400
+    if backup_bloqueado_multi_casa():
+        return jsonify({"erro": MENSAGEM_BACKUP_BLOQUEADO}), 403
     caminho = caminho_backup_valido(nome_arquivo)
     if not caminho:
         return jsonify({"erro": "backup não encontrado"}), 404
@@ -2731,6 +2787,10 @@ def restaurar_backup_salvo(nome_arquivo):
 
 @app.route("/api/backup/info", methods=["GET"])
 def info_backup():
+    if backup_bloqueado_multi_casa():
+        return jsonify({"comprovantes": 0, "fotos": 0, "holerites": 0, "tamanho_total_bytes": 0,
+                         "erro": MENSAGEM_BACKUP_BLOQUEADO})
+
     def tamanho_pasta(pasta):
         if not os.path.isdir(pasta):
             return 0, 0
