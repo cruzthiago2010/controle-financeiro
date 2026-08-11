@@ -1338,6 +1338,7 @@ let itensPorId = {};
 let diaSelecionadoCalendario = null;
 let lancamentosCache = [];
 let contasCache = [];
+let dashboardCache = null;
 let usuariosCache = [];
 let usuarioAtual = null;
 let filtros = {busca:"", categoria:"", conta:"", status:"", ordenacao:"padrao"};
@@ -2508,6 +2509,7 @@ async function carregarDashboard(){
   }
 
   renderizarPanorama(d);
+  dashboardCache = d;
 
   const temContas = d.contas && d.contas.length > 0;
   const destaqueContasEl = document.getElementById("destaqueSaldoContas");
@@ -2535,7 +2537,7 @@ async function carregarDashboard(){
   destaqueDiarioEl.onclick = () => abrirExplicacao("gasto_diario");
   destaqueDiarioEl.innerHTML = `
     <div class="valor-grande">${svgIco("carteira","ico lg")} Você pode gastar até ${formatMoeda(d.gasto_diario_disponivel)} por dia</div>
-    <div class="texto">até o fim do mês (${d.dias_restantes} dia(s) restante(s)) · toque para ver como chegamos nesse número</div>
+    <div class="texto">até o fim do mês — faltam ${d.dias_restantes} dia${d.dias_restantes === 1 ? '' : 's'} · toque para ver como chegamos nesse número</div>
   `;
 
   // Contas vencendo — usa o mesmo item da lista, então dá pra marcar como paga e editar aqui
@@ -2754,16 +2756,13 @@ function abrirExplicacao(chave){
     adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
   } else if (chave === "previsao"){
     tituloEl.textContent = "Previsão de saldo no fim do mês";
-    const r = somaValor(receitasPagas), d = somaValor(despesasPagas);
     const rp = somaValor(receitasPendentes), dp = somaValor(despesasPendentes);
-    const saldoMes = r - d;
+    const saldoContas = dashboardCache ? dashboardCache.saldo_total_contas : 0;
     formulaEl.innerHTML =
-      formulaLinha("Saldo do mês (recebido − pago)", saldoMes) +
-      formulaLinha("+ Receitas pendentes", rp) +
-      formulaLinha("− Despesas pendentes", -dp) +
-      formulaLinha("= Previsão fim do mês", saldoMes + rp - dp, "total");
-    adicionarGrupoExplicacao(listasEl, "Receitas recebidas", receitasPagas);
-    adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
+      formulaLinha("Saldo real das suas contas hoje", saldoContas) +
+      formulaLinha("+ Receitas pendentes deste mês", rp) +
+      formulaLinha("− Despesas pendentes deste mês", -dp) +
+      formulaLinha("= Previsão fim do mês", saldoContas + rp - dp, "total");
     adicionarGrupoExplicacao(listasEl, "Receitas pendentes", receitasPendentes);
     adicionarGrupoExplicacao(listasEl, "Despesas pendentes", despesasPendentes);
   } else if (chave === "gasto_diario"){

@@ -2238,7 +2238,6 @@ def dashboard():
 
     saldo_atual = receita_recebida - despesa_paga
     disponivel = receita_total - despesa_total
-    previsao_fim_mes = saldo_atual + receita_pendente - despesa_pendente
 
     # Conta a renda que ainda vai entrar no mês (ex: salário do dia 30), não só o que já foi recebido —
     # senão esse número contradiz o "Dinheiro disponível" mostrado logo acima, que já conta o mês inteiro.
@@ -2273,6 +2272,9 @@ def dashboard():
     ).fetchall()
     contas = contas_com_saldo(conn, mes)
     saldo_total_contas = sum(c["saldo_atual"] for c in contas)
+    # Parte do saldo real das contas (não só das receitas/despesas já "pagas" deste mês),
+    # senão esse número sempre bate exatamente com "disponivel" e vira um card duplicado.
+    previsao_fim_mes = saldo_total_contas + receita_pendente - despesa_pendente
 
     conn.close()
 
