@@ -612,7 +612,7 @@
       <button class="nav-item" data-tab="cartoes" title="Cartões"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cartao"/></svg></span><span class="nav-label">Cartões</span></button>
       <button class="nav-item" data-tab="metas" title="Metas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bussola"/></svg></span><span class="nav-label">Metas</span></button>
       <button class="nav-item" data-tab="holerites" title="Holerite"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg></span><span class="nav-label">Holerite</span></button>
-      <button class="nav-item" data-tab="consignados" title="Consignados" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label">Consignados</span></button>
+      <button class="nav-item" data-tab="consignados" title="Empréstimos" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label">Empréstimos</span></button>
       <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
     </nav>
     <div class="sidebar-rodape">
@@ -862,7 +862,7 @@
   <!-- ===================== CONSIGNADOS ===================== -->
   <section class="painel" id="painel-consignados">
     <div class="secao">
-      <h2>Consignados</h2>
+      <h2>Empréstimos</h2>
       <div class="metas-grid" id="listaConsignados"></div>
     </div>
     <form class="add-form" id="consignadoForm">
@@ -870,7 +870,7 @@
       <input type="number" id="consignadoValorParcela" placeholder="Valor da parcela (R$)" step="0.01" min="0.01" required>
       <input type="number" id="consignadoParcelaAtual" placeholder="Parcela atual (ex: 3)" min="1">
       <input type="number" id="consignadoParcelaTotal" placeholder="Total de parcelas (ex: 12)" min="1">
-      <button type="submit">Adicionar consignado</button>
+      <button type="submit">Adicionar empréstimo</button>
     </form>
   </section>
 
@@ -889,10 +889,10 @@
       <h2>Configurações administrativas</h2>
       <div class="card">
         <label class="toggle-row">
-          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> Habilitar aba Consignados</span>
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> Habilitar aba Empréstimos</span>
           <span class="toggle-switch"><input type="checkbox" id="toggleConsignados"><span class="toggle-slider"></span></span>
         </label>
-        <p style="font-size:0.78rem; color:var(--muted); margin:8px 0 0;">Só o administrador (primeiro usuário criado) vê e altera isso. Quando ligado, a aba Consignados aparece pra todos os usuários.</p>
+        <p style="font-size:0.78rem; color:var(--muted); margin:8px 0 0;">Só o administrador (primeiro usuário criado) vê e altera isso. Quando ligado, a aba Empréstimos aparece pra todos os usuários.</p>
       </div>
     </div>
     <div class="secao">
@@ -1121,6 +1121,10 @@
       <label class="toggle-row">
         <span id="labelEfetivada"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg> Já paga</span>
         <span class="toggle-switch"><input type="checkbox" id="pagoInput"><span class="toggle-slider"></span></span>
+      </label>
+      <label class="toggle-row" id="previstoBox" style="display:none;">
+        <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> É uma previsão (será substituída quando eu importar o holerite)</span>
+        <span class="toggle-switch"><input type="checkbox" id="previstoInput"><span class="toggle-slider"></span></span>
       </label>
     </div>
 
@@ -1722,6 +1726,8 @@ document.querySelectorAll("#tipoSegmented button").forEach(btn => {
     document.getElementById("novoSalvar").style.background = tipo === "renda"
       ? "linear-gradient(135deg, var(--green), #2fb377)"
       : "linear-gradient(135deg, var(--red), #e05353)";
+    document.getElementById("previstoBox").style.display = tipo === "renda" ? "flex" : "none";
+    if (tipo !== "renda") document.getElementById("previstoInput").checked = false;
     atualizarSelectCategoria();
   });
 });
@@ -1816,6 +1822,8 @@ function abrirModalNovoLancamento(tipoInicial){
   document.querySelectorAll("#recDuracaoSegmented button").forEach(b => b.classList.remove("ativo"));
   document.querySelector('#recDuracaoSegmented button[data-modo="sempre"]').classList.add("ativo");
   document.getElementById("pagoInput").checked = false;
+  document.getElementById("previstoInput").checked = false;
+  document.getElementById("previstoBox").style.display = tipoInicial === "renda" ? "flex" : "none";
   document.getElementById("contaInput").value = "";
   atualizarDotPreview("contaInput", "dotConta", null);
   document.querySelectorAll("#tipoSegmented button").forEach(b => b.classList.remove("ativo"));
@@ -2056,6 +2064,7 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
     observacao: document.getElementById("obsInput").value,
     recorrente: parcelar ? false : document.getElementById("recInput").checked,
     pago: parcelar ? false : document.getElementById("pagoInput").checked,
+    previsto: parcelar ? false : document.getElementById("previstoInput").checked,
     // 0 = repete para sempre
     recorrencia_vezes: (!parcelar && document.getElementById("recInput").checked && modoRecorrencia() === "limitado")
       ? Math.max(Number(document.getElementById("recVezesInput").value) || 2, 2)
@@ -2291,6 +2300,7 @@ function criarItemHTML(item){
     metaPartes.push(item.recorrencia_ate ? `repete até ${formatMes(item.recorrencia_ate)}` : "repete todo mês");
   }
   if (item.pago) metaPartes.push((ehRenda ? "✓ recebido" : "✓ pago") + (item.data_pagamento ? " " + formatData(item.data_pagamento) : ""));
+  if (item.previsto) metaPartes.push("previsão — some ao importar o holerite");
   if (item.observacao) metaPartes.push(escapeHtml(item.observacao));
 
   // Efetivar e anexar valem para receita e despesa.
@@ -2890,7 +2900,7 @@ document.getElementById("metaForm").addEventListener("submit", async (e) => {
   } catch (e) {}
 });
 
-// ---------- Consignados ----------
+// ---------- Empréstimos (consignados) ----------
 async function carregarConfigConsignados(){
   let config;
   try {
@@ -2905,7 +2915,7 @@ async function carregarConfigConsignados(){
 document.getElementById("toggleConsignados").addEventListener("change", async (e) => {
   try {
     await apiFetch(`${API}/consignados/config`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({habilitado: e.target.checked})},
-      {sucesso: e.target.checked ? "Aba Consignados habilitada" : "Aba Consignados desabilitada", erro:"Não foi possível alterar"});
+      {sucesso: e.target.checked ? "Aba Empréstimos habilitada" : "Aba Empréstimos desabilitada", erro:"Não foi possível alterar"});
     document.getElementById("navConsignados").style.display = e.target.checked ? "" : "none";
   } catch (err) { e.target.checked = !e.target.checked; }
 });
@@ -2915,14 +2925,14 @@ async function carregarConsignados(){
   container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
   let consignados;
   try {
-    const res = await apiFetch(`${API}/consignados`, undefined, {erro:"Não foi possível carregar os consignados"});
+    const res = await apiFetch(`${API}/consignados`, undefined, {erro:"Não foi possível carregar os empréstimos"});
     consignados = await res.json();
   } catch (e) {
     container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
     return;
   }
   container.innerHTML = "";
-  if (consignados.length === 0){ container.innerHTML = `<div class="empty">Nenhum consignado cadastrado ainda.</div>`; return; }
+  if (consignados.length === 0){ container.innerHTML = `<div class="empty">Nenhum empréstimo cadastrado ainda.</div>`; return; }
   consignados.forEach(c => container.appendChild(criarConsignadoCardHTML(c)));
 }
 
@@ -2934,7 +2944,7 @@ function criarConsignadoCardHTML(c){
   div.innerHTML = `
     <div class="meta-topo">
       <span class="meta-nome">${escapeHtml(c.nome)}${c.ativo ? "" : " · quitado"}</span>
-      <button class="icon danger" title="Excluir consignado">${ICO.x}</button>
+      <button class="icon danger" title="Excluir empréstimo">${ICO.x}</button>
     </div>
     ${temParcelas ? `<div class="meta-prazo">Parcela ${c.parcela_atual || 0} de ${c.parcela_total}</div>` : ""}
     ${temParcelas ? `<div class="orcamento-barra" style="margin-top:8px;"><div class="preenchido" style="width:${pct}%"></div></div>` : ""}
@@ -2944,9 +2954,9 @@ function criarConsignadoCardHTML(c){
     </div>
   `;
   div.querySelector(".meta-topo button").addEventListener("click", async () => {
-    if (!confirm("Excluir este consignado?")) return;
+    if (!confirm("Excluir este empréstimo?")) return;
     try {
-      await apiFetch(`${API}/consignados/${c.id}`, {method:"DELETE"}, {sucesso:"Consignado excluído", erro:"Não foi possível excluir"});
+      await apiFetch(`${API}/consignados/${c.id}`, {method:"DELETE"}, {sucesso:"Empréstimo excluído", erro:"Não foi possível excluir"});
       carregarConsignados();
     } catch (e) {}
   });
@@ -2973,7 +2983,7 @@ document.getElementById("consignadoForm").addEventListener("submit", async (e) =
   };
   try {
     await apiFetch(`${API}/consignados`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
-      {sucesso:"Consignado adicionado", erro:"Não foi possível adicionar o consignado"});
+      {sucesso:"Empréstimo adicionado", erro:"Não foi possível adicionar o empréstimo"});
     e.target.reset();
     carregarConsignados();
   } catch (e) {}

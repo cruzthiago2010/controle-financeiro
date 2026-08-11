@@ -1,0 +1,1 @@
+ALTER TABLE lancamentos ADD COLUMN previsto INTEGER DEFAULT 0;

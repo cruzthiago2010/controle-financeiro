@@ -1333,6 +1333,7 @@ def criar_lancamento():
     recorrente = 1 if data.get("recorrente") else 0
     parcelas = int(data.get("parcelas") or 1)
     pago = 1 if data.get("pago") else 0
+    previsto = 1 if data.get("previsto") else 0
     data_pagamento = data.get("data_pagamento") or (datetime.now().strftime("%Y-%m-%d") if pago else "")
 
     if tipo not in ("renda", "despesa"):
@@ -1387,11 +1388,11 @@ def criar_lancamento():
         """INSERT INTO lancamentos
            (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
             pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia,
-            recorrencia_ate)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            recorrencia_ate, previsto)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
          pago, data_pagamento, observacao, datetime.now().isoformat(), uid(), grupo_recorrencia,
-         recorrencia_ate),
+         recorrencia_ate, previsto),
     )
     conn.commit()
     novo_id = cur.lastrowid
@@ -2047,6 +2048,19 @@ def enviar_holerite():
     if lancar_receita and dados["referencia"]:
         ano_r, mes_r = dados["referencia"].split("-")
         rotulo = "Férias" if dados["eh_ferias"] else "Salário"
+        # Remove lançamentos de renda "previstos" (salário/adiantamento lançados à mão antes do
+        # holerite chegar) desse mês, pra não duplicar a renda real que estamos importando agora.
+        previstos = conn.execute(
+            "SELECT id, comprovante FROM lancamentos WHERE usuario_id = ? AND mes = ? "
+            "AND tipo = 'renda' AND categoria = 'Salário' AND previsto = 1",
+            (uid(), dados["referencia"]),
+        ).fetchall()
+        for p in previstos:
+            if p["comprovante"]:
+                caminho = os.path.join(COMPROVANTES_DIR, p["comprovante"])
+                if os.path.exists(caminho):
+                    os.remove(caminho)
+            conn.execute("DELETE FROM lancamentos WHERE id = ?", (p["id"],))
         if dados["total_liquido"]:
             cur = conn.execute(
                 """INSERT INTO lancamentos

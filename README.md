@@ -33,10 +33,10 @@ Docker). Todos os dados ficam salvos localmente em SQLite, dentro da pasta
   aquele valor. Avisa quando falta importar o holerite de algum mês
   (inclusive já deixa um espaço pronto pro próximo mês) e permite
   conferir/editar os lançamentos gerados por cada holerite.
-- **Consignados** _(opcional)_ — acompanhamento de empréstimos consignados
-  descontados em folha, com parcela atual/total e progresso. Fica oculto
-  por padrão; só o administrador (primeiro usuário da instalação) pode
-  habilitar essa aba para todo mundo, na aba Backup.
+- **Empréstimos** _(opcional)_ — acompanhamento de empréstimos (consignados
+  em folha ou com débito em conta), com parcela atual/total e progresso.
+  Fica oculto por padrão; só o administrador (primeiro usuário da
+  instalação) pode habilitar essa aba para todo mundo, na aba Backup.
 - **Contas** — várias contas por usuário, com saldo calculado
   automaticamente, e transferências entre contas (inclusive entre contas de
   usuários diferentes, ex: da sua conta para a da sua esposa/marido) sem
