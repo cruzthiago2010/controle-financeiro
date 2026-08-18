@@ -13,11 +13,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
-    --bg:#0b0f19; --card:#161d2e; --card2:#1c2438; --card3:#212a42;
-    --border:#26304a; --border-soft:#1e2740;
-    --text:#eef1f8; --muted:#8b96b3; --muted-soft:#6b7694;
-    --green:#3ecf8e; --red:#ff6b6b; --accent:#5b8def; --accent2:#4f7fe0;
-    --yellow:#f5c451; --purple:#a78bfa;
+    --bg:#0b1020; --card:#111827; --card2:#161f2e; --card3:#1b2536;
+    --border:#232f42; --border-soft:#1c2636;
+    --text:#e5e7eb; --muted:#94a3b8; --muted-soft:#64748b;
+    --green:#22c55e; --red:#ef4444; --accent:#14b8a6; --accent2:#0d9488;
+    --yellow:#f59e0b; --purple:#a78bfa;
     --radius-lg:16px; --radius-md:12px; --radius-sm:8px;
     --shadow-card:0 2px 10px rgba(0,0,0,0.25);
     --shadow-hover:0 8px 24px rgba(0,0,0,0.35);
@@ -26,15 +26,15 @@
   body{
     margin:0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     background:
-      radial-gradient(circle at 15% 0%, rgba(91,141,239,0.09), transparent 40%),
-      radial-gradient(circle at 85% 15%, rgba(167,139,250,0.07), transparent 45%),
+      radial-gradient(circle at 85% -8%, rgba(20,184,166,0.16), transparent 45%),
+      radial-gradient(circle at 10% 10%, rgba(245,158,11,0.12), transparent 44%),
       var(--bg);
     background-attachment:fixed;
     color:var(--text); padding-bottom:80px; -webkit-font-smoothing:antialiased;
   }
   .mes-selector{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
   .mes-aviso{
-    display:none; align-items:center; gap:6px; background:rgba(245,196,81,0.15);
+    display:none; align-items:center; gap:6px; background:rgba(245,158,11,0.15);
     border:1px solid var(--yellow); color:var(--yellow); font-size:0.78rem; font-weight:700;
     padding:5px 10px; border-radius:999px; white-space:nowrap;
   }
@@ -50,18 +50,18 @@
     transition:border-color 0.15s, box-shadow 0.15s, transform 0.1s, background 0.15s;
   }
   select:focus, input:focus, textarea:focus{
-    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,141,239,0.18);
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(20,184,166,0.18);
   }
   button{
     cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2)); border:none;
-    font-weight:600; color:#fff; box-shadow:0 2px 8px rgba(91,141,239,0.25);
+    font-weight:600; color:#fff; box-shadow:0 2px 8px rgba(20,184,166,0.25);
   }
-  button:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(91,141,239,0.35);}
+  button:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(20,184,166,0.35);}
   button:active{transform:translateY(0) scale(0.98);}
   button.secondary, a.secondary{background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;}
   button.secondary:hover{background:var(--card3); box-shadow:none;}
   button.danger{background:transparent; color:var(--red); padding:4px 8px; font-size:0.85rem; box-shadow:none;}
-  button.danger:hover{background:rgba(255,107,107,0.1); transform:none; box-shadow:none;}
+  button.danger:hover{background:rgba(239,68,68,0.1); transform:none; box-shadow:none;}
   button[disabled]{opacity:0.55; cursor:default; transform:none !important;}
 
   main{padding:16px; max-width:1000px;}
@@ -81,10 +81,10 @@
   .positivo{color:var(--green);} .negativo{color:var(--red);} .alerta{color:var(--yellow);}
 
   .destaque{
-    background:linear-gradient(135deg, #24345f, #1a2148 60%, #171d3d);
-    border:1px solid rgba(91,141,239,0.4);
+    background:linear-gradient(135deg, #123c3d, #10262f 60%, #0f1c2a);
+    border:1px solid rgba(20,184,166,0.4);
     border-radius:var(--radius-lg); padding:20px 16px; margin:16px 0; text-align:center;
-    box-shadow:0 4px 20px rgba(91,141,239,0.12); position:relative; overflow:hidden;
+    box-shadow:0 4px 20px rgba(20,184,166,0.12); position:relative; overflow:hidden;
   }
   .destaque .valor-grande{font-size:1.55rem; font-weight:800; color:#fff;}
   .destaque .texto{font-size:0.85rem; color:var(--muted); margin-top:5px;}
@@ -102,9 +102,9 @@
   .panorama-texto{font-size:0.86rem; color:var(--muted); line-height:1.5;}
   .panorama-avisos{margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); display:flex; flex-direction:column; gap:6px;}
   .panorama-aviso{font-size:0.8rem; color:var(--yellow); line-height:1.4;}
-  .panorama-good .panorama-icone{background:rgba(62,207,142,0.15); color:var(--green);}
-  .panorama-warn .panorama-icone{background:rgba(245,196,81,0.15); color:var(--yellow);}
-  .panorama-critical .panorama-icone{background:rgba(255,107,107,0.15); color:var(--red);}
+  .panorama-good .panorama-icone{background:rgba(34,197,94,0.15); color:var(--green);}
+  .panorama-warn .panorama-icone{background:rgba(245,158,11,0.15); color:var(--yellow);}
+  .panorama-critical .panorama-icone{background:rgba(239,68,68,0.15); color:var(--red);}
   .panorama-good .panorama-titulo{color:var(--green);}
   .panorama-warn .panorama-titulo{color:var(--yellow);}
   .panorama-critical .panorama-titulo{color:var(--red);}
@@ -135,13 +135,13 @@
   .item .acoes button:hover, .item .acoes label:hover{background:var(--card2); transform:none;}
   .item .acoes label{cursor:pointer; color:var(--muted);}
   .item .acoes a.comp-link{padding:4px 6px; font-size:0.85rem; text-decoration:none; color:var(--green); border-radius:6px;}
-  .item .acoes a.comp-link:hover{background:rgba(62,207,142,0.1);}
+  .item .acoes a.comp-link:hover{background:rgba(34,197,94,0.1);}
   /* Anexo existente fica em destaque, não só um clipe apagado */
   .item .acoes a.comp-link.com-anexo{
-    background:rgba(62,207,142,0.15); border:1px solid var(--green); font-size:0.7rem;
+    background:rgba(34,197,94,0.15); border:1px solid var(--green); font-size:0.7rem;
     font-weight:700; padding:3px 8px; white-space:nowrap;
   }
-  .item .acoes a.comp-link.com-anexo:hover{background:rgba(62,207,142,0.28);}
+  .item .acoes a.comp-link.com-anexo:hover{background:rgba(34,197,94,0.28);}
   .item .acoes input[type=file]{display:none;}
 
   .total-secao{display:flex; justify-content:space-between; padding:10px 12px; font-weight:700; color:var(--muted); font-size:0.88rem; border-top:1px dashed var(--border); margin-top:2px;}
@@ -237,13 +237,16 @@
     display:none !important;
   }
   .badge-leitura{
-    display:none; align-items:center; gap:6px; background:rgba(245,196,81,0.15); border:1px solid var(--yellow);
+    display:none; align-items:center; gap:6px; background:rgba(245,158,11,0.15); border:1px solid var(--yellow);
     color:var(--yellow); font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px; margin-left:8px;
   }
   body.somente-leitura .badge-leitura{display:inline-flex;}
 
-  button.icon{background:transparent; color:var(--muted); padding:4px 6px; font-size:0.9rem; box-shadow:none;}
-  button.icon:hover{background:var(--card2); color:var(--text); transform:none;}
+  /* Vale pro <a class="icon"> também (ex: baixar PDF do holerite) — senão o link
+     fica com o azul padrão do navegador, destoando do resto. */
+  button.icon, a.icon{background:transparent; color:var(--muted); padding:4px 6px; font-size:0.9rem; box-shadow:none;
+    display:inline-flex; align-items:center; text-decoration:none;}
+  button.icon:hover, a.icon:hover{background:var(--card2); color:var(--text); transform:none;}
 
   /* Modal de edição */
   .modal-overlay{
@@ -278,7 +281,7 @@
   }
   .cal-dia:hover{border-color:var(--accent);}
   .cal-dia.vazio{background:transparent; border:none; cursor:default;}
-  .cal-dia.hoje{border-color:var(--accent); border-width:2px; box-shadow:0 0 0 3px rgba(91,141,239,0.12);}
+  .cal-dia.hoje{border-color:var(--accent); border-width:2px; box-shadow:0 0 0 3px rgba(20,184,166,0.12);}
   .cal-dia.selecionado{background:linear-gradient(160deg, var(--card2), var(--card3)); border-color:var(--accent);}
   .cal-dia .num{font-weight:700;}
   .cal-dots{display:flex; gap:2px; margin-top:3px;}
@@ -304,7 +307,7 @@
   /* Banner de instalação do app (PWA) */
   .install-banner{
     display:none; align-items:center; gap:12px; margin:0 0 14px;
-    background:linear-gradient(135deg, #24345f, #1a2148); border:1px solid rgba(91,141,239,0.4);
+    background:linear-gradient(135deg, #123c3d, #10262f); border:1px solid rgba(20,184,166,0.4);
     border-radius:var(--radius-md); padding:12px 14px;
   }
   .install-banner.ativo{display:flex;}
@@ -312,7 +315,7 @@
   .install-banner .texto-inst small{display:block; color:var(--muted); margin-top:2px; font-size:0.75rem;}
   .install-banner button{padding:8px 14px; font-size:0.82rem; flex:none;}
   .install-banner button.secondary{background:transparent; border:none; color:var(--muted); box-shadow:none;}
-  :root[data-tema="claro"] .install-banner{background:linear-gradient(135deg, #e7edfb, #f4f0ff); border-color:rgba(91,141,239,0.3);}
+  :root[data-tema="claro"] .install-banner{background:linear-gradient(135deg, #e3f5f2, #f0faf8); border-color:rgba(20,184,166,0.3);}
 
   /* Toasts */
   .toast-container{position:fixed; left:0; right:0; bottom:14px; display:flex; flex-direction:column;
@@ -343,19 +346,19 @@
 
   /* Tema claro */
   :root[data-tema="claro"]{
-    --bg:#f2f4fa; --card:#ffffff; --card2:#f3f5fb; --card3:#e9edf7;
-    --border:#e1e6f2; --border-soft:#e9edf7;
-    --text:#1c2438; --muted:#6b7694; --muted-soft:#9aa4c0;
+    --bg:#f4f7f8; --card:#ffffff; --card2:#f2f6f7; --card3:#e8eef0;
+    --border:#dfe7ea; --border-soft:#e8eef0;
+    --text:#16222c; --muted:#64748b; --muted-soft:#94a3b8;
   }
   :root[data-tema="claro"] body{
     background:
-      radial-gradient(circle at 15% 0%, rgba(91,141,239,0.05), transparent 40%),
-      radial-gradient(circle at 85% 15%, rgba(167,139,250,0.04), transparent 45%),
+      radial-gradient(circle at 15% 0%, rgba(20,184,166,0.05), transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(245,158,11,0.04), transparent 45%),
       var(--bg);
   }
   :root[data-tema="claro"] .sidebar, :root[data-tema="claro"] .topbar{background:rgba(255,255,255,0.88);}
-  :root[data-tema="claro"] h1{background:linear-gradient(90deg, #1c2438, #5b8def); -webkit-background-clip:text; background-clip:text; color:transparent;}
-  :root[data-tema="claro"] .destaque{background:linear-gradient(135deg, #e7edfb, #f4f0ff 60%, #eef2fc); border-color:rgba(91,141,239,0.3);}
+  :root[data-tema="claro"] h1{background:linear-gradient(90deg, #1c2438, #14b8a6); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  :root[data-tema="claro"] .destaque{background:linear-gradient(135deg, #e3f5f2, #f0faf8 60%, #eaf6f4); border-color:rgba(20,184,166,0.3);}
   :root[data-tema="claro"] .destaque .valor-grande{color:#1c2438;}
   :root[data-tema="claro"] .modal-overlay{background:rgba(30,35,55,0.35);}
 
@@ -368,8 +371,8 @@
   }
   .sidebar-topo{padding:22px 16px 16px; display:flex; align-items:center; justify-content:space-between; gap:6px;}
   .sidebar-topo .logo{font-size:1.05rem; font-weight:800; display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden;
-    background:linear-gradient(90deg, #fff, #b9c6ec); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap;}
-  :root[data-tema="claro"] .sidebar-topo .logo{background:linear-gradient(90deg, #1c2438, #5b8def); -webkit-background-clip:text; background-clip:text; color:transparent;}
+    background:linear-gradient(90deg, #fff, #7fe3d5); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap;}
+  :root[data-tema="claro"] .sidebar-topo .logo{background:linear-gradient(90deg, #1c2438, #14b8a6); -webkit-background-clip:text; background-clip:text; color:transparent;}
   .sidebar-colapsar{
     background:transparent; border:none; color:var(--muted); box-shadow:none; padding:4px 6px;
     width:auto; height:auto; font-size:0.95rem; flex:none; border-radius:6px; transition:transform 0.2s;
@@ -382,7 +385,7 @@
     box-shadow:none; text-align:left; justify-content:flex-start; width:100%; white-space:nowrap; overflow:hidden;
   }
   .nav-item:hover{background:var(--card2); transform:none; box-shadow:none; color:var(--text);}
-  .nav-item.ativo{color:#fff; background:linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow:0 2px 10px rgba(91,141,239,0.3);}
+  .nav-item.ativo{color:#fff; background:linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow:0 2px 10px rgba(20,184,166,0.3);}
   .nav-icon{display:flex; align-items:center; justify-content:center; flex:none; width:20px;}
 
   /* Ícones de linha (substituem os emojis) */
@@ -432,7 +435,7 @@
   .botao-arquivo{
     cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff;
     border:none; border-radius:var(--radius-sm); font-weight:600; display:block;
-    box-shadow:0 2px 8px rgba(91,141,239,0.25);
+    box-shadow:0 2px 8px rgba(20,184,166,0.25);
   }
   .botao-arquivo input[type=file]{display:none;}
 
@@ -482,8 +485,8 @@
   .barra-progresso{background:var(--card3); border-radius:999px; height:7px; overflow:hidden; margin-top:8px;}
   .barra-progresso .fill{height:100%; border-radius:999px; transition:width 0.3s ease;}
   .badge{display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px;}
-  .badge.paga{background:rgba(62,207,142,0.15); color:var(--green);}
-  .badge.aberta{background:rgba(91,141,239,0.15); color:var(--accent);}
+  .badge.paga{background:rgba(34,197,94,0.15); color:var(--green);}
+  .badge.aberta{background:rgba(20,184,166,0.15); color:var(--accent);}
 
   /* Grids de cartões e contas */
   .cartoes-grid, .contas-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px;}
@@ -499,6 +502,16 @@
   .cartao-grid .valor-info{font-weight:700; margin-top:2px;}
   .cartao-rodape{display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); gap:8px; flex-wrap:wrap;}
   .cartao-rodape button{font-size:0.78rem; padding:6px 10px;}
+  .cartao-transacoes-toggle{margin-top:8px;}
+  .cartao-transacoes-toggle .link{background:none; border:none; color:var(--accent); font-size:0.78rem; padding:0; cursor:pointer;}
+  .cartao-transacoes{margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);}
+  .lista-transacoes-cartao{display:flex; flex-direction:column; gap:6px; margin-bottom:10px; max-height:220px; overflow-y:auto;}
+  .transacao-cartao-item{display:grid; grid-template-columns:1fr auto auto auto; align-items:center; gap:8px; font-size:0.78rem; padding:4px 0;}
+  .transacao-cartao-item .tc-data-txt{color:var(--muted); font-size:0.72rem;}
+  .transacao-cartao-item .tc-valor-txt{font-weight:700; white-space:nowrap;}
+  .form-transacao-cartao{display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:6px;}
+  .form-transacao-cartao input{font-size:0.78rem; padding:6px 8px;}
+  .form-transacao-cartao button{font-size:0.78rem; padding:6px 10px; white-space:nowrap;}
 
   .conta-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card); display:flex; justify-content:space-between; align-items:center; gap:10px;}
   .conta-icone{width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; flex:none;}
@@ -514,7 +527,7 @@
   .fab{
     width:56px; height:56px; border-radius:50%;
     display:flex; align-items:center; justify-content:center; font-size:1.7rem; line-height:1;
-    box-shadow:0 6px 20px rgba(91,141,239,0.45); padding:0; transition:transform 0.2s ease;
+    box-shadow:0 6px 20px rgba(20,184,166,0.45); padding:0; transition:transform 0.2s ease;
   }
   .fab:hover{transform:translateY(-2px) scale(1.03);}
   .fab.ativo{transform:rotate(45deg);}
@@ -532,7 +545,7 @@
   .fab-mini-icone.receita{background:linear-gradient(135deg, var(--green), #2fb377);}
   .fab-mini-icone.transferencia{background:linear-gradient(135deg, var(--accent), var(--accent2));}
   .fab-mini-icone.comprovante{background:linear-gradient(135deg, var(--purple), #7c5cd4);}
-  #comprovantePendenteAviso{display:none; align-items:center; gap:6px; background:rgba(167,139,250,0.15); border:1px solid var(--purple); color:var(--purple); font-size:0.78rem; font-weight:600; padding:6px 10px; border-radius:8px; margin-bottom:10px;}
+  #comprovantePendenteAviso{display:none; align-items:center; gap:6px; background:rgba(245,158,11,0.15); border:1px solid var(--purple); color:var(--purple); font-size:0.78rem; font-weight:600; padding:6px 10px; border-radius:8px; margin-bottom:10px;}
 
   /* Toggle switch */
   .toggle-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; font-size:0.85rem; color:var(--text);}
@@ -570,6 +583,12 @@
   .explicacao-grupo{margin-bottom:18px;}
   .explicacao-grupo h2{font-size:0.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; font-weight:700;}
 </style>
+<!-- Privacy-friendly analytics by Plausible -->
+<script async src="https://analytics.danilashes.com.br/js/pa-a6nLK6VNC0QIFR2mNgXCV.js"></script>
+<script>
+  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+  plausible.init()
+</script>
 </head>
 <body>
 
@@ -717,7 +736,7 @@
     </div>
 
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> Contas vencendo nos próximos 7 dias</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> Contas vencidas e vencendo nos próximos 7 dias</h2>
       <div id="listaVencendo"></div>
     </div>
 
@@ -816,7 +835,7 @@
       <input type="text" id="categoriaFormNome" placeholder="Nome da categoria" required>
       <label class="toggle-row" style="width:auto; gap:8px; padding:0;">
         Cor
-        <input type="color" id="categoriaFormCor" value="#5b8def" style="width:44px; padding:2px; height:38px;">
+        <input type="color" id="categoriaFormCor" value="#14b8a6" style="width:44px; padding:2px; height:38px;">
       </label>
       <button type="submit">+ Adicionar categoria</button>
     </form>
@@ -1094,7 +1113,7 @@
     <div id="novaCategoriaBox" style="display:none; margin-top:8px;">
       <input type="text" id="novaCategoriaNomeInline" placeholder="Nome da nova categoria">
       <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
-        <input type="color" id="novaCategoriaCorInline" value="#5b8def" style="width:44px; padding:2px; height:38px; flex:none;">
+        <input type="color" id="novaCategoriaCorInline" value="#14b8a6" style="width:44px; padding:2px; height:38px; flex:none;">
         <button type="button" class="secondary" id="novaCategoriaCancelarInline" style="flex:1;">Cancelar</button>
         <button type="button" id="novaCategoriaSalvarInline" style="flex:1;">Salvar categoria</button>
       </div>
@@ -1343,7 +1362,7 @@ let usuariosCache = [];
 let usuarioAtual = null;
 let filtros = {busca:"", categoria:"", conta:"", status:"", ordenacao:"padrao"};
 
-const PALETA_CORES = ["#5b8def","#3ecf8e","#ff6b6b","#f5c451","#a78bfa","#4dd0e1","#f78fb3","#82e0aa","#f0932b","#c8d6e5"];
+const PALETA_CORES = ["#14b8a6","#22c55e","#ef4444","#f59e0b","#a78bfa","#4dd0e1","#f78fb3","#82e0aa","#f0932b","#c8d6e5"];
 let categoriaCorCache = {};
 function corHash(str){
   let hash = 0;
@@ -2140,7 +2159,7 @@ function renderizarContas(){
     return;
   }
   contasCache.forEach(c => {
-    const cor = corPara(c.nome) || "#5b8def";
+    const cor = corPara(c.nome) || "#14b8a6";
     const inicial = (c.nome || "?").trim().slice(0, 2).toUpperCase();
     const div = document.createElement("div");
     div.className = "conta-card";
@@ -2544,7 +2563,7 @@ async function carregarDashboard(){
   const vencContainer = document.getElementById("listaVencendo");
   vencContainer.innerHTML = "";
   if (d.contas_vencendo.length === 0){
-    vencContainer.innerHTML = `<div class="empty">Nenhuma conta vencendo nos próximos 7 dias.</div>`;
+    vencContainer.innerHTML = `<div class="empty">Nenhuma conta vencida ou vencendo nos próximos 7 dias.</div>`;
   } else {
     // Podem ser de outro mês, então registra no cache para a edição encontrá-las.
     d.contas_vencendo.forEach(item => { itensPorId[item.id] = item; });
@@ -2569,7 +2588,15 @@ async function carregarDashboard(){
   const claro = document.documentElement.getAttribute("data-tema") === "claro";
   const corTexto = claro ? "#1c2438" : "#e8ecf5";
   const corMuted = claro ? "#6b7694" : "#8b96b3";
-  const corGrade = claro ? "#e1e6f2" : "#2a3450";
+  const corGrade = claro ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
+
+  // Gradiente vertical (cor forte em cima, esmaecendo pra transparente) pra areas dos graficos de linha.
+  function gradienteArea(ctx, corRgb){
+    const g = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height || 220);
+    g.addColorStop(0, `rgba(${corRgb},0.35)`);
+    g.addColorStop(1, `rgba(${corRgb},0.02)`);
+    return g;
+  }
 
   const ctxComp = document.getElementById("chartComparacao").getContext("2d");
   if (chartComparacao) chartComparacao.destroy();
@@ -2580,12 +2607,12 @@ async function carregarDashboard(){
       datasets: [{
         data: [d.saldo_atual, d.receita_total, d.despesa_total, d.previsao_fim_mes],
         backgroundColor: [
-          d.saldo_atual >= 0 ? "#5b8def" : "#ff6b6b",
-          "#3ecf8e",
-          "#ff6b6b",
-          d.previsao_fim_mes >= 0 ? "#5b8def" : "#ff6b6b",
+          d.saldo_atual >= 0 ? "rgba(20,184,166,0.82)" : "rgba(239,68,68,0.82)",
+          "rgba(34,197,94,0.82)",
+          "rgba(239,68,68,0.82)",
+          d.previsao_fim_mes >= 0 ? "rgba(20,184,166,0.82)" : "rgba(239,68,68,0.82)",
         ],
-        borderRadius: 6,
+        borderRadius: 8,
       }]
     },
     options: {responsive:true, maintainAspectRatio:false,
@@ -2609,9 +2636,9 @@ async function carregarDashboard(){
     type: "doughnut",
     data: {
       labels: d.grafico_categoria.map(c => c.categoria),
-      datasets: [{data: d.grafico_categoria.map(c => c.total), backgroundColor: d.grafico_categoria.map(c => corPara(c.categoria) || "#5b8def")}]
+      datasets: [{data: d.grafico_categoria.map(c => c.total), backgroundColor: d.grafico_categoria.map(c => corPara(c.categoria) || "#14b8a6")}]
     },
-    options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right", labels:{color:corTexto, boxWidth:12, font:{size:10}}}}}
+    options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}}}}
   });
 
   // Gráfico de tendência (últimos meses)
@@ -2625,14 +2652,14 @@ async function carregarDashboard(){
       data: {
         labels: tend.map(t => formatMes(t.mes)),
         datasets: [
-          {label:"Receitas", data: tend.map(t => t.receita), borderColor:"#3ecf8e", backgroundColor:"rgba(62,207,142,0.15)", tension:0.3, fill:true},
-          {label:"Despesas", data: tend.map(t => t.despesa), borderColor:"#ff6b6b", backgroundColor:"rgba(255,107,107,0.15)", tension:0.3, fill:true},
-          {label:"Saldo", data: tend.map(t => t.saldo), borderColor:"#5b8def", backgroundColor:"rgba(91,141,239,0.15)", tension:0.3, fill:true},
+          {label:"Receitas", data: tend.map(t => t.receita), borderColor:"#22c55e", backgroundColor:gradienteArea(ctxTend,"34,197,94"), borderWidth:2, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:4},
+          {label:"Despesas", data: tend.map(t => t.despesa), borderColor:"#ef4444", backgroundColor:gradienteArea(ctxTend,"239,68,68"), borderWidth:2, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:4},
+          {label:"Saldo", data: tend.map(t => t.saldo), borderColor:"#14b8a6", backgroundColor:gradienteArea(ctxTend,"20,184,166"), borderWidth:2, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:4},
         ]
       },
       options: {responsive:true, maintainAspectRatio:false,
         scales:{x:{ticks:{color:corMuted}, grid:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade}}},
-        plugins:{legend:{position:"bottom", labels:{color:corTexto, boxWidth:12, font:{size:10}}}, tooltip:{callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
+        plugins:{legend:{position:"bottom", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}}, tooltip:{callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
     });
   } catch (e) { /* toast já exibido pelo apiFetch */ }
 
@@ -2646,9 +2673,9 @@ async function carregarDashboard(){
       data: {
         labels: fluxo.map(f => f.dia),
         datasets: [
-          {type:"bar", label:"Entradas", data: fluxo.map(f => f.entradas), backgroundColor:"#3ecf8e", borderRadius:3, yAxisID:"y"},
-          {type:"bar", label:"Saídas", data: fluxo.map(f => -f.saidas), backgroundColor:"#ff6b6b", borderRadius:3, yAxisID:"y"},
-          {type:"line", label:"Saldo acumulado", data: fluxo.map(f => f.saldo_acumulado), borderColor:"#5b8def", backgroundColor:"rgba(91,141,239,0.15)", tension:0.3, fill:false, pointRadius:0, yAxisID:"y1"},
+          {type:"bar", label:"Entradas", data: fluxo.map(f => f.entradas), backgroundColor:"rgba(34,197,94,0.82)", borderRadius:8, yAxisID:"y"},
+          {type:"bar", label:"Saídas", data: fluxo.map(f => -f.saidas), backgroundColor:"rgba(239,68,68,0.82)", borderRadius:8, yAxisID:"y"},
+          {type:"line", label:"Saldo acumulado", data: fluxo.map(f => f.saldo_acumulado), borderColor:"#14b8a6", borderWidth:2, tension:0.4, fill:false, pointRadius:0, pointHoverRadius:4, yAxisID:"y1"},
         ]
       },
       options: {responsive:true, maintainAspectRatio:false,
@@ -2657,7 +2684,7 @@ async function carregarDashboard(){
           y:{ticks:{color:corMuted}, grid:{color:corGrade}},
           y1:{position:"right", ticks:{color:corMuted}, grid:{display:false}},
         },
-        plugins:{legend:{position:"bottom", labels:{color:corTexto, boxWidth:12, font:{size:10}}},
+        plugins:{legend:{position:"bottom", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}},
           tooltip:{callbacks:{label: (ctx) => ctx.dataset.label === "Saídas"
             ? `Saídas: ${formatMoeda(Math.abs(ctx.parsed.y))}`
             : `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}
@@ -2805,7 +2832,7 @@ async function carregarCartoes(){
   container.innerHTML = "";
   if (cartoesCache.length === 0){ container.innerHTML = `<div class="empty">Nenhum cartão cadastrado.</div>`; return; }
   cartoesCache.forEach(c => {
-    const cor = corPara(c.nome) || "#5b8def";
+    const cor = corPara(c.nome) || "#14b8a6";
     const inicial = (c.nome || "?").trim().slice(0, 2).toUpperCase();
     const uso = c.limite > 0 ? Math.min(100, Math.round((c.fatura_atual / c.limite) * 100)) : 0;
     const corBarra = uso >= 90 ? "var(--red)" : uso >= 60 ? "var(--yellow)" : "var(--green)";
@@ -2834,9 +2861,85 @@ async function carregarCartoes(){
         <span class="badge ${c.fatura_paga ? 'paga' : 'aberta'}">${c.fatura_paga ? '✓ Fatura paga' : 'Fatura aberta'}</span>
         <button class="secondary" onclick="alternarFaturaCartao(${c.id}, ${c.fatura_paga ? 0 : 1})">${c.fatura_paga ? 'Reabrir fatura' : 'Marcar como paga'}</button>
       </div>
+      <div class="cartao-transacoes-toggle">
+        <button class="link" onclick="alternarTransacoesCartao(${c.id})">Ver lançamentos do cartão ▾</button>
+      </div>
+      <div class="cartao-transacoes" id="transacoes-cartao-${c.id}" style="display:none">
+        <div class="lista-transacoes-cartao" id="lista-transacoes-${c.id}"><div class="loading-msg">Carregando...</div></div>
+        <form class="form-transacao-cartao" onsubmit="return adicionarTransacaoCartao(event, ${c.id})">
+          <input type="text" placeholder="Descrição" required class="tc-descricao">
+          <input type="number" step="0.01" placeholder="Valor" required class="tc-valor">
+          <input type="date" class="tc-data">
+          <button type="submit" class="secondary">Adicionar</button>
+        </form>
+      </div>
     `;
     container.appendChild(div);
   });
+}
+
+const transacoesCartaoCache = {};
+
+async function alternarTransacoesCartao(cartaoId){
+  const painel = document.getElementById(`transacoes-cartao-${cartaoId}`);
+  const abrir = painel.style.display === "none";
+  painel.style.display = abrir ? "block" : "none";
+  if (abrir) await carregarTransacoesCartao(cartaoId);
+}
+
+async function carregarTransacoesCartao(cartaoId){
+  const container = document.getElementById(`lista-transacoes-${cartaoId}`);
+  container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const res = await apiFetch(`${API}/cartoes/${cartaoId}/transacoes`, undefined, {erro:"Não foi possível carregar os lançamentos do cartão"});
+    const transacoes = await res.json();
+    transacoesCartaoCache[cartaoId] = transacoes;
+    if (transacoes.length === 0){
+      container.innerHTML = `<div class="empty">Nenhum lançamento neste cartão.</div>`;
+      return;
+    }
+    container.innerHTML = transacoes.map(t => `
+      <div class="transacao-cartao-item">
+        <span class="tc-desc">${escapeHtml(t.descricao)}</span>
+        <span class="tc-data-txt">${t.data ? formatData(t.data) : ""}</span>
+        <span class="tc-valor-txt">${formatMoeda(t.valor)}</span>
+        <button class="icon danger" onclick="excluirTransacaoCartao(${t.id}, ${cartaoId})" title="Excluir">${ICO.x}</button>
+      </div>
+    `).join("");
+  } catch (e) {
+    container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+  }
+}
+
+async function adicionarTransacaoCartao(evento, cartaoId){
+  evento.preventDefault();
+  const form = evento.target;
+  const body = {
+    descricao: form.querySelector(".tc-descricao").value,
+    valor: form.querySelector(".tc-valor").value,
+    data: form.querySelector(".tc-data").value || null,
+  };
+  try {
+    await apiFetch(`${API}/cartoes/${cartaoId}/transacoes`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Lançamento adicionado ao cartão", erro:"Não foi possível adicionar o lançamento"});
+    form.reset();
+    await carregarTransacoesCartao(cartaoId);
+    await carregarCartoes();
+    document.getElementById(`transacoes-cartao-${cartaoId}`).style.display = "block";
+    carregarDashboard();
+  } catch (e) {}
+  return false;
+}
+
+async function excluirTransacaoCartao(id, cartaoId){
+  if (!confirm("Excluir este lançamento do cartão?")) return;
+  try {
+    await apiFetch(`${API}/cartoes/transacoes/${id}`, {method:"DELETE"}, {sucesso:"Lançamento excluído", erro:"Não foi possível excluir"});
+    await carregarTransacoesCartao(cartaoId);
+    await carregarCartoes();
+    document.getElementById(`transacoes-cartao-${cartaoId}`).style.display = "block";
+    carregarDashboard();
+  } catch (e) {}
 }
 document.getElementById("cartaoForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -3085,14 +3188,14 @@ function renderizarChartHolerites(holerites){
   const claro = document.documentElement.getAttribute("data-tema") === "claro";
   const corTexto = claro ? "#1c2438" : "#e8ecf5";
   const corMuted = claro ? "#6b7694" : "#8b96b3";
-  const corGrade = claro ? "#e1e6f2" : "#2a3450";
+  const corGrade = claro ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
   chartHolerites = new Chart(ctx, {
     data: {
       labels: meses.map(formatMes),
       datasets: [
-        {type:"bar", label:"Proventos", data: meses.map(m => porMes[m].proventos), backgroundColor:"#3ecf8e", borderRadius:4},
-        {type:"bar", label:"Descontos", data: meses.map(m => porMes[m].descontos), backgroundColor:"#ff6b6b", borderRadius:4},
-        {type:"bar", label:"Salário líquido", data: meses.map(m => porMes[m].liquido), backgroundColor:"#5b8def", borderRadius:4},
+        {type:"bar", label:"Proventos", data: meses.map(m => porMes[m].proventos), backgroundColor:"rgba(34,197,94,0.82)", borderRadius:8},
+        {type:"bar", label:"Descontos", data: meses.map(m => porMes[m].descontos), backgroundColor:"rgba(239,68,68,0.82)", borderRadius:8},
+        {type:"bar", label:"Salário líquido", data: meses.map(m => porMes[m].liquido), backgroundColor:"rgba(20,184,166,0.82)", borderRadius:8},
       ]
     },
     options: {responsive:true, maintainAspectRatio:false,
@@ -3107,7 +3210,7 @@ function renderizarChartHolerites(holerites){
         evt.native.target.style.cursor = elementos.length && elementos[0].datasetIndex < 2 ? "pointer" : "default";
       },
       scales:{x:{ticks:{color:corMuted}, grid:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade}}},
-      plugins:{legend:{position:"bottom", labels:{color:corTexto, boxWidth:12, font:{size:10}}},
+      plugins:{legend:{position:"bottom", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}},
         tooltip:{callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
   });
 }

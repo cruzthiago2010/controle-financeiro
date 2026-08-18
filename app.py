@@ -1261,8 +1261,23 @@ def listar_lancamentos():
     mes = request.args.get("mes", datetime.now().strftime("%Y-%m"))
     conn = get_db()
     garantir_recorrentes(conn, mes, uid())
+    # Além do mês pedido, traz despesas de meses anteriores que ainda não foram pagas,
+    # pra elas não ficarem "escondidas" num mês passado que ninguém mais abre.
+    # Para séries recorrentes (ex: Francisco todo mês), só a ocorrência não paga mais
+    # antiga aparece — senão cada mês sem pagar acumularia mais uma cópia na lista.
     rows = conn.execute(
-        "SELECT * FROM lancamentos WHERE mes = ? AND usuario_id = ? ORDER BY tipo, id", (mes, uid())
+        "SELECT * FROM lancamentos WHERE mes = ? AND usuario_id = ? "
+        "UNION "
+        "SELECT * FROM lancamentos WHERE mes < ? AND usuario_id = ? "
+        "AND tipo = 'despesa' AND pago = 0 AND eh_transferencia = 0 "
+        "AND ("
+        "  grupo_recorrencia IS NULL"
+        "  OR mes = (SELECT MIN(mes) FROM lancamentos l2"
+        "            WHERE l2.grupo_recorrencia = lancamentos.grupo_recorrencia"
+        "            AND l2.pago = 0 AND l2.usuario_id = lancamentos.usuario_id)"
+        ") "
+        "ORDER BY tipo, id",
+        (mes, uid(), mes, uid()),
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
@@ -1799,6 +1814,74 @@ def deletar_cartao(item_id):
         conn.close()
         return jsonify({"erro": "cartão não encontrado"}), 404
     conn.execute("DELETE FROM cartoes WHERE id = ?", (item_id,))
+    conn.execute("DELETE FROM cartao_transacoes WHERE cartao_id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+def recalcular_fatura_cartao(conn, cartao_id):
+    """Mantém cartoes.fatura_atual em sincronia com a soma das transações —
+    é essa soma que aparece na aba Cartões, nunca a lista de lancamentos."""
+    total = conn.execute(
+        "SELECT COALESCE(SUM(valor), 0) FROM cartao_transacoes WHERE cartao_id = ?",
+        (cartao_id,),
+    ).fetchone()[0]
+    conn.execute("UPDATE cartoes SET fatura_atual = ? WHERE id = ?", (total, cartao_id))
+
+
+@app.route("/api/cartoes/<int:cartao_id>/transacoes", methods=["GET"])
+def listar_transacoes_cartao(cartao_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "cartoes", cartao_id):
+        conn.close()
+        return jsonify({"erro": "cartão não encontrado"}), 404
+    rows = conn.execute(
+        "SELECT * FROM cartao_transacoes WHERE cartao_id = ? AND usuario_id = ? ORDER BY data DESC, id DESC",
+        (cartao_id, uid()),
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/cartoes/<int:cartao_id>/transacoes", methods=["POST"])
+def criar_transacao_cartao(cartao_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "cartoes", cartao_id):
+        conn.close()
+        return jsonify({"erro": "cartão não encontrado"}), 404
+    data = request.get_json(force=True)
+    descricao = (data.get("descricao") or "").strip()
+    if not descricao or data.get("valor") in (None, ""):
+        conn.close()
+        return jsonify({"erro": "descrição e valor são obrigatórios"}), 400
+    try:
+        valor = float(data.get("valor"))
+    except (TypeError, ValueError):
+        conn.close()
+        return jsonify({"erro": "valor inválido"}), 400
+    conn.execute(
+        "INSERT INTO cartao_transacoes (cartao_id, descricao, valor, data, categoria, usuario_id, criado_em) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (cartao_id, descricao, valor, data.get("data") or None, (data.get("categoria") or "").strip() or None,
+         uid(), datetime.now().isoformat()),
+    )
+    recalcular_fatura_cartao(conn, cartao_id)
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/cartoes/transacoes/<int:item_id>", methods=["DELETE"])
+def deletar_transacao_cartao(item_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "cartao_transacoes", item_id):
+        conn.close()
+        return jsonify({"erro": "lançamento não encontrado"}), 404
+    row = conn.execute("SELECT cartao_id FROM cartao_transacoes WHERE id = ?", (item_id,)).fetchone()
+    conn.execute("DELETE FROM cartao_transacoes WHERE id = ?", (item_id,))
+    if row:
+        recalcular_fatura_cartao(conn, row["cartao_id"])
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
@@ -2244,11 +2327,13 @@ def dashboard():
     livre_para_gastar = saldo_atual + receita_pendente - despesa_pendente
     gasto_diario = round(max(livre_para_gastar, 0) / dias_restantes, 2) if dias_restantes > 0 else 0
 
+    # Inclui também contas já vencidas (vencimento antes de hoje) e não só as dos
+    # próximos 7 dias — senão uma conta atrasada podia sumir desse aviso.
     limite_alerta = (hoje_dt + timedelta(days=7)).strftime("%Y-%m-%d")
     vencendo = conn.execute(
         "SELECT * FROM lancamentos WHERE tipo = 'despesa' AND pago = 0 AND vencimento != '' "
-        "AND vencimento BETWEEN ? AND ? AND usuario_id = ? ORDER BY vencimento",
-        (hoje, limite_alerta, uid()),
+        "AND vencimento <= ? AND usuario_id = ? ORDER BY vencimento",
+        (limite_alerta, uid()),
     ).fetchall()
 
     parcelas_futuras = conn.execute(

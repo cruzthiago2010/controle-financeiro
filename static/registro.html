@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Criar casa — Controle Financeiro</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0b0f19">
+<meta name="theme-color" content="#0b1020">
 <style>
   :root{
-    --bg:#0b0f19; --card:#161d2e; --card2:#1c2438;
-    --border:#26304a; --text:#eef1f8; --muted:#8b96b3;
-    --accent:#5b8def; --accent2:#4f7fe0; --red:#ff6b6b;
+    --bg:#0b1020; --card:#111827; --card2:#161f2e;
+    --border:#232f42; --text:#e5e7eb; --muted:#94a3b8;
+    --accent:#14b8a6; --accent2:#0d9488; --red:#ef4444;
   }
   *{box-sizing:border-box;}
   body{
     margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
     font-family:-apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     background:
-      radial-gradient(circle at 15% 0%, rgba(91,141,239,0.12), transparent 40%),
-      radial-gradient(circle at 85% 100%, rgba(167,139,250,0.09), transparent 45%),
+      radial-gradient(circle at 85% -8%, rgba(20,184,166,0.16), transparent 45%),
+      radial-gradient(circle at 10% 110%, rgba(245,158,11,0.12), transparent 44%),
       var(--bg);
     color:var(--text); padding:20px;
   }
@@ -29,7 +29,7 @@
   }
   .logo{
     text-align:center; font-size:1.4rem; font-weight:800; margin-bottom:6px;
-    background:linear-gradient(90deg, #fff, #b9c6ec); -webkit-background-clip:text; background-clip:text; color:transparent;
+    background:linear-gradient(90deg, #fff, #7fe3d5); -webkit-background-clip:text; background-clip:text; color:transparent;
   }
   .subtitulo{text-align:center; color:var(--muted); font-size:0.85rem; margin-bottom:26px;}
   label{display:block; font-size:0.78rem; color:var(--muted); margin:14px 0 4px;}
@@ -37,22 +37,22 @@
     width:100%; background:var(--card2); color:var(--text); border:1px solid var(--border);
     border-radius:10px; padding:11px 12px; font-size:0.95rem; font-family:inherit;
   }
-  input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,141,239,0.18);}
+  input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(20,184,166,0.18);}
   button{
     width:100%; margin-top:22px; cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2));
     border:none; border-radius:10px; padding:12px; font-size:1rem; font-weight:700; color:#fff;
-    box-shadow:0 4px 14px rgba(91,141,239,0.3);
+    box-shadow:0 4px 14px rgba(20,184,166,0.3);
   }
   button:disabled{opacity:0.6; cursor:default;}
   .erro{
-    display:none; margin-top:14px; background:rgba(255,107,107,0.1); border:1px solid var(--red);
+    display:none; margin-top:14px; background:rgba(239,68,68,0.1); border:1px solid var(--red);
     color:var(--red); border-radius:8px; padding:10px 12px; font-size:0.85rem; text-align:center;
   }
   .erro.ativo{display:block;}
   .rodape{text-align:center; margin-top:18px; font-size:0.82rem; color:var(--muted);}
   .rodape a{color:var(--accent); text-decoration:none;}
   .aviso{
-    margin-top:14px; background:rgba(91,141,239,0.08); border:1px solid var(--border);
+    margin-top:14px; background:rgba(20,184,166,0.08); border:1px solid var(--border);
     border-radius:8px; padding:10px 12px; font-size:0.78rem; color:var(--muted); line-height:1.4;
   }
   .divisor{display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--muted); font-size:0.75rem;}
@@ -66,6 +66,12 @@
   .btn-google:hover{transform:translateY(-1px);}
   .btn-google svg{width:18px; height:18px; flex:none;}
 </style>
+<!-- Privacy-friendly analytics by Plausible -->
+<script async src="https://analytics.danilashes.com.br/js/pa-a6nLK6VNC0QIFR2mNgXCV.js"></script>
+<script>
+  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+  plausible.init()
+</script>
 </head>
 <body>
 
