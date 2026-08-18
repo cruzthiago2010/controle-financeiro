@@ -13,28 +13,25 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root{
-    --bg:#0b1020; --card:#111827; --card2:#161f2e; --card3:#1b2536;
-    --border:#232f42; --border-soft:#1c2636;
-    --text:#e5e7eb; --muted:#94a3b8; --muted-soft:#64748b;
-    --green:#22c55e; --red:#ef4444; --accent:#14b8a6; --accent2:#0d9488;
-    --yellow:#f59e0b; --purple:#a78bfa;
+    --bg:#141a21; --card:#1c252e; --card2:#252f3a; --card3:#2c3742;
+    --border:rgba(145,158,171,0.16); --border-soft:rgba(145,158,171,0.10);
+    --text:#ffffff; --muted:#919eab; --muted-soft:#6b7a87;
+    --green:#00a76f; --red:#ff5630; --accent:#00a76f; --accent2:#007867;
+    --yellow:#ffab00; --purple:#8e33ff; --azul:#00b8d9;
     --radius-lg:16px; --radius-md:12px; --radius-sm:8px;
-    --shadow-card:0 2px 10px rgba(0,0,0,0.25);
-    --shadow-hover:0 8px 24px rgba(0,0,0,0.35);
+    --shadow-card:0 0 2px 0 rgba(0,0,0,0.2), 0 12px 24px -4px rgba(0,0,0,0.12);
+    --shadow-hover:0 0 2px 0 rgba(0,0,0,0.2), 0 20px 40px -4px rgba(0,0,0,0.16);
   }
   *{box-sizing:border-box;}
+  /* Fundo liso: a cor entra pelos cards e pelo banner, não pelo plano de fundo. */
   body{
     margin:0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    background:
-      radial-gradient(circle at 85% -8%, rgba(20,184,166,0.16), transparent 45%),
-      radial-gradient(circle at 10% 10%, rgba(245,158,11,0.12), transparent 44%),
-      var(--bg);
-    background-attachment:fixed;
+    background:var(--bg);
     color:var(--text); padding-bottom:80px; -webkit-font-smoothing:antialiased;
   }
   .mes-selector{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
   .mes-aviso{
-    display:none; align-items:center; gap:6px; background:rgba(245,158,11,0.15);
+    display:none; align-items:center; gap:6px; background:rgba(255,171,0,0.15);
     border:1px solid var(--yellow); color:var(--yellow); font-size:0.78rem; font-weight:700;
     padding:5px 10px; border-radius:999px; white-space:nowrap;
   }
@@ -50,18 +47,18 @@
     transition:border-color 0.15s, box-shadow 0.15s, transform 0.1s, background 0.15s;
   }
   select:focus, input:focus, textarea:focus{
-    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(20,184,166,0.18);
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,167,111,0.18);
   }
   button{
     cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2)); border:none;
-    font-weight:600; color:#fff; box-shadow:0 2px 8px rgba(20,184,166,0.25);
+    font-weight:600; color:#fff; box-shadow:0 2px 8px rgba(0,167,111,0.25);
   }
-  button:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(20,184,166,0.35);}
+  button:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,167,111,0.35);}
   button:active{transform:translateY(0) scale(0.98);}
   button.secondary, a.secondary{background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;}
   button.secondary:hover{background:var(--card3); box-shadow:none;}
   button.danger{background:transparent; color:var(--red); padding:4px 8px; font-size:0.85rem; box-shadow:none;}
-  button.danger:hover{background:rgba(239,68,68,0.1); transform:none; box-shadow:none;}
+  button.danger:hover{background:rgba(255,86,48,0.1); transform:none; box-shadow:none;}
   button[disabled]{opacity:0.55; cursor:default; transform:none !important;}
 
   main{padding:16px; max-width:1000px;}
@@ -78,16 +75,93 @@
   .card:hover{transform:translateY(-2px); box-shadow:var(--shadow-hover);}
   .card .label{font-size:0.76rem; color:var(--muted);}
   .card .valor{font-size:1.2rem; font-weight:800; margin-top:5px; letter-spacing:-0.01em;}
+
+  /* Card de indicador: rótulo e ícone numa linha, número grande embaixo e a
+     variação em relação ao mês anterior no rodapé. */
+  .card.kpi{display:flex; flex-direction:column; padding:16px;}
+  .card.kpi .kpi-topo{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .card.kpi .label{display:flex; align-items:center; gap:6px; line-height:1.3;}
+  .card.kpi .valor{font-size:1.45rem; margin-top:8px; letter-spacing:-0.02em;}
+  .card.kpi .kpi-ico{
+    width:34px; height:34px; border-radius:10px; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--tint-bg); color:var(--tint-cor);
+  }
+  .card.kpi .kpi-ico .ico{width:17px; height:17px;}
+  .kpi-var{display:inline-flex; align-items:center; gap:4px; font-size:0.74rem; font-weight:600; margin-top:8px; color:var(--muted);}
+  .kpi-var.sobe{color:var(--green);} .kpi-var.desce{color:var(--red);}
+  .kpi-var .ico{width:13px; height:13px;}
+  .kpi-var .ref{color:var(--muted-soft); font-weight:500;}
+
+  /* Lista ranqueada (gastos por categoria): nome e valor na primeira linha, a
+     barra logo abaixo mostrando a fatia de cada uma no total do mês. */
+  .rank-linha{padding:9px 0;}
+  .rank-linha + .rank-linha{border-top:1px solid var(--border-soft);}
+  .rank-topo{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:6px;}
+  .rank-nome{display:flex; align-items:center; gap:7px; font-size:0.86rem; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rank-ponto{width:8px; height:8px; border-radius:50%; flex:none;}
+  .rank-valor{font-size:0.86rem; font-weight:700; white-space:nowrap; flex:none;}
+  .rank-pct{color:var(--muted); font-weight:600; font-size:0.78rem; margin-left:2px;}
+  .rank-trilha{height:6px; border-radius:999px; background:var(--card2); overflow:hidden;}
+  .rank-barra{height:100%; border-radius:999px; transition:width 0.4s ease;}
   .positivo{color:var(--green);} .negativo{color:var(--red);} .alerta{color:var(--yellow);}
 
+  /* Faixa verde de destaque: a cor sai forte à esquerda e se dissolve no fundo
+     à direita, com uma onda suave por cima pra não ficar um bloco chapado. */
   .destaque{
-    background:linear-gradient(135deg, #123c3d, #10262f 60%, #0f1c2a);
-    border:1px solid rgba(20,184,166,0.4);
-    border-radius:var(--radius-lg); padding:20px 16px; margin:16px 0; text-align:center;
-    box-shadow:0 4px 20px rgba(20,184,166,0.12); position:relative; overflow:hidden;
+    background:linear-gradient(100deg, #005c43 0%, #10382e 48%, var(--card) 100%);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg); padding:22px 20px; margin:16px 0; text-align:center;
+    box-shadow:var(--shadow-card); position:relative; overflow:hidden;
   }
-  .destaque .valor-grande{font-size:1.55rem; font-weight:800; color:#fff;}
-  .destaque .texto{font-size:0.85rem; color:var(--muted); margin-top:5px;}
+  .destaque::after{
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:0.5;
+    background:radial-gradient(120% 90% at 8% 120%, rgba(0,167,111,0.35), transparent 60%);
+  }
+  .destaque > *{position:relative; z-index:1;}
+  .destaque .valor-grande{font-size:1.7rem; font-weight:800; color:#fff; letter-spacing:-0.02em;}
+  .destaque .texto{font-size:0.85rem; color:rgba(255,255,255,0.66); margin-top:5px;}
+
+  /* Destaque do saldo real: texto à esquerda, linha do saldo do mês ao fundo à
+     direita. A malha quadriculada por cima é o que dá o ar de painel. */
+  .destaque.destaque-hero{
+    text-align:left; padding:24px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+    align-items:center; gap:16px;
+  }
+  .destaque.destaque-hero::before{
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:0.5;
+    background-image:linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                     linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size:34px 34px;
+    mask-image:linear-gradient(90deg, transparent, #000 35%);
+    -webkit-mask-image:linear-gradient(90deg, transparent, #000 35%);
+  }
+  .hero-conteudo{min-width:0;}
+  .hero-rotulo{display:flex; align-items:center; gap:6px; font-size:0.82rem; color:rgba(255,255,255,0.72);}
+  .hero-valor{font-size:2.3rem; font-weight:800; color:#fff; letter-spacing:-0.03em; margin-top:4px;
+    line-height:1.1; font-variant-numeric:tabular-nums;}
+  .hero-valor.negativo{color:#ffb4a3;}
+  .hero-selos{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; min-height:1px;}
+  .hero-selo{display:inline-flex; align-items:center; gap:4px; font-size:0.76rem; font-weight:700;
+    padding:4px 9px; border-radius:999px; background:rgba(255,255,255,0.14); color:#fff;}
+  .hero-selo.desce{background:rgba(255,86,48,0.22); color:#ffc7ba;}
+  .hero-selo .ico{width:13px; height:13px;}
+  .hero-selo-ref{font-size:0.76rem; color:rgba(255,255,255,0.6);}
+  .hero-botao{
+    margin-top:16px; display:inline-flex; align-items:center; gap:7px;
+    background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.18); box-shadow:none;
+    color:#fff; font-size:0.82rem; font-weight:600; padding:9px 15px; border-radius:999px;
+  }
+  .hero-botao:hover{background:rgba(255,255,255,0.22); transform:none; box-shadow:none;}
+  .hero-grafico{position:relative; height:120px; min-width:0;}
+  @media (max-width: 700px){
+    .destaque.destaque-hero{grid-template-columns:1fr; padding:20px;}
+    .hero-valor{font-size:1.9rem;}
+    .hero-grafico{height:90px;}
+    .destaque.destaque-hero::before{mask-image:linear-gradient(180deg, transparent, #000 45%);
+      -webkit-mask-image:linear-gradient(180deg, transparent, #000 45%);}
+  }
 
   .panorama-card{
     background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg);
@@ -102,9 +176,9 @@
   .panorama-texto{font-size:0.86rem; color:var(--muted); line-height:1.5;}
   .panorama-avisos{margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); display:flex; flex-direction:column; gap:6px;}
   .panorama-aviso{font-size:0.8rem; color:var(--yellow); line-height:1.4;}
-  .panorama-good .panorama-icone{background:rgba(34,197,94,0.15); color:var(--green);}
-  .panorama-warn .panorama-icone{background:rgba(245,158,11,0.15); color:var(--yellow);}
-  .panorama-critical .panorama-icone{background:rgba(239,68,68,0.15); color:var(--red);}
+  .panorama-good .panorama-icone{background:rgba(0,167,111,0.15); color:var(--green);}
+  .panorama-warn .panorama-icone{background:rgba(255,171,0,0.15); color:var(--yellow);}
+  .panorama-critical .panorama-icone{background:rgba(255,86,48,0.15); color:var(--red);}
   .panorama-good .panorama-titulo{color:var(--green);}
   .panorama-warn .panorama-titulo{color:var(--yellow);}
   .panorama-critical .panorama-titulo{color:var(--red);}
@@ -135,13 +209,13 @@
   .item .acoes button:hover, .item .acoes label:hover{background:var(--card2); transform:none;}
   .item .acoes label{cursor:pointer; color:var(--muted);}
   .item .acoes a.comp-link{padding:4px 6px; font-size:0.85rem; text-decoration:none; color:var(--green); border-radius:6px;}
-  .item .acoes a.comp-link:hover{background:rgba(34,197,94,0.1);}
+  .item .acoes a.comp-link:hover{background:rgba(0,167,111,0.1);}
   /* Anexo existente fica em destaque, não só um clipe apagado */
   .item .acoes a.comp-link.com-anexo{
-    background:rgba(34,197,94,0.15); border:1px solid var(--green); font-size:0.7rem;
+    background:rgba(0,167,111,0.15); border:1px solid var(--green); font-size:0.7rem;
     font-weight:700; padding:3px 8px; white-space:nowrap;
   }
-  .item .acoes a.comp-link.com-anexo:hover{background:rgba(34,197,94,0.28);}
+  .item .acoes a.comp-link.com-anexo:hover{background:rgba(0,167,111,0.28);}
   .item .acoes input[type=file]{display:none;}
 
   .total-secao{display:flex; justify-content:space-between; padding:10px 12px; font-weight:700; color:var(--muted); font-size:0.88rem; border-top:1px dashed var(--border); margin-top:2px;}
@@ -245,7 +319,7 @@
     display:none !important;
   }
   .badge-leitura{
-    display:none; align-items:center; gap:6px; background:rgba(245,158,11,0.15); border:1px solid var(--yellow);
+    display:none; align-items:center; gap:6px; background:rgba(255,171,0,0.15); border:1px solid var(--yellow);
     color:var(--yellow); font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px; margin-left:8px;
   }
   body.somente-leitura .badge-leitura{display:inline-flex;}
@@ -289,7 +363,7 @@
   }
   .cal-dia:hover{border-color:var(--accent);}
   .cal-dia.vazio{background:transparent; border:none; cursor:default;}
-  .cal-dia.hoje{border-color:var(--accent); border-width:2px; box-shadow:0 0 0 3px rgba(20,184,166,0.12);}
+  .cal-dia.hoje{border-color:var(--accent); border-width:2px; box-shadow:0 0 0 3px rgba(0,167,111,0.12);}
   .cal-dia.selecionado{background:linear-gradient(160deg, var(--card2), var(--card3)); border-color:var(--accent);}
   .cal-dia .num{font-weight:700;}
   .cal-dots{display:flex; gap:2px; margin-top:3px;}
@@ -315,7 +389,7 @@
   /* Banner de instalação do app (PWA) */
   .install-banner{
     display:none; align-items:center; gap:12px; margin:0 0 14px;
-    background:linear-gradient(135deg, #123c3d, #10262f); border:1px solid rgba(20,184,166,0.4);
+    background:linear-gradient(135deg, #123c3d, #10262f); border:1px solid rgba(0,167,111,0.4);
     border-radius:var(--radius-md); padding:12px 14px;
   }
   .install-banner.ativo{display:flex;}
@@ -323,7 +397,7 @@
   .install-banner .texto-inst small{display:block; color:var(--muted); margin-top:2px; font-size:0.75rem;}
   .install-banner button{padding:8px 14px; font-size:0.82rem; flex:none;}
   .install-banner button.secondary{background:transparent; border:none; color:var(--muted); box-shadow:none;}
-  :root[data-tema="claro"] .install-banner{background:linear-gradient(135deg, #e3f5f2, #f0faf8); border-color:rgba(20,184,166,0.3);}
+  :root[data-tema="claro"] .install-banner{background:linear-gradient(135deg, #e3f5f2, #f0faf8); border-color:rgba(0,167,111,0.3);}
 
   /* Toasts */
   .toast-container{position:fixed; left:0; right:0; bottom:14px; display:flex; flex-direction:column;
@@ -360,13 +434,13 @@
   }
   :root[data-tema="claro"] body{
     background:
-      radial-gradient(circle at 15% 0%, rgba(20,184,166,0.05), transparent 40%),
-      radial-gradient(circle at 85% 15%, rgba(245,158,11,0.04), transparent 45%),
+      radial-gradient(circle at 15% 0%, rgba(0,167,111,0.05), transparent 40%),
+      radial-gradient(circle at 85% 15%, rgba(255,171,0,0.04), transparent 45%),
       var(--bg);
   }
   :root[data-tema="claro"] .sidebar, :root[data-tema="claro"] .topbar{background:rgba(255,255,255,0.88);}
-  :root[data-tema="claro"] h1{background:linear-gradient(90deg, #1c2438, #14b8a6); -webkit-background-clip:text; background-clip:text; color:transparent;}
-  :root[data-tema="claro"] .destaque{background:linear-gradient(135deg, #e3f5f2, #f0faf8 60%, #eaf6f4); border-color:rgba(20,184,166,0.3);}
+  :root[data-tema="claro"] h1{background:linear-gradient(90deg, #1c2438, #00a76f); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  :root[data-tema="claro"] .destaque{background:linear-gradient(135deg, #e3f5f2, #f0faf8 60%, #eaf6f4); border-color:rgba(0,167,111,0.3);}
   :root[data-tema="claro"] .destaque .valor-grande{color:#1c2438;}
   :root[data-tema="claro"] .modal-overlay{background:rgba(30,35,55,0.35);}
 
@@ -384,7 +458,7 @@
     background:linear-gradient(90deg, #fff, #7fe3d5); -webkit-background-clip:text; background-clip:text; color:transparent;
     line-height:1.15;}
   .sidebar-topo .logo .ico{flex:none;}
-  :root[data-tema="claro"] .sidebar-topo .logo{background:linear-gradient(90deg, #1c2438, #14b8a6); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  :root[data-tema="claro"] .sidebar-topo .logo{background:linear-gradient(90deg, #1c2438, #00a76f); -webkit-background-clip:text; background-clip:text; color:transparent;}
   .sidebar-colapsar{
     background:transparent; border:none; color:var(--muted); box-shadow:none; padding:4px 6px;
     width:auto; height:auto; font-size:0.95rem; flex:none; border-radius:6px; transition:transform 0.2s;
@@ -397,7 +471,7 @@
     box-shadow:none; text-align:left; justify-content:flex-start; width:100%; white-space:nowrap; overflow:hidden;
   }
   .nav-item:hover{background:var(--card2); transform:none; box-shadow:none; color:var(--text);}
-  .nav-item.ativo{color:#fff; background:linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow:0 2px 10px rgba(20,184,166,0.3);}
+  .nav-item.ativo{color:#fff; background:linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow:0 2px 10px rgba(0,167,111,0.3);}
   .nav-icon{display:flex; align-items:center; justify-content:center; flex:none; width:20px;}
 
   /* Ícones de linha (substituem os emojis) */
@@ -434,6 +508,99 @@
   }
   .sidebar.colapsada .sidebar-usuario .nav-label{display:none;}
 
+  /* ---- Barra superior: sino de contas a pagar e menu do usuário ---- */
+  .menu-flutuante{position:relative;}
+  .sino-selo{
+    position:absolute; top:2px; right:2px; min-width:16px; height:16px; padding:0 4px;
+    border-radius:999px; background:var(--red); color:#fff; font-size:0.62rem; font-weight:800;
+    display:flex; align-items:center; justify-content:center; line-height:1; pointer-events:none;
+    border:2px solid var(--bg);
+  }
+  /* display:flex acima é mais específico que o hidden do HTML, então o selo
+     precisa ser escondido explicitamente quando não há avisos não lidos. */
+  .sino-selo[hidden]{display:none;}
+  .usuario-botao{
+    display:flex; align-items:center; gap:8px; background:transparent; border:1px solid transparent;
+    box-shadow:none; padding:4px 8px 4px 4px; border-radius:999px; color:var(--text);
+    font-size:0.84rem; font-weight:600; max-width:190px;
+  }
+  .usuario-botao:hover{background:var(--card2); transform:none; box-shadow:none;}
+  .usuario-botao .usuario-nome{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .usuario-botao .seta{transform:rotate(90deg); color:var(--muted); flex:none; transition:transform 0.2s;}
+  .usuario-botao.aberto .seta{transform:rotate(-90deg);}
+  .usuario-avatar.grande{width:40px; height:40px; font-size:1rem;}
+
+  .dropdown{
+    position:absolute; top:calc(100% + 8px); right:0; z-index:60; min-width:250px; max-width:330px;
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    box-shadow:var(--shadow-hover); padding:6px; animation:fadeIn 0.15s ease;
+  }
+  .dropdown[hidden]{display:none;}
+  .dropdown-titulo{font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--muted); font-weight:700; padding:8px 10px 6px;}
+  .dropdown-cabecalho{display:flex; align-items:center; gap:10px; padding:8px 10px 12px;
+    border-bottom:1px solid var(--border-soft); margin-bottom:6px; min-width:0;}
+  .dropdown-nome{font-weight:700; font-size:0.9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dropdown-sub{font-size:0.74rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .dropdown-item{
+    display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+    background:transparent; border:none; box-shadow:none; color:var(--text);
+    font-size:0.85rem; font-weight:500; padding:9px 10px; border-radius:var(--radius-sm);
+  }
+  .dropdown-item:hover{background:var(--card2); transform:none; box-shadow:none;}
+  .dropdown-item .ico{color:var(--muted); flex:none;}
+  .dropdown-item.perigo{color:var(--red);} .dropdown-item.perigo .ico{color:var(--red);}
+  /* Cada conta pendente no sino: nome, vencimento e valor. */
+  .sino-item{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:var(--radius-sm); cursor:pointer;}
+  .sino-item:hover{background:var(--card2);}
+  .sino-item .marca{width:8px; height:8px; border-radius:50%; flex:none;}
+  /* Coluna: título, detalhe e prazo ficam um por linha em vez de emendarem. */
+  .sino-item .corpo{min-width:0; flex:1; display:flex; flex-direction:column;}
+  .sino-item .desc{font-size:0.84rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sino-item .quando{font-size:0.72rem; color:var(--muted);}
+  .sino-item .valor{font-size:0.82rem; font-weight:700; white-space:nowrap;}
+
+  /* Painel de notificações: cabeçalho com resumo e ação de marcar como lidas,
+     lista com ícone em círculo tintado, e rodapé com o atalho pra lista toda. */
+  .dropdown-sino{min-width:330px; max-width:400px; padding:0;}
+  .sino-cabecalho{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    padding:14px 14px 12px; border-bottom:1px solid var(--border-soft);}
+  .sino-titulo{font-weight:700; font-size:0.95rem;}
+  .sino-resumo{font-size:0.76rem; color:var(--muted); margin-top:2px;}
+  .sino-marcar{
+    width:30px; height:30px; flex:none; display:flex; align-items:center; justify-content:center;
+    background:rgba(0,167,111,0.12); border:1px solid rgba(0,167,111,0.4); box-shadow:none;
+    color:var(--accent); border-radius:8px; padding:0;
+  }
+  .sino-marcar:hover{background:rgba(0,167,111,0.22); transform:none; box-shadow:none;}
+  .sino-marcar[disabled]{opacity:0.4;}
+  #listaSino{max-height:330px; overflow-y:auto; padding:6px;}
+  .sino-item.rico{align-items:flex-start; gap:11px; padding:10px;}
+  .sino-item .aviso-ico{width:34px; height:34px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center;}
+  .sino-item .aviso-ico .ico{width:16px; height:16px;}
+  .sino-item .titulo{font-size:0.85rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sino-item .detalhe{font-size:0.76rem; color:var(--muted); line-height:1.35; margin-top:1px;}
+  .sino-item .tempo{font-size:0.71rem; color:var(--muted-soft); margin-top:3px;}
+  .sino-item .ponto-nao-lida{width:8px; height:8px; border-radius:50%; background:var(--accent); flex:none; margin-top:6px;}
+  .sino-item.lida{opacity:0.55;}
+  .sino-rodape{border-top:1px solid var(--border-soft); padding:8px;}
+  .sino-rodape button{width:100%; background:transparent; box-shadow:none; color:var(--accent);
+    font-size:0.83rem; font-weight:600; padding:9px; border-radius:var(--radius-sm);}
+  .sino-rodape button:hover{background:var(--card2); transform:none; box-shadow:none;}
+  .sino-vazio{padding:14px 10px; font-size:0.82rem; color:var(--muted); text-align:center;}
+  .dropdown-busca{min-width:330px; max-width:420px;}
+  .dropdown-busca input[type="search"]{width:100%; margin-bottom:6px;}
+  #buscaGlobalResultado{max-height:340px; overflow-y:auto;}
+  /* Cada resultado mostra em que mês está, já que a busca varre todos. */
+  .busca-item .quando{display:flex; align-items:center; gap:6px;}
+  .busca-item .mes-tag{font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;
+    padding:1px 6px; border-radius:999px; background:var(--card2); color:var(--muted);}
+  @media (max-width: 560px){
+    .usuario-botao .usuario-nome, .usuario-botao .seta{display:none;}
+    .dropdown{position:fixed; top:60px; right:10px; left:10px; min-width:0; max-width:none;}
+  }
+
   /* Foto de perfil no modal */
   .perfil-foto-area{display:flex; align-items:center; gap:14px; margin-top:6px;}
   .perfil-foto{
@@ -447,7 +614,7 @@
   .botao-arquivo{
     cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff;
     border:none; border-radius:var(--radius-sm); font-weight:600; display:block;
-    box-shadow:0 2px 8px rgba(20,184,166,0.25);
+    box-shadow:0 2px 8px rgba(0,167,111,0.25);
   }
   .botao-arquivo input[type=file]{display:none;}
 
@@ -497,8 +664,8 @@
   .barra-progresso{background:var(--card3); border-radius:999px; height:7px; overflow:hidden; margin-top:8px;}
   .barra-progresso .fill{height:100%; border-radius:999px; transition:width 0.3s ease;}
   .badge{display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px;}
-  .badge.paga{background:rgba(34,197,94,0.15); color:var(--green);}
-  .badge.aberta{background:rgba(20,184,166,0.15); color:var(--accent);}
+  .badge.paga{background:rgba(0,167,111,0.15); color:var(--green);}
+  .badge.aberta{background:rgba(0,167,111,0.15); color:var(--accent);}
 
   /* Grids de cartões e contas */
   .cartoes-grid, .contas-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px;}
@@ -553,7 +720,7 @@
   .fab{
     width:56px; height:56px; border-radius:50%;
     display:flex; align-items:center; justify-content:center; font-size:1.7rem; line-height:1;
-    box-shadow:0 6px 20px rgba(20,184,166,0.45); padding:0; transition:transform 0.2s ease;
+    box-shadow:0 6px 20px rgba(0,167,111,0.45); padding:0; transition:transform 0.2s ease;
   }
   .fab:hover{transform:translateY(-2px) scale(1.03);}
   .fab.ativo{transform:rotate(45deg);}
@@ -571,7 +738,7 @@
   .fab-mini-icone.receita{background:linear-gradient(135deg, var(--green), #2fb377);}
   .fab-mini-icone.transferencia{background:linear-gradient(135deg, var(--accent), var(--accent2));}
   .fab-mini-icone.comprovante{background:linear-gradient(135deg, var(--purple), #7c5cd4);}
-  #comprovantePendenteAviso{display:none; align-items:center; gap:6px; background:rgba(245,158,11,0.15); border:1px solid var(--purple); color:var(--purple); font-size:0.78rem; font-weight:600; padding:6px 10px; border-radius:8px; margin-bottom:10px;}
+  #comprovantePendenteAviso{display:none; align-items:center; gap:6px; background:rgba(255,171,0,0.15); border:1px solid var(--purple); color:var(--purple); font-size:0.78rem; font-weight:600; padding:6px 10px; border-radius:8px; margin-bottom:10px;}
 
   /* Toggle switch */
   .toggle-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; font-size:0.85rem; color:var(--text);}
@@ -714,6 +881,66 @@
       <div class="topbar-acoes">
         <button class="icon-btn" id="ocultarValoresBtn" type="button" title="Ocultar valores"><svg class="ico" viewBox="0 0 24 24"><use href="#i-olho"/></svg></button>
         <button class="icon-btn" id="temaBtn" type="button" title="Alternar tema"><svg class="ico" viewBox="0 0 24 24"><use href="#i-lua"/></svg></button>
+
+        <div class="menu-flutuante" id="areaBusca">
+          <button class="icon-btn" id="buscaBtn" type="button" title="Buscar lançamentos">
+            <svg class="ico" viewBox="0 0 24 24"><use href="#i-busca"/></svg>
+          </button>
+          <div class="dropdown dropdown-busca" id="dropdownBusca" hidden>
+            <input type="search" id="buscaGlobalInput" placeholder="Buscar por descrição, categoria ou valor…" autocomplete="off">
+            <div id="buscaGlobalResultado">
+              <div class="sino-vazio">Digite para procurar em todos os meses.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-flutuante" id="areaSino">
+          <button class="icon-btn" id="sinoBtn" type="button" title="Contas vencidas e vencendo">
+            <svg class="ico" viewBox="0 0 24 24"><use href="#i-sino"/></svg>
+            <span class="sino-selo" id="sinoSelo" hidden>0</span>
+          </button>
+          <div class="dropdown dropdown-sino" id="dropdownSino" hidden>
+            <div class="sino-cabecalho">
+              <div>
+                <div class="sino-titulo">Contas a pagar</div>
+                <div class="sino-resumo" id="sinoResumo"></div>
+              </div>
+              <button class="sino-marcar" id="sinoMarcarLidas" type="button" title="Marcar todas como lidas">
+                <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg>
+              </button>
+            </div>
+            <div id="listaSino"></div>
+            <div class="sino-rodape">
+              <button type="button" id="sinoVerTodas">Ver todas as contas</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu-flutuante" id="areaUsuario">
+          <button class="usuario-botao" id="usuarioBtn" type="button" title="Sua conta">
+            <span class="usuario-avatar" id="topAvatar">?</span>
+            <span class="usuario-nome" id="topNome">...</span>
+            <svg class="ico sm seta" viewBox="0 0 24 24"><use href="#i-direita"/></svg>
+          </button>
+          <div class="dropdown dropdown-usuario" id="dropdownUsuario" hidden>
+            <div class="dropdown-cabecalho">
+              <span class="usuario-avatar grande" id="topAvatarGrande">?</span>
+              <div>
+                <div class="dropdown-nome" id="topNomeCompleto">...</div>
+                <div class="dropdown-sub" id="topUsuarioSub"></div>
+              </div>
+            </div>
+            <button class="dropdown-item" id="menuTrocarSenha">
+              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-escudo"/></svg> Minha conta
+            </button>
+            <button class="dropdown-item" id="menuAdicionarUsuario">
+              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg> Adicionar usuário
+            </button>
+            <button class="dropdown-item perigo" id="menuSair">
+              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sair"/></svg> Sair
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -739,8 +966,6 @@
 
     <div class="grid2" id="dashCards"></div>
 
-    <div class="destaque" id="destaqueDiario"></div>
-
     <div class="secao">
       <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Fluxo de caixa do mês <span style="text-transform:none; font-weight:400; opacity:0.7;">· toque numa coluna para ver o detalhe</span></h2>
       <div class="chart-box"><canvas id="chartComparacao"></canvas></div>
@@ -753,7 +978,7 @@
 
     <div class="secao">
       <h2>Gastos por categoria</h2>
-      <div class="chart-box"><canvas id="chartCategoria"></canvas></div>
+      <div class="card"><div id="rankCategorias"></div></div>
     </div>
 
     <div class="secao">
@@ -861,7 +1086,7 @@
       <input type="text" id="categoriaFormNome" placeholder="Nome da categoria" required>
       <label class="toggle-row" style="width:auto; gap:8px; padding:0;">
         Cor
-        <input type="color" id="categoriaFormCor" value="#14b8a6" style="width:44px; padding:2px; height:38px;">
+        <input type="color" id="categoriaFormCor" value="#00a76f" style="width:44px; padding:2px; height:38px;">
       </label>
       <button type="submit">+ Adicionar categoria</button>
     </form>
@@ -1139,7 +1364,7 @@
     <div id="novaCategoriaBox" style="display:none; margin-top:8px;">
       <input type="text" id="novaCategoriaNomeInline" placeholder="Nome da nova categoria">
       <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
-        <input type="color" id="novaCategoriaCorInline" value="#14b8a6" style="width:44px; padding:2px; height:38px; flex:none;">
+        <input type="color" id="novaCategoriaCorInline" value="#00a76f" style="width:44px; padding:2px; height:38px; flex:none;">
         <button type="button" class="secondary" id="novaCategoriaCancelarInline" style="flex:1;">Cancelar</button>
         <button type="button" id="novaCategoriaSalvarInline" style="flex:1;">Salvar categoria</button>
       </div>
@@ -1379,6 +1604,43 @@ const ICO = {
 let mesAtual = null;
 let categoriasCache = {receita:[], despesa:[]};
 let chartComparacao = null, chartCategoria = null, chartTendencia = null, chartFluxoCaixa = null, chartHolerites = null;
+
+// Balão do gráfico com a mesma cara dos cards, em vez do preto padrão do Chart.js.
+const TOOLTIP_ESTILO = {
+  backgroundColor: "#1c252e",
+  borderColor: "rgba(145,158,171,0.24)",
+  borderWidth: 1,
+  titleColor: "#ffffff",
+  bodyColor: "#919eab",
+  padding: 10,
+  cornerRadius: 8,
+  displayColors: true,
+  usePointStyle: true,
+  boxPadding: 4,
+};
+
+// Linha vertical tracejada acompanhando o cursor, pra dar de ver exatamente
+// qual mês/dia está sendo lido no balão. O Chart.js não traz isso pronto.
+const linhaGuia = {
+  id: "linhaGuia",
+  afterDatasetsDraw(chart){
+    const ativos = chart.tooltip?.getActiveElements?.() || [];
+    if (!ativos.length) return;
+    const x = ativos[0].element.x;
+    const {top, bottom} = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(145,158,171,0.45)";
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+if (window.Chart) Chart.register(linhaGuia);
 let itensPorId = {};
 let diaSelecionadoCalendario = null;
 let lancamentosCache = [];
@@ -1388,7 +1650,7 @@ let usuariosCache = [];
 let usuarioAtual = null;
 let filtros = {busca:"", categoria:"", conta:"", status:"", ordenacao:"padrao"};
 
-const PALETA_CORES = ["#14b8a6","#22c55e","#ef4444","#f59e0b","#a78bfa","#4dd0e1","#f78fb3","#82e0aa","#f0932b","#c8d6e5"];
+const PALETA_CORES = ["#00a76f","#00a76f","#ff5630","#ffab00","#8e33ff","#4dd0e1","#f78fb3","#82e0aa","#f0932b","#c8d6e5"];
 let categoriaCorCache = {};
 function corHash(str){
   let hash = 0;
@@ -1448,7 +1710,7 @@ function corDoBanco(nome){
 // iniciais sobre a cor. onerror volta pras iniciais se a imagem sumir.
 function marcaHTML(nome, classe){
   const b = bancoDe(nome);
-  const cor = (b && b.cor) || corPara(nome) || "#14b8a6";
+  const cor = (b && b.cor) || corPara(nome) || "#00a76f";
   const inicial = (nome || "?").trim().slice(0, 2).toUpperCase();
   if (b && b.logo){
     return `<div class="${classe} com-logo" style="background:${cor}">
@@ -1494,7 +1756,9 @@ async function apiFetch(url, options, opts){
     if (opts.sucesso) showToast(opts.sucesso, "ok");
     return res;
   } catch (e) {
-    if (e.message !== "não autenticado"){
+    // silencioso: para dados acessórios (ex: a série de tendência), onde falhar
+    // só significa mostrar menos informação, não vale incomodar com um toast.
+    if (e.message !== "não autenticado" && !opts.silencioso){
       showToast(opts.erro || e.message || "Falha ao conectar com o servidor", "erro");
     }
     throw e;
@@ -2549,6 +2813,68 @@ async function enviarComprovante(id, arquivo){
 
 document.getElementById("mesSelect").addEventListener("change", (e) => { mesAtual = e.target.value; atualizarAvisoMes(); carregarTudo(); });
 
+// ---------- Destaque do saldo real ----------
+let chartHero = null;
+
+// Último fechamento antes do mês aberto, pra comparar com o saldo de hoje.
+function mesAnteriorSaldo(tendencia){
+  if (!tendencia || tendencia.length < 2) return null;
+  const anterior = tendencia[tendencia.length - 2];
+  return anterior && isFinite(anterior.saldo) ? anterior.saldo : null;
+}
+
+// Conta o número subindo até o valor final. Respeita quem pediu menos animação
+// no sistema e quem está com os valores ocultos.
+function animarValor(el, alvo){
+  if (!el) return;
+  const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduzido || document.body.classList.contains("valores-ocultos")){
+    el.textContent = formatMoeda(alvo);
+    return;
+  }
+  const duracao = 900, inicio = performance.now();
+  function passo(agora){
+    const t = Math.min(1, (agora - inicio) / duracao);
+    const suave = 1 - Math.pow(1 - t, 3);   // desacelera no fim
+    el.textContent = formatMoeda(alvo * suave);
+    if (t < 1) requestAnimationFrame(passo);
+    else el.textContent = formatMoeda(alvo);
+  }
+  requestAnimationFrame(passo);
+}
+
+// Linha do saldo acumulado ao longo do mês, ao fundo do destaque.
+function desenharHero(fluxo){
+  const cv = document.getElementById("chartHero");
+  if (!cv || !fluxo || fluxo.length === 0) return;
+  if (chartHero) chartHero.destroy();
+  const ctx = cv.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, 150);
+  grad.addColorStop(0, "rgba(255,255,255,0.22)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  chartHero = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: fluxo.map(f => f.dia),
+      datasets: [{
+        data: fluxo.map(f => f.saldo_acumulado),
+        borderColor: "rgba(255,255,255,0.85)", backgroundColor: grad,
+        borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 4,
+        pointHoverBorderWidth: 2, pointHoverBorderColor: "#fff", pointHoverBackgroundColor: "#00a76f",
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: {mode: "index", intersect: false},
+      scales: {x: {display: false}, y: {display: false}},
+      plugins: {legend: {display: false},
+        tooltip: {...TOOLTIP_ESTILO, callbacks: {
+          title: (i) => `Dia ${i[0].label}`,
+          label: (c) => `Saldo acumulado: ${formatMoeda(c.parsed.y)}`}}},
+    }
+  });
+}
+
 // ---------- Dashboard ----------
 function calcularPanorama(d){
   const sobra = d.disponivel;
@@ -2610,37 +2936,115 @@ async function carregarDashboard(){
     return;
   }
 
+  // A tendência vem antes dos cards porque é dela que sai a comparação com o
+  // mês anterior mostrada em cada indicador.
+  let tendencia = [], fluxoDiario = [];
+  try {
+    const r = await apiFetch(`${API}/tendencia?mes=${mesAtual}&meses=6`, undefined, {silencioso:true});
+    tendencia = await r.json();
+  } catch (e) { /* sem tendência os cards só não mostram a variação */ }
+  try {
+    const r = await apiFetch(`${API}/fluxo-caixa?mes=${mesAtual}`, undefined, {silencioso:true});
+    fluxoDiario = await r.json();
+  } catch (e) { /* sem fluxo o destaque só fica sem o mini-gráfico */ }
+
   renderizarPanorama(d);
   dashboardCache = d;
 
   const temContas = d.contas && d.contas.length > 0;
   const destaqueContasEl = document.getElementById("destaqueSaldoContas");
-  destaqueContasEl.innerHTML = temContas
-    ? `<div class="valor-grande ${d.saldo_total_contas>=0?'':'negativo'}">${svgIco("banco","ico lg")} ${formatMoeda(d.saldo_total_contas)}</div>
-       <div class="texto">saldo real somando todas as suas contas · toque para ver</div>`
-    : `<div class="valor-grande">${svgIco("banco","ico lg")} Cadastre suas contas</div>
-       <div class="texto">toque aqui para ir até "Contas" e ver seu saldo real de banco/carteira</div>`;
-  destaqueContasEl.classList.add("clicavel");
-  destaqueContasEl.onclick = () => document.querySelector('.nav-item[data-tab="contas"]').click();
+  destaqueContasEl.classList.add("destaque-hero");
+  destaqueContasEl.classList.remove("clicavel");
+  if (!temContas){
+    destaqueContasEl.classList.add("clicavel");
+    destaqueContasEl.innerHTML = `
+      <div class="hero-conteudo">
+        <div class="hero-rotulo">Saldo real das contas</div>
+        <div class="hero-valor">Cadastre suas contas</div>
+        <div class="hero-sub">toque aqui para ir até "Contas" e ver seu saldo de banco/carteira</div>
+      </div>`;
+    destaqueContasEl.onclick = () => document.querySelector('.nav-item[data-tab="contas"]').click();
+  } else {
+    // Fecho do mês anterior serve de referência pra mostrar quanto o saldo mudou.
+    const refAnterior = mesAnteriorSaldo(tendencia);
+    const dif = refAnterior == null ? null : d.saldo_total_contas - refAnterior;
+    const selo = dif == null ? "" : `
+      <span class="hero-selo ${dif >= 0 ? 'sobe' : 'desce'}">
+        ${svgIco(dif >= 0 ? "sobe" : "desce", "ico")} ${dif >= 0 ? '+' : '−'}${formatMoeda(Math.abs(dif))}
+      </span>
+      <span class="hero-selo-ref">em relação ao mês anterior</span>`;
+    destaqueContasEl.onclick = null;
+    destaqueContasEl.innerHTML = `
+      <div class="hero-conteudo">
+        <div class="hero-rotulo">${svgIco("banco","ico sm")} Saldo real das contas</div>
+        <div class="hero-valor ${d.saldo_total_contas>=0?'':'negativo'}" id="heroValor"
+             data-alvo="${d.saldo_total_contas}">${formatMoeda(d.saldo_total_contas)}</div>
+        <div class="hero-selos">${selo}</div>
+        <button type="button" class="hero-botao" id="heroVerContas">
+          Ver minhas contas <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-direita"/></svg>
+        </button>
+      </div>
+      <div class="hero-grafico"><canvas id="chartHero"></canvas></div>`;
+    document.getElementById("heroVerContas").onclick = (e) => {
+      e.stopPropagation();
+      document.querySelector('.nav-item[data-tab="contas"]').click();
+    };
+    animarValor(document.getElementById("heroValor"), d.saldo_total_contas);
+    desenharHero(fluxoDiario);
+  }
 
-  const cardsHTML = `
-    <div class="card clicavel" onclick="abrirExplicacao('saldo_mes')"><div class="label">${ICO.calendario} Saldo do mês (recebido − pago)</div><div class="valor ${d.saldo_atual>=0?'positivo':'negativo'}">${formatMoeda(d.saldo_atual)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('disponivel')"><div class="label">${ICO.grafico} Dinheiro disponível (mês)</div><div class="valor ${d.disponivel>=0?'positivo':'negativo'}">${formatMoeda(d.disponivel)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('receitas')"><div class="label">${ICO.sobe} Receitas do mês</div><div class="valor positivo">${formatMoeda(d.receita_total)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('despesas')"><div class="label">${ICO.desce} Despesas do mês</div><div class="valor negativo">${formatMoeda(d.despesa_total)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('gasto_pago')"><div class="label">${ICO.recibo} Já gastou (pago)</div><div class="valor negativo">${formatMoeda(d.despesa_paga)}</div></div>
-    <div class="card clicavel" onclick="abrirExplicacao('ainda_pode_gastar')"><div class="label">${ICO.checkCirculo} Ainda pode gastar</div><div class="valor ${d.ainda_pode_gastar>=0?'positivo':'negativo'}">${formatMoeda(d.ainda_pode_gastar)}</div></div>
-    <div class="card clicavel" style="grid-column:1/-1;" onclick="abrirExplicacao('previsao')"><div class="label">${ICO.bussola} Previsão de saldo no fim do mês</div><div class="valor ${d.previsao_fim_mes>=0?'positivo':'negativo'}">${formatMoeda(d.previsao_fim_mes)}</div></div>
-  `;
+  // Mês anterior na série de tendência (o último item é o mês aberto).
+  const mesAnterior = tendencia.length >= 2 ? tendencia[tendencia.length - 2] : null;
+  // Variação percentual; devolve "" quando não dá pra comparar (sem histórico
+  // ou base zero, onde qualquer % seria enganoso).
+  function variacao(atual, anterior, subirEhBom){
+    if (anterior == null || !isFinite(anterior) || Math.abs(anterior) < 0.01) return "";
+    const dif = atual - anterior;
+    const subiu = dif >= 0;
+    const bom = subirEhBom ? subiu : !subiu;
+    const seta = subiu ? "sobe" : "desce";
+    // Quando o valor troca de sinal (ex: saldo positivo virou negativo), a
+    // porcentagem engana — "-132%" não diz nada. Aí vale mais a diferença em reais.
+    const trocouSinal = (atual < 0) !== (anterior < 0);
+    const texto = trocouSinal
+      ? `${subiu ? '+' : '−'}${formatMoeda(Math.abs(dif))}`
+      : `${subiu ? '+' : ''}${((dif / Math.abs(anterior)) * 100).toFixed(1).replace('.', ',')}%`;
+    return `<div class="kpi-var ${bom ? 'sobe' : 'desce'}">${svgIco(seta, "ico")}
+      ${texto} <span class="ref">vs mês anterior</span></div>`;
+  }
+  function kpi(chave, icone, tintBg, tintCor, rotulo, valor, classeValor, varHTML){
+    return `<div class="card kpi clicavel" onclick="abrirExplicacao('${chave}')">
+      <div class="kpi-topo">
+        <div class="label">${rotulo}</div>
+        <div class="kpi-ico" style="--tint-bg:${tintBg}; --tint-cor:${tintCor}">${svgIco(icone, "ico")}</div>
+      </div>
+      <div class="valor ${classeValor}">${formatMoeda(valor)}</div>
+      ${varHTML || ""}
+    </div>`;
+  }
+  const V = {verde:["rgba(0,167,111,0.12)","#00a76f"], vermelho:["rgba(255,86,48,0.12)","#ff5630"],
+             ambar:["rgba(255,171,0,0.12)","#ffab00"], roxo:["rgba(142,51,255,0.12)","#8e33ff"],
+             azul:["rgba(0,184,217,0.12)","#00b8d9"]};
+  const cardsHTML = [
+    kpi("saldo_mes", "calendario", ...V.azul, "Saldo do mês (recebido − pago)", d.saldo_atual,
+        d.saldo_atual>=0?'positivo':'negativo', mesAnterior ? variacao(d.saldo_atual, mesAnterior.saldo, true) : ""),
+    kpi("disponivel", "grafico", ...V.verde, "Dinheiro disponível (mês)", d.disponivel,
+        d.disponivel>=0?'positivo':'negativo', ""),
+    kpi("receitas", "sobe", ...V.verde, "Receitas do mês", d.receita_total, "positivo",
+        mesAnterior ? variacao(d.receita_total, mesAnterior.receita, true) : ""),
+    kpi("despesas", "desce", ...V.vermelho, "Despesas do mês", d.despesa_total, "negativo",
+        mesAnterior ? variacao(d.despesa_total, mesAnterior.despesa, false) : ""),
+    kpi("gasto_pago", "recibo", ...V.ambar, "Já gastou (pago)", d.despesa_paga, "negativo", ""),
+    kpi("ainda_pode_gastar", "check-circulo", ...V.verde, "Ainda pode gastar", d.ainda_pode_gastar,
+        d.ainda_pode_gastar>=0?'positivo':'negativo', ""),
+    kpi("previsao", "bussola", ...V.roxo, "Previsão de saldo no fim do mês", d.previsao_fim_mes,
+        d.previsao_fim_mes>=0?'positivo':'negativo', ""),
+    kpi("gasto_diario", "carteira", ...V.azul, "Pode gastar por dia", d.gasto_diario_disponivel,
+        d.gasto_diario_disponivel>0?'positivo':'negativo',
+        `<div class="kpi-var"><span class="ref">até o fim do mês — faltam ${d.dias_restantes} dia${d.dias_restantes === 1 ? '' : 's'}</span></div>`),
+  ].join("");
   document.getElementById("dashCards").innerHTML = cardsHTML;
 
-  const destaqueDiarioEl = document.getElementById("destaqueDiario");
-  destaqueDiarioEl.className = "destaque clicavel";
-  destaqueDiarioEl.onclick = () => abrirExplicacao("gasto_diario");
-  destaqueDiarioEl.innerHTML = `
-    <div class="valor-grande">${svgIco("carteira","ico lg")} Você pode gastar até ${formatMoeda(d.gasto_diario_disponivel)} por dia</div>
-    <div class="texto">até o fim do mês — faltam ${d.dias_restantes} dia${d.dias_restantes === 1 ? '' : 's'} · toque para ver como chegamos nesse número</div>
-  `;
 
   // Contas vencendo — usa o mesmo item da lista, então dá pra marcar como paga e editar aqui
   const vencContainer = document.getElementById("listaVencendo");
@@ -2652,6 +3056,7 @@ async function carregarDashboard(){
     d.contas_vencendo.forEach(item => { itensPorId[item.id] = item; });
     d.contas_vencendo.forEach(item => vencContainer.appendChild(criarItemHTML(item)));
   }
+  atualizarSino(d.contas_vencendo);
 
   // Parcelas futuras
   const parcContainer = document.getElementById("listaParcelasFuturas");
@@ -2676,7 +3081,7 @@ async function carregarDashboard(){
   // Gradiente vertical (cor forte em cima, esmaecendo pra transparente) pra areas dos graficos de linha.
   function gradienteArea(ctx, corRgb){
     const g = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height || 220);
-    g.addColorStop(0, `rgba(${corRgb},0.35)`);
+    g.addColorStop(0, `rgba(${corRgb},0.30)`);
     g.addColorStop(1, `rgba(${corRgb},0.02)`);
     return g;
   }
@@ -2690,10 +3095,11 @@ async function carregarDashboard(){
       datasets: [{
         data: [d.saldo_atual, d.receita_total, d.despesa_total, d.previsao_fim_mes],
         backgroundColor: [
-          d.saldo_atual >= 0 ? "rgba(20,184,166,0.82)" : "rgba(239,68,68,0.82)",
-          "rgba(34,197,94,0.82)",
-          "rgba(239,68,68,0.82)",
-          d.previsao_fim_mes >= 0 ? "rgba(20,184,166,0.82)" : "rgba(239,68,68,0.82)",
+          // Saldo em azul pra não se confundir com as receitas, que também são verdes.
+          d.saldo_atual >= 0 ? "rgba(0,184,217,0.82)" : "rgba(255,86,48,0.82)",
+          "rgba(0,167,111,0.82)",
+          "rgba(255,86,48,0.82)",
+          d.previsao_fim_mes >= 0 ? "rgba(0,184,217,0.82)" : "rgba(255,86,48,0.82)",
         ],
         borderRadius: 8,
       }]
@@ -2708,23 +3114,31 @@ async function carregarDashboard(){
       onHover: (evt, elementos) => {
         evt.native.target.style.cursor = elementos.length ? "pointer" : "default";
       },
-      scales:{x:{ticks:{color:corMuted}, grid:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade}}},
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label: (ctx) => formatMoeda(ctx.parsed.y)}}}}
+      scales:{x:{ticks:{color:corMuted}, grid:{display:false}, border:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade, borderDash:[4,4], drawTicks:false}}},
+      plugins:{legend:{display:false}, tooltip:{...TOOLTIP_ESTILO, callbacks:{label: (ctx) => formatMoeda(ctx.parsed.y)}}}}
   });
 
-  // Gráfico categoria
-  const ctxCat = document.getElementById("chartCategoria").getContext("2d");
-  if (chartCategoria) chartCategoria.destroy();
-  chartCategoria = new Chart(ctxCat, {
-    type: "doughnut",
-    data: {
-      labels: d.grafico_categoria.map(c => c.categoria),
-      datasets: [{data: d.grafico_categoria.map(c => c.total), backgroundColor: d.grafico_categoria.map(c => corPara(c.categoria) || "#14b8a6")}]
-    },
-    // No celular a legenda à direita sobra pouco espaço e corta os nomes das
-    // categorias ("Manutenção Veíc…"); embaixo ela usa a largura toda.
-    options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{position: window.innerWidth < 700 ? "bottom" : "right", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}}}}
-  });
+  // Gastos por categoria em barras ranqueadas. Substituiu a rosca: com quase
+  // vinte categorias a legenda ficava ilegível, e aqui cada linha já mostra
+  // nome, valor e o quanto representa do total.
+  const catEl = document.getElementById("rankCategorias");
+  const cats = (d.grafico_categoria || []).slice().sort((a, b) => b.total - a.total);
+  const totalCat = cats.reduce((s, c) => s + c.total, 0);
+  if (cats.length === 0 || totalCat <= 0){
+    catEl.innerHTML = `<div class="empty">Nenhuma despesa lançada nesse mês.</div>`;
+  } else {
+    catEl.innerHTML = cats.map(c => {
+      const pct = (c.total / totalCat) * 100;
+      const cor = corPara(c.categoria) || "#00a76f";
+      return `<div class="rank-linha">
+        <div class="rank-topo">
+          <span class="rank-nome"><i class="rank-ponto" style="background:${cor}"></i>${escapeHtml(c.categoria)}</span>
+          <span class="rank-valor">${formatMoeda(c.total)} <span class="rank-pct">${pct.toFixed(1).replace('.', ',')}%</span></span>
+        </div>
+        <div class="rank-trilha"><div class="rank-barra" style="width:${pct.toFixed(2)}%; background:${cor}"></div></div>
+      </div>`;
+    }).join("");
+  }
 
   // Gráfico de tendência (últimos meses)
   try {
@@ -2737,14 +3151,19 @@ async function carregarDashboard(){
       data: {
         labels: tend.map(t => formatMes(t.mes)),
         datasets: [
-          {label:"Receitas", data: tend.map(t => t.receita), borderColor:"#22c55e", backgroundColor:gradienteArea(ctxTend,"34,197,94"), borderWidth:2, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:4},
-          {label:"Despesas", data: tend.map(t => t.despesa), borderColor:"#ef4444", backgroundColor:gradienteArea(ctxTend,"239,68,68"), borderWidth:2, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:4},
-          {label:"Saldo", data: tend.map(t => t.saldo), borderColor:"#14b8a6", backgroundColor:gradienteArea(ctxTend,"20,184,166"), borderWidth:2, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:4},
+          {label:"Receitas", data: tend.map(t => t.receita), borderColor:"#00a76f", backgroundColor:gradienteArea(ctxTend,"0,167,111"), borderWidth:3, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBorderWidth:2, pointHoverBorderColor:"#fff"},
+          {label:"Despesas", data: tend.map(t => t.despesa), borderColor:"#ff5630", backgroundColor:gradienteArea(ctxTend,"255,86,48"), borderWidth:3, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBorderWidth:2, pointHoverBorderColor:"#fff"},
+          {label:"Saldo", data: tend.map(t => t.saldo), borderColor:"#00b8d9", backgroundColor:gradienteArea(ctxTend,"0,184,217"), borderWidth:3, tension:0.4, fill:true, pointRadius:0, pointHoverRadius:5, pointHoverBorderWidth:2, pointHoverBorderColor:"#fff"},
         ]
       },
       options: {responsive:true, maintainAspectRatio:false,
-        scales:{x:{ticks:{color:corMuted}, grid:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade}}},
-        plugins:{legend:{position:"bottom", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}}, tooltip:{callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
+        // index + intersect:false = passar o mouse em qualquer ponto do gráfico
+        // já destaca o mês inteiro e mostra as três séries de uma vez.
+        interaction:{mode:"index", intersect:false},
+        hover:{mode:"index", intersect:false},
+        scales:{x:{ticks:{color:corMuted}, grid:{display:false}, border:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade, borderDash:[4,4], drawTicks:false}}},
+        plugins:{legend:{position:"bottom", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}},
+          tooltip:{...TOOLTIP_ESTILO, callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
     });
   } catch (e) { /* toast já exibido pelo apiFetch */ }
 
@@ -2758,19 +3177,21 @@ async function carregarDashboard(){
       data: {
         labels: fluxo.map(f => f.dia),
         datasets: [
-          {type:"bar", label:"Entradas", data: fluxo.map(f => f.entradas), backgroundColor:"rgba(34,197,94,0.82)", borderRadius:8, yAxisID:"y"},
-          {type:"bar", label:"Saídas", data: fluxo.map(f => -f.saidas), backgroundColor:"rgba(239,68,68,0.82)", borderRadius:8, yAxisID:"y"},
-          {type:"line", label:"Saldo acumulado", data: fluxo.map(f => f.saldo_acumulado), borderColor:"#14b8a6", borderWidth:2, tension:0.4, fill:false, pointRadius:0, pointHoverRadius:4, yAxisID:"y1"},
+          {type:"bar", label:"Entradas", data: fluxo.map(f => f.entradas), backgroundColor:"rgba(0,167,111,0.82)", borderRadius:8, yAxisID:"y"},
+          {type:"bar", label:"Saídas", data: fluxo.map(f => -f.saidas), backgroundColor:"rgba(255,86,48,0.82)", borderRadius:8, yAxisID:"y"},
+          {type:"line", label:"Saldo acumulado", data: fluxo.map(f => f.saldo_acumulado), borderColor:"#00b8d9", borderWidth:3, tension:0.4, fill:false, pointRadius:0, pointHoverRadius:5, pointHoverBorderWidth:2, pointHoverBorderColor:"#fff", yAxisID:"y1"},
         ]
       },
       options: {responsive:true, maintainAspectRatio:false,
         scales:{
-          x:{ticks:{color:corMuted}, grid:{display:false}},
-          y:{ticks:{color:corMuted}, grid:{color:corGrade}},
-          y1:{position:"right", ticks:{color:corMuted}, grid:{display:false}},
+          x:{ticks:{color:corMuted}, grid:{display:false}, border:{display:false}},
+          y:{ticks:{color:corMuted}, grid:{color:corGrade, borderDash:[4,4], drawTicks:false}},
+          y1:{position:"right", ticks:{color:corMuted}, grid:{display:false}, border:{display:false}},
         },
+        interaction:{mode:"index", intersect:false},
+        hover:{mode:"index", intersect:false},
         plugins:{legend:{position:"bottom", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}},
-          tooltip:{callbacks:{label: (ctx) => ctx.dataset.label === "Saídas"
+          tooltip:{...TOOLTIP_ESTILO, callbacks:{label: (ctx) => ctx.dataset.label === "Saídas"
             ? `Saídas: ${formatMoeda(Math.abs(ctx.parsed.y))}`
             : `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}
       }
@@ -3276,9 +3697,9 @@ function renderizarChartHolerites(holerites){
     data: {
       labels: meses.map(formatMes),
       datasets: [
-        {type:"bar", label:"Proventos", data: meses.map(m => porMes[m].proventos), backgroundColor:"rgba(34,197,94,0.82)", borderRadius:8},
-        {type:"bar", label:"Descontos", data: meses.map(m => porMes[m].descontos), backgroundColor:"rgba(239,68,68,0.82)", borderRadius:8},
-        {type:"bar", label:"Salário líquido", data: meses.map(m => porMes[m].liquido), backgroundColor:"rgba(20,184,166,0.82)", borderRadius:8},
+        {type:"bar", label:"Proventos", data: meses.map(m => porMes[m].proventos), backgroundColor:"rgba(0,167,111,0.82)", borderRadius:8},
+        {type:"bar", label:"Descontos", data: meses.map(m => porMes[m].descontos), backgroundColor:"rgba(255,86,48,0.82)", borderRadius:8},
+        {type:"bar", label:"Salário líquido", data: meses.map(m => porMes[m].liquido), backgroundColor:"rgba(0,167,111,0.82)", borderRadius:8},
       ]
     },
     options: {responsive:true, maintainAspectRatio:false,
@@ -3292,9 +3713,9 @@ function renderizarChartHolerites(holerites){
       onHover: (evt, elementos) => {
         evt.native.target.style.cursor = elementos.length && elementos[0].datasetIndex < 2 ? "pointer" : "default";
       },
-      scales:{x:{ticks:{color:corMuted}, grid:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade}}},
+      scales:{x:{ticks:{color:corMuted}, grid:{display:false}, border:{display:false}}, y:{ticks:{color:corMuted}, grid:{color:corGrade, borderDash:[4,4], drawTicks:false}}},
       plugins:{legend:{position:"bottom", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}},
-        tooltip:{callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
+        tooltip:{...TOOLTIP_ESTILO, callbacks:{label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}}}}
   });
 }
 
@@ -3657,8 +4078,208 @@ async function carregarUsuarioAtual(){
     usuarioAtual = await res.json();
     pintarAvatar(document.getElementById("usuarioAvatar"), usuarioAtual);
     document.getElementById("usuarioNomeLabel").textContent = usuarioAtual.nome;
+    // Mesmo usuário, agora também no menu da barra superior.
+    pintarAvatar(document.getElementById("topAvatar"), usuarioAtual);
+    pintarAvatar(document.getElementById("topAvatarGrande"), usuarioAtual);
+    document.getElementById("topNome").textContent = usuarioAtual.nome;
+    document.getElementById("topNomeCompleto").textContent = usuarioAtual.nome;
+    document.getElementById("topUsuarioSub").textContent =
+      usuarioAtual.somente_leitura ? "Somente leitura" : (usuarioAtual.username || "");
     document.body.classList.toggle("somente-leitura", !!usuarioAtual.somente_leitura);
   } catch (e) {}
+}
+
+// ---------- Menus da barra superior (sino e usuário) ----------
+function fecharMenusTopo(exceto){
+  for (const id of ["dropdownSino", "dropdownUsuario"]){
+    if (id !== exceto) document.getElementById(id).hidden = true;
+  }
+  document.getElementById("usuarioBtn").classList.toggle(
+    "aberto", !document.getElementById("dropdownUsuario").hidden);
+}
+function alternarMenuTopo(id){
+  const el = document.getElementById(id);
+  const vaiAbrir = el.hidden;
+  fecharMenusTopo(vaiAbrir ? id : null);
+  el.hidden = !vaiAbrir;
+  document.getElementById("usuarioBtn").classList.toggle(
+    "aberto", !document.getElementById("dropdownUsuario").hidden);
+}
+document.getElementById("sinoBtn").addEventListener("click", (e) => {
+  e.stopPropagation(); alternarMenuTopo("dropdownSino");
+});
+document.getElementById("buscaBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  alternarMenuTopo("dropdownBusca");
+  if (!document.getElementById("dropdownBusca").hidden){
+    document.getElementById("buscaGlobalInput").focus();
+  }
+});
+// Busca em todos os meses. Espera a digitação parar pra não disparar a cada tecla.
+(() => {
+  const campo = document.getElementById("buscaGlobalInput");
+  const saida = document.getElementById("buscaGlobalResultado");
+  let debounce;
+  campo.addEventListener("click", (e) => e.stopPropagation());
+  campo.addEventListener("input", () => {
+    clearTimeout(debounce);
+    const termo = campo.value.trim();
+    if (termo.length < 2){
+      saida.innerHTML = `<div class="sino-vazio">Digite para procurar em todos os meses.</div>`;
+      return;
+    }
+    debounce = setTimeout(async () => {
+      saida.innerHTML = `<div class="sino-vazio">Procurando…</div>`;
+      try {
+        const r = await apiFetch(`${API}/busca?q=${encodeURIComponent(termo)}`, undefined, {silencioso:true});
+        const itens = await r.json();
+        if (itens.length === 0){
+          saida.innerHTML = `<div class="sino-vazio">Nada encontrado para "${escapeHtml(termo)}".</div>`;
+          return;
+        }
+        saida.innerHTML = itens.map(i => `
+          <div class="sino-item busca-item" onclick="abrirBusca('${i.mes}', ${i.id})">
+            <span class="marca" style="background:${i.tipo === 'renda' ? 'var(--green)' : 'var(--red)'}"></span>
+            <span class="corpo">
+              <span class="desc">${escapeHtml(i.descricao)}</span>
+              <span class="quando">
+                <span class="mes-tag">${formatMes(i.mes)}</span>
+                ${i.categoria ? escapeHtml(i.categoria) : ''}${i.pago ? ' · pago' : ''}
+              </span>
+            </span>
+            <span class="valor ${i.tipo === 'renda' ? 'positivo' : 'negativo'}">${formatMoeda(i.valor)}</span>
+          </div>`).join("");
+      } catch (e) {
+        saida.innerHTML = `<div class="sino-vazio">Não foi possível buscar agora.</div>`;
+      }
+    }, 300);
+  });
+})();
+// Abre o mês do resultado e leva pra lista de lançamentos.
+async function abrirBusca(mes, id){
+  fecharMenusTopo(null);
+  if (mes && mes !== mesAtual){
+    mesAtual = mes;
+    const sel = document.getElementById("mesSelect");
+    if (![...sel.options].some(o => o.value === mes)){
+      sel.add(new Option(formatMes(mes), mes));
+    }
+    sel.value = mes;
+    atualizarAvisoMes();
+    await carregarTudo();
+  }
+  document.querySelector('.nav-item[data-tab="lancamentos"]').click();
+  const alvo = document.querySelector(`[data-lancamento-id="${id}"]`);
+  if (alvo) alvo.scrollIntoView({block:"center", behavior:"smooth"});
+}
+document.getElementById("usuarioBtn").addEventListener("click", (e) => {
+  e.stopPropagation(); alternarMenuTopo("dropdownUsuario");
+});
+// Clicar fora ou apertar Esc fecha.
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".menu-flutuante")) fecharMenusTopo(null);
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharMenusTopo(null); });
+
+// Reaproveita os botões que já existiam no rodapé da barra lateral, pra não
+// duplicar a lógica de trocar senha / adicionar usuário / sair.
+document.getElementById("menuTrocarSenha").addEventListener("click", () => {
+  fecharMenusTopo(null); document.getElementById("sidebarUsuario").click();
+});
+document.getElementById("menuAdicionarUsuario").addEventListener("click", () => {
+  fecharMenusTopo(null); document.getElementById("btnAdicionarUsuario").click();
+});
+document.getElementById("menuSair").addEventListener("click", () => {
+  fecharMenusTopo(null); document.getElementById("btnSair").click();
+});
+
+// "Lida" aqui é só reconhecer o aviso — NÃO marca a conta como paga. Fica no
+// navegador porque é preferência de quem está olhando, não dado financeiro.
+const CHAVE_LIDAS = "avisosLidos";
+function avisosLidos(){
+  try { return new Set(JSON.parse(localStorage.getItem(CHAVE_LIDAS) || "[]")); }
+  catch (e) { return new Set(); }
+}
+function salvarLidos(conjunto){
+  try { localStorage.setItem(CHAVE_LIDAS, JSON.stringify([...conjunto])); } catch (e) {}
+}
+// A "assinatura" muda se o vencimento ou o valor mudarem, então uma conta
+// editada volta a avisar em vez de ficar silenciada pra sempre.
+function assinaturaAviso(i){ return `${i.id}:${i.vencimento}:${i.valor}`; }
+
+// Diferença em dias entre hoje e o vencimento, pro texto "há 3 dias".
+function diasAte(dataISO){
+  const [a, m, d] = (dataISO || "").split("-").map(Number);
+  if (!a) return null;
+  const alvo = new Date(a, m - 1, d), hoje = new Date();
+  hoje.setHours(0, 0, 0, 0); alvo.setHours(0, 0, 0, 0);
+  return Math.round((alvo - hoje) / 86400000);
+}
+function textoPrazo(dias){
+  if (dias === 0) return "Vence hoje";
+  if (dias === 1) return "Vence amanhã";
+  if (dias > 1) return `Vence em ${dias} dias`;
+  if (dias === -1) return "Venceu ontem";
+  return `Venceu há ${Math.abs(dias)} dias`;
+}
+
+let avisosCache = [];
+function atualizarSino(contasVencendo){
+  avisosCache = (contasVencendo || []).filter(i => !i.pago);
+  renderizarSino();
+}
+function renderizarSino(){
+  const selo = document.getElementById("sinoSelo");
+  const lista = document.getElementById("listaSino");
+  const resumo = document.getElementById("sinoResumo");
+  const botaoMarcar = document.getElementById("sinoMarcarLidas");
+  const lidos = avisosLidos();
+  const naoLidos = avisosCache.filter(i => !lidos.has(assinaturaAviso(i)));
+
+  selo.hidden = naoLidos.length === 0;
+  selo.textContent = naoLidos.length > 9 ? "9+" : String(naoLidos.length);
+  botaoMarcar.disabled = naoLidos.length === 0;
+
+  if (avisosCache.length === 0){
+    resumo.textContent = "Tudo em dia por aqui";
+    lista.innerHTML = `<div class="sino-vazio">Nenhuma conta vencida ou vencendo nos próximos 7 dias.</div>`;
+    return;
+  }
+  const atrasadas = avisosCache.filter(i => (diasAte(i.vencimento) ?? 0) < 0).length;
+  resumo.textContent = naoLidos.length === 0
+    ? `${avisosCache.length} conta${avisosCache.length === 1 ? '' : 's'} · nenhuma não lida`
+    : `${naoLidos.length} não lida${naoLidos.length === 1 ? '' : 's'}${atrasadas ? ` · ${atrasadas} atrasada${atrasadas === 1 ? '' : 's'}` : ''}`;
+
+  lista.innerHTML = avisosCache.map(i => {
+    const dias = diasAte(i.vencimento);
+    const atrasada = dias !== null && dias < 0;
+    const lida = lidos.has(assinaturaAviso(i));
+    const cor = atrasada ? "255,86,48" : "255,171,0";
+    return `<div class="sino-item rico ${lida ? 'lida' : ''}" onclick="irParaLancamento(${i.id})">
+      <span class="aviso-ico" style="background:rgba(${cor},0.14); color:rgb(${cor})">
+        ${svgIco("sino", "ico")}
+      </span>
+      <span class="corpo">
+        <span class="titulo">${escapeHtml(i.descricao)}</span>
+        <span class="detalhe">${escapeHtml(i.categoria || "Sem categoria")} · <strong>${formatMoeda(i.valor)}</strong></span>
+        <span class="tempo">${textoPrazo(dias)} · ${formatData(i.vencimento)}</span>
+      </span>
+      ${lida ? "" : `<span class="ponto-nao-lida"></span>`}
+    </div>`;
+  }).join("");
+}
+document.getElementById("sinoMarcarLidas").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const lidos = avisosLidos();
+  avisosCache.forEach(i => lidos.add(assinaturaAviso(i)));
+  salvarLidos(lidos);
+  renderizarSino();
+  showToast("Avisos marcados como lidos — as contas seguem em aberto", "ok");
+});
+document.getElementById("sinoVerTodas").addEventListener("click", () => irParaLancamento());
+function irParaLancamento(){
+  fecharMenusTopo(null);
+  document.querySelector('.nav-item[data-tab="lancamentos"]').click();
 }
 
 async function carregarUsuarios(){

@@ -1283,6 +1283,38 @@ def listar_lancamentos():
     return jsonify([dict(r) for r in rows])
 
 
+@app.route("/api/busca", methods=["GET"])
+def buscar_lancamentos():
+    """Procura em todos os meses, não só no que está aberto na tela.
+
+    Casa por descrição, categoria ou conta; se o termo for um número, também
+    casa pelo valor (com uma folga de um centavo pra arredondamento).
+    """
+    termo = (request.args.get("q") or "").strip()
+    if len(termo) < 2:
+        return jsonify([])
+    like = f"%{termo}%"
+    try:
+        valor = float(termo.replace(".", "").replace(",", "."))
+    except ValueError:
+        valor = None
+    conn = get_db()
+    sql = (
+        "SELECT * FROM lancamentos WHERE usuario_id = ? AND ("
+        "  descricao LIKE ? COLLATE NOCASE"
+        "  OR COALESCE(categoria,'') LIKE ? COLLATE NOCASE"
+        "  OR COALESCE(conta,'') LIKE ? COLLATE NOCASE"
+    )
+    params = [uid(), like, like, like]
+    if valor is not None:
+        sql += " OR ABS(valor - ?) < 0.01"
+        params.append(valor)
+    sql += ") ORDER BY vencimento DESC, id DESC LIMIT 40"
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
 @app.route("/api/lancamentos/exportar-csv", methods=["GET"])
 def exportar_lancamentos_csv():
     mes = request.args.get("mes", datetime.now().strftime("%Y-%m"))
