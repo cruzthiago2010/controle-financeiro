@@ -147,7 +147,12 @@
   .total-secao{display:flex; justify-content:space-between; padding:10px 12px; font-weight:700; color:var(--muted); font-size:0.88rem; border-top:1px dashed var(--border); margin-top:2px;}
 
   form.add-form{display:flex; flex-wrap:wrap; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; margin-top:18px; box-shadow:var(--shadow-card);}
-  form.add-form select, form.add-form input, form.add-form textarea{flex:1; min-width:110px;}
+  /* min-width maior: com 110px cabiam 3 campos por linha no celular e o texto
+     dentro deles ficava cortado ("Nome do car", "Fatura atual ("). */
+  form.add-form select, form.add-form input, form.add-form textarea{flex:1 1 170px; min-width:170px;}
+  @media (max-width: 420px){
+    form.add-form select, form.add-form input, form.add-form textarea{flex-basis:100%; min-width:0;}
+  }
   form.add-form textarea{width:100%; min-height:50px; resize:vertical;}
   form.add-form button{width:100%; padding:11px; font-size:1rem;}
   .empty{color:var(--muted-soft); font-size:0.88rem; padding:22px 10px; text-align:center;}
@@ -157,11 +162,14 @@
   .simple-card{
     display:flex; justify-content:space-between; align-items:center; background:var(--card);
     border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin-bottom:8px;
-    transition:transform 0.15s, box-shadow 0.15s;
+    transition:transform 0.15s, box-shadow 0.15s; gap:10px;
   }
   .simple-card:hover{transform:translateX(2px); box-shadow:var(--shadow-card);}
   .simple-card .nome{font-weight:600;}
   .simple-card .sub{font-size:0.78rem; color:var(--muted); margin-top:2px;}
+  /* Sem isso o valor era espremido pela coluna de texto e quebrava no meio
+     ("R$" numa linha, "474,17" na outra) nas telas estreitas. */
+  .simple-card .valor{flex:none; white-space:nowrap; font-weight:700;}
 
   .categorias-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px;}
   .categoria-card{
@@ -370,8 +378,12 @@
     position:fixed; top:0; left:0; bottom:0; z-index:40; transition:transform 0.25s ease, width 0.2s ease;
   }
   .sidebar-topo{padding:22px 16px 16px; display:flex; align-items:center; justify-content:space-between; gap:6px;}
-  .sidebar-topo .logo{font-size:1.05rem; font-weight:800; display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden;
-    background:linear-gradient(90deg, #fff, #7fe3d5); -webkit-background-clip:text; background-clip:text; color:transparent; white-space:nowrap;}
+  /* Sem nowrap: "Controle Financeiro" não cabe na largura da barra e era cortado
+     no meio ("Controle Finan"). Quebrando em duas linhas o nome aparece inteiro. */
+  .sidebar-topo .logo{font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:8px; min-width:0;
+    background:linear-gradient(90deg, #fff, #7fe3d5); -webkit-background-clip:text; background-clip:text; color:transparent;
+    line-height:1.15;}
+  .sidebar-topo .logo .ico{flex:none;}
   :root[data-tema="claro"] .sidebar-topo .logo{background:linear-gradient(90deg, #1c2438, #14b8a6); -webkit-background-clip:text; background-clip:text; color:transparent;}
   .sidebar-colapsar{
     background:transparent; border:none; color:var(--muted); box-shadow:none; padding:4px 6px;
@@ -503,7 +515,11 @@
   .cartao-rodape{display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); gap:8px; flex-wrap:wrap;}
   .cartao-rodape button{font-size:0.78rem; padding:6px 10px;}
   .cartao-transacoes-toggle{margin-top:8px;}
-  .cartao-transacoes-toggle .link{background:none; border:none; color:var(--accent); font-size:0.78rem; padding:0; cursor:pointer;}
+  /* box-shadow:none é necessário: o botão global tem um brilho teal que, sem
+     fundo nem borda, virava uma caixa flutuando em volta do texto do link. */
+  .cartao-transacoes-toggle .link{background:none; border:none; box-shadow:none; color:var(--accent);
+    font-size:0.78rem; padding:0; cursor:pointer;}
+  .cartao-transacoes-toggle .link:hover{box-shadow:none; transform:none; text-decoration:underline;}
   .cartao-transacoes{margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);}
   .lista-transacoes-cartao{display:flex; flex-direction:column; gap:6px; margin-bottom:10px; max-height:220px; overflow-y:auto;}
   .transacao-cartao-item{display:grid; grid-template-columns:1fr auto auto auto; align-items:center; gap:8px; font-size:0.78rem; padding:4px 0;}
@@ -513,14 +529,20 @@
   .form-transacao-cartao input{font-size:0.78rem; padding:6px 8px;}
   .form-transacao-cartao button{font-size:0.78rem; padding:6px 10px; white-space:nowrap;}
 
-  .conta-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card); display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  /* Card em duas faixas (identidade em cima, saldo embaixo), mesmo padrão dos
+     cards de cartão. Lado a lado o nome do banco e o valor disputavam a mesma
+     linha e os dois quebravam no meio. */
+  .conta-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card);
+    display:grid; grid-template-columns:1fr auto; grid-template-areas:"topo acoes" "saldos acoes"; align-items:center; gap:6px 10px;}
+  .conta-card .conta-topo{grid-area:topo; display:flex; align-items:center; gap:10px; min-width:0;}
+  .conta-card .conta-identidade{min-width:0;}
   .conta-icone{width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; flex:none;}
-  .conta-card .conta-nome{font-weight:700;}
+  .conta-card .conta-nome{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .conta-card .conta-sub{font-size:0.75rem; color:var(--muted); margin-top:2px;}
-  .conta-card .conta-saldos{text-align:right;}
-  .conta-card .conta-saldos .principal{font-weight:800; font-size:1.05rem;}
-  .conta-card .conta-saldos .secundario{font-size:0.72rem; color:var(--muted); margin-top:2px;}
-  .conta-card .conta-acoes{display:flex; gap:2px;}
+  .conta-card .conta-saldos{grid-area:saldos; text-align:left; padding-left:48px;}
+  .conta-card .conta-saldos .principal{font-weight:800; font-size:1.15rem; white-space:nowrap;}
+  .conta-card .conta-saldos .secundario{font-size:0.72rem; color:var(--muted); margin-top:2px; white-space:nowrap;}
+  .conta-card .conta-acoes{grid-area:acoes; display:flex; gap:2px; align-self:start;}
 
   /* Botão flutuante (FAB) com speed-dial */
   .fab-container{position:fixed; right:20px; bottom:24px; z-index:35; display:flex; flex-direction:column; align-items:flex-end; gap:14px;}
@@ -1374,6 +1396,39 @@ function corPara(str){
   return categoriaCorCache[str] || corHash(str);
 }
 
+// Cor oficial de cada banco, pro círculo da conta/cartão ficar reconhecível de
+// relance. A busca é por trecho do nome, então "Itaú Pessoal" também casa.
+const CORES_BANCO = [
+  ["nubank", "#820AD1"], ["nu bank", "#820AD1"],
+  ["itau", "#EC7000"], ["itaú", "#EC7000"],
+  ["c6", "#242424"],
+  ["caixa", "#0070AF"],
+  ["bradesco", "#CC092F"],
+  ["santander", "#EC0000"],
+  ["banco do brasil", "#FAE128"], ["bb", "#FAE128"],
+  ["inter", "#FF7A00"],
+  ["picpay", "#21C25E"],
+  ["mercado pago", "#00B1EA"], ["mercadopago", "#00B1EA"],
+  ["will", "#FFD400"],
+  ["neon", "#00A5E7"],
+  ["next", "#00FF5F"],
+  ["pagbank", "#00A868"], ["pagseguro", "#00A868"],
+  ["original", "#00A868"],
+  ["safra", "#003B71"],
+  ["btg", "#0D1B2A"],
+  ["sicoob", "#00AE9D"],
+  ["sicredi", "#3FA110"],
+  ["carteira", "#64748b"], ["dinheiro", "#64748b"],
+];
+function corDoBanco(nome){
+  if (!nome) return null;
+  const n = nome.toLowerCase();
+  for (const [chave, cor] of CORES_BANCO){
+    if (n.includes(chave)) return cor;
+  }
+  return null;
+}
+
 function escapeHtml(str){
   const div = document.createElement("div");
   div.textContent = str == null ? "" : String(str);
@@ -2159,14 +2214,14 @@ function renderizarContas(){
     return;
   }
   contasCache.forEach(c => {
-    const cor = corPara(c.nome) || "#14b8a6";
+    const cor = corDoBanco(c.nome) || corPara(c.nome) || "#14b8a6";
     const inicial = (c.nome || "?").trim().slice(0, 2).toUpperCase();
     const div = document.createElement("div");
     div.className = "conta-card";
     div.innerHTML = `
-      <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+      <div class="conta-topo">
         <div class="conta-icone" style="background:${cor}">${escapeHtml(inicial)}</div>
-        <div style="min-width:0;">
+        <div class="conta-identidade">
           <div class="conta-nome">${escapeHtml(c.nome)}</div>
           <div class="conta-sub">Saldo inicial: ${formatMoeda(c.saldo_inicial)}${usuariosCache.length > 1 && c.usuario_nome ? " · " + escapeHtml(c.usuario_nome) : ""}</div>
         </div>
@@ -2638,7 +2693,9 @@ async function carregarDashboard(){
       labels: d.grafico_categoria.map(c => c.categoria),
       datasets: [{data: d.grafico_categoria.map(c => c.total), backgroundColor: d.grafico_categoria.map(c => corPara(c.categoria) || "#14b8a6")}]
     },
-    options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{position:"right", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}}}}
+    // No celular a legenda à direita sobra pouco espaço e corta os nomes das
+    // categorias ("Manutenção Veíc…"); embaixo ela usa a largura toda.
+    options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{position: window.innerWidth < 700 ? "bottom" : "right", labels:{color:corTexto, usePointStyle:true, pointStyle:"circle", boxWidth:8, boxHeight:8, padding:12, font:{size:10}}}}}
   });
 
   // Gráfico de tendência (últimos meses)
@@ -2832,7 +2889,7 @@ async function carregarCartoes(){
   container.innerHTML = "";
   if (cartoesCache.length === 0){ container.innerHTML = `<div class="empty">Nenhum cartão cadastrado.</div>`; return; }
   cartoesCache.forEach(c => {
-    const cor = corPara(c.nome) || "#14b8a6";
+    const cor = corDoBanco(c.nome) || corPara(c.nome) || "#14b8a6";
     const inicial = (c.nome || "?").trim().slice(0, 2).toUpperCase();
     const uso = c.limite > 0 ? Math.min(100, Math.round((c.fatura_atual / c.limite) * 100)) : 0;
     const corBarra = uso >= 90 ? "var(--red)" : uso >= 60 ? "var(--yellow)" : "var(--green)";
