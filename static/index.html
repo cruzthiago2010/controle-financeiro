@@ -537,6 +537,10 @@
   .conta-card .conta-topo{grid-area:topo; display:flex; align-items:center; gap:10px; min-width:0;}
   .conta-card .conta-identidade{min-width:0;}
   .conta-icone{width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; flex:none;}
+  /* Com logo o fundo não aparece: a imagem oficial do banco já é um quadrado
+     colorido, então ela preenche o círculo inteiro. */
+  .conta-icone.com-logo, .cartao-icone.com-logo{overflow:hidden; padding:0;}
+  .conta-icone img, .cartao-icone img{width:100%; height:100%; object-fit:cover; display:block;}
   .conta-card .conta-nome{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .conta-card .conta-sub{font-size:0.75rem; color:var(--muted); margin-top:2px;}
   .conta-card .conta-saldos{grid-area:saldos; text-align:left; padding-left:48px;}
@@ -1396,37 +1400,63 @@ function corPara(str){
   return categoriaCorCache[str] || corHash(str);
 }
 
-// Cor oficial de cada banco, pro círculo da conta/cartão ficar reconhecível de
-// relance. A busca é por trecho do nome, então "Itaú Pessoal" também casa.
-const CORES_BANCO = [
-  ["nubank", "#820AD1"], ["nu bank", "#820AD1"],
-  ["itau", "#EC7000"], ["itaú", "#EC7000"],
-  ["c6", "#242424"],
-  ["caixa", "#0070AF"],
-  ["bradesco", "#CC092F"],
-  ["santander", "#EC0000"],
-  ["banco do brasil", "#FAE128"], ["bb", "#FAE128"],
-  ["inter", "#FF7A00"],
-  ["picpay", "#21C25E"],
-  ["mercado pago", "#00B1EA"], ["mercadopago", "#00B1EA"],
-  ["will", "#FFD400"],
-  ["neon", "#00A5E7"],
-  ["next", "#00FF5F"],
-  ["pagbank", "#00A868"], ["pagseguro", "#00A868"],
-  ["original", "#00A868"],
-  ["safra", "#003B71"],
-  ["btg", "#0D1B2A"],
-  ["sicoob", "#00AE9D"],
-  ["sicredi", "#3FA110"],
-  ["carteira", "#64748b"], ["dinheiro", "#64748b"],
+// Logo (ícone oficial do app do banco, em static/logos/) e cor de marca, pra
+// conta e cartão ficarem reconhecíveis de relance. A busca é por trecho do
+// nome, então "Itaú Pessoal" ou "Nubank da Dani" também casam. A cor continua
+// servindo de fundo enquanto a imagem carrega e pros bancos sem logo local.
+const BANCOS = [
+  ["nubank",          "nubank",      "#820AD1"],
+  ["nu bank",         "nubank",      "#820AD1"],
+  ["itau",            "itau",        "#EC7000"],
+  ["itaú",            "itau",        "#EC7000"],
+  ["c6",              "c6",          "#242424"],
+  ["caixa",           "caixa",       "#0070AF"],
+  ["bradesco",        "bradesco",    "#CC092F"],
+  ["santander",       "santander",   "#EC0000"],
+  ["banco do brasil", "bb",          "#FAE128"],
+  ["inter",           "inter",       "#FF7A00"],
+  ["picpay",          "picpay",      "#21C25E"],
+  ["mercado pago",    "mercadopago", "#00B1EA"],
+  ["mercadopago",     "mercadopago", "#00B1EA"],
+  ["will",            "will",        "#FFD400"],
+  ["neon",            "neon",        "#00A5E7"],
+  ["next",            "next",        "#00FF5F"],
+  ["pagbank",         "pagbank",     "#00A868"],
+  ["pagseguro",       "pagbank",     "#00A868"],
+  ["safra",           "safra",       "#003B71"],
+  ["btg",             "btg",         "#0D1B2A"],
+  ["sicoob",          "sicoob",      "#00AE9D"],
+  ["sicredi",         "sicredi",     "#3FA110"],
+  ["carteira",        null,          "#64748b"],
+  ["dinheiro",        null,          "#64748b"],
 ];
-function corDoBanco(nome){
+function bancoDe(nome){
   if (!nome) return null;
   const n = nome.toLowerCase();
-  for (const [chave, cor] of CORES_BANCO){
-    if (n.includes(chave)) return cor;
+  // "bb" só casa como palavra inteira, senão pegaria qualquer nome com essas letras.
+  for (const [chave, logo, cor] of BANCOS){
+    if (n.includes(chave)) return {logo, cor};
   }
+  if (/\bbb\b/.test(n)) return {logo: "bb", cor: "#FAE128"};
   return null;
+}
+function corDoBanco(nome){
+  const b = bancoDe(nome);
+  return b ? b.cor : null;
+}
+// Monta o quadradinho da conta/cartão: logo do banco quando existe, senão as
+// iniciais sobre a cor. onerror volta pras iniciais se a imagem sumir.
+function marcaHTML(nome, classe){
+  const b = bancoDe(nome);
+  const cor = (b && b.cor) || corPara(nome) || "#14b8a6";
+  const inicial = (nome || "?").trim().slice(0, 2).toUpperCase();
+  if (b && b.logo){
+    return `<div class="${classe} com-logo" style="background:${cor}">
+      <img src="/static/logos/${b.logo}.png" alt="${escapeHtml(nome)}" loading="lazy"
+           onerror="this.parentNode.classList.remove('com-logo'); this.replaceWith(document.createTextNode('${escapeHtml(inicial)}'))">
+    </div>`;
+  }
+  return `<div class="${classe}" style="background:${cor}">${escapeHtml(inicial)}</div>`;
 }
 
 function escapeHtml(str){
@@ -2214,13 +2244,11 @@ function renderizarContas(){
     return;
   }
   contasCache.forEach(c => {
-    const cor = corDoBanco(c.nome) || corPara(c.nome) || "#14b8a6";
-    const inicial = (c.nome || "?").trim().slice(0, 2).toUpperCase();
     const div = document.createElement("div");
     div.className = "conta-card";
     div.innerHTML = `
       <div class="conta-topo">
-        <div class="conta-icone" style="background:${cor}">${escapeHtml(inicial)}</div>
+        ${marcaHTML(c.nome, "conta-icone")}
         <div class="conta-identidade">
           <div class="conta-nome">${escapeHtml(c.nome)}</div>
           <div class="conta-sub">Saldo inicial: ${formatMoeda(c.saldo_inicial)}${usuariosCache.length > 1 && c.usuario_nome ? " · " + escapeHtml(c.usuario_nome) : ""}</div>
@@ -2889,15 +2917,13 @@ async function carregarCartoes(){
   container.innerHTML = "";
   if (cartoesCache.length === 0){ container.innerHTML = `<div class="empty">Nenhum cartão cadastrado.</div>`; return; }
   cartoesCache.forEach(c => {
-    const cor = corDoBanco(c.nome) || corPara(c.nome) || "#14b8a6";
-    const inicial = (c.nome || "?").trim().slice(0, 2).toUpperCase();
     const uso = c.limite > 0 ? Math.min(100, Math.round((c.fatura_atual / c.limite) * 100)) : 0;
     const corBarra = uso >= 90 ? "var(--red)" : uso >= 60 ? "var(--yellow)" : "var(--green)";
     const div = document.createElement("div");
     div.className = "cartao-card";
     div.innerHTML = `
       <div class="cartao-topo">
-        <div class="cartao-icone" style="background:${cor}">${escapeHtml(inicial)}</div>
+        ${marcaHTML(c.nome, "cartao-icone")}
         <div>
           <div class="cartao-nome">${escapeHtml(c.nome)}</div>
           <div class="cartao-sub">${c.conta_nome ? "Conta: " + escapeHtml(c.conta_nome) : "Sem conta vinculada"}</div>
