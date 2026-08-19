@@ -317,7 +317,14 @@
   body.somente-leitura .holerite-card .holerite-excluir,
   body.somente-leitura #btnAbrirTransferencia,
   body.somente-leitura #btnAdicionarUsuario,
+  body.somente-leitura #menuAdicionarUsuario,
   body.somente-leitura .orcamento-form{
+    display:none !important;
+  }
+  /* Só o administrador da casa cria usuário — o servidor recusa os outros, e
+     deixar o botão à vista só renderia um erro depois do formulário preenchido. */
+  body.nao-admin #btnAdicionarUsuario,
+  body.nao-admin #menuAdicionarUsuario{
     display:none !important;
   }
   .badge-leitura{
@@ -4262,6 +4269,7 @@ async function carregarUsuarioAtual(){
     document.getElementById("topUsuarioSub").textContent =
       usuarioAtual.somente_leitura ? "Somente leitura" : (usuarioAtual.username || "");
     document.body.classList.toggle("somente-leitura", !!usuarioAtual.somente_leitura);
+    document.body.classList.toggle("nao-admin", !usuarioAtual.eh_administrador);
   } catch (e) {}
 }
 

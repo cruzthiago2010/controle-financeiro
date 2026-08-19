@@ -1018,6 +1018,11 @@ def criar_usuario():
     if not nome or not username or len(senha) < 4:
         return jsonify({"erro": "nome, usuário e senha (mín. 4 caracteres) são obrigatórios"}), 400
     conn = get_db()
+    # Quem entra na casa decide quem mais entra: sem isso, qualquer conta com
+    # escrita podia criar outra pessoa com acesso aos dados da família.
+    if not eh_administrador(conn):
+        conn.close()
+        return jsonify({"erro": "só o administrador pode adicionar usuários"}), 403
     try:
         conn.execute(
             "INSERT INTO usuarios (nome, username, senha_hash, casa_id, criado_em, somente_leitura) "
