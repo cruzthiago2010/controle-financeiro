@@ -6,66 +6,110 @@
 <title>Criar casa — FinanCerto</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/static/logo-financerto.svg" type="image/svg+xml">
-<meta name="theme-color" content="#0b0f19">
+<meta name="theme-color" content="#141a21">
 <style>
   :root{
-    --bg:#0b0f19; --card:#161d2e; --card2:#1c2438;
-    --border:#26304a; --text:#eef1f8; --muted:#8b96b3;
-    --accent:#5b8def; --accent2:#4f7fe0; --red:#ff6b6b;
+    --bg:#141a21; --card:#1c252e; --card2:#252f3a;
+    --border:rgba(145,158,171,0.16); --text:#ffffff; --muted:#919eab;
+    --accent:#00a76f; --accent2:#007867; --accent-claro:#2ecc8f; --red:#ff5630;
   }
   *{box-sizing:border-box;}
   body{
-    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    margin:0; min-height:100dvh; display:flex; align-items:center; justify-content:center;
     font-family:-apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background:var(--bg); color:var(--text); padding:24px 20px;
+    position:relative; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  }
+  /* Brilho verde atrás do conteúdo, como no modelo da marca. */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
     background:
-      radial-gradient(circle at 15% 0%, rgba(91,141,239,0.12), transparent 40%),
-      radial-gradient(circle at 85% 100%, rgba(167,139,250,0.09), transparent 45%),
-      var(--bg);
-    color:var(--text); padding:20px;
+      radial-gradient(58% 42% at 50% 34%, rgba(0,167,111,0.20), transparent 70%),
+      radial-gradient(40% 30% at 50% 76%, rgba(0,167,111,0.10), transparent 70%);
   }
-  .login-box{
-    width:100%; max-width:380px; background:linear-gradient(160deg, var(--card), var(--card2));
-    border:1px solid var(--border); border-radius:20px; padding:32px 26px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  .caixa{position:relative; z-index:1; width:100%; max-width:380px; text-align:center;}
+
+  .marca{display:flex; flex-direction:column; align-items:center; gap:2px; margin-bottom:30px;}
+  .marca svg{width:76px; height:76px; filter:drop-shadow(0 0 18px rgba(0,167,111,0.45));}
+  .marca .nome{font-size:1.85rem; font-weight:800; letter-spacing:-0.02em; margin-top:10px;}
+  .marca .tagline{font-size:0.82rem; font-weight:600; color:var(--accent-claro);}
+
+  h1{font-size:1.35rem; font-weight:800; margin:0 0 6px; letter-spacing:-0.01em;}
+  .sub{font-size:0.88rem; color:var(--muted); margin:0 0 24px;}
+
+  /* Campo com ícone dentro e contorno verde discreto, que acende no foco. */
+  .campo{position:relative; margin-bottom:12px;}
+  .campo .ico-campo{
+    position:absolute; left:15px; top:50%; transform:translateY(-50%);
+    width:19px; height:19px; color:var(--muted); pointer-events:none;
   }
-  .logo{
-    text-align:center; font-size:1.4rem; font-weight:800; margin-bottom:6px;
-    background:linear-gradient(90deg, #fff, #b9c6ec); -webkit-background-clip:text; background-clip:text; color:transparent;
+  .campo input{
+    width:100%; background:rgba(255,255,255,0.02); color:var(--text);
+    border:1px solid rgba(0,167,111,0.35); border-radius:999px;
+    padding:14px 16px 14px 44px; font-size:0.95rem; font-family:inherit;
+    transition:border-color 0.2s, box-shadow 0.2s;
   }
-  .subtitulo{text-align:center; color:var(--muted); font-size:0.85rem; margin-bottom:26px;}
-  label{display:block; font-size:0.78rem; color:var(--muted); margin:14px 0 4px;}
-  input{
-    width:100%; background:var(--card2); color:var(--text); border:1px solid var(--border);
-    border-radius:10px; padding:11px 12px; font-size:0.95rem; font-family:inherit;
+  .campo input::placeholder{color:var(--muted);}
+  .campo input:focus{
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,167,111,0.16);
   }
-  input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,141,239,0.18);}
-  button{
-    width:100%; margin-top:22px; cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2));
-    border:none; border-radius:10px; padding:12px; font-size:1rem; font-weight:700; color:#fff;
-    box-shadow:0 4px 14px rgba(91,141,239,0.3);
+  .campo .olho{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    background:none; border:none; color:var(--muted); cursor:pointer; padding:8px;
+    display:flex; align-items:center; border-radius:50%;
   }
-  button:disabled{opacity:0.6; cursor:default;}
-  .erro{
-    display:none; margin-top:14px; background:rgba(255,107,107,0.1); border:1px solid var(--red);
-    color:var(--red); border-radius:8px; padding:10px 12px; font-size:0.85rem; text-align:center;
+  .campo .olho:hover{color:var(--text);}
+
+  .btn-entrar{
+    width:100%; margin-top:10px; cursor:pointer; font-family:inherit;
+    background:linear-gradient(135deg, var(--accent-claro), var(--accent));
+    border:none; border-radius:999px; padding:14px; font-size:1rem; font-weight:700; color:#06231a;
+    box-shadow:0 6px 22px rgba(0,167,111,0.35); transition:transform 0.15s, box-shadow 0.2s;
   }
-  .erro.ativo{display:block;}
-  .rodape{text-align:center; margin-top:18px; font-size:0.82rem; color:var(--muted);}
-  .rodape a{color:var(--accent); text-decoration:none;}
-  .aviso{
-    margin-top:14px; background:rgba(91,141,239,0.08); border:1px solid var(--border);
-    border-radius:8px; padding:10px 12px; font-size:0.78rem; color:var(--muted); line-height:1.4;
-  }
-  .divisor{display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--muted); font-size:0.75rem;}
+  .btn-entrar:hover{transform:translateY(-1px); box-shadow:0 10px 28px rgba(0,167,111,0.45);}
+  .btn-entrar:active{transform:translateY(0);}
+  .btn-entrar:disabled{opacity:0.6; cursor:default; transform:none;}
+
+  .divisor{display:flex; align-items:center; gap:12px; margin:20px 0; color:var(--muted); font-size:0.72rem;
+    text-transform:uppercase; letter-spacing:0.08em;}
   .divisor::before, .divisor::after{content:""; flex:1; height:1px; background:var(--border);}
+
   .btn-google{
     width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
-    background:#fff; color:#1f1f1f; border:1px solid var(--border); border-radius:10px;
-    padding:11px; font-size:0.92rem; font-weight:600; cursor:pointer; text-decoration:none;
-    box-shadow:none; margin-top:0;
+    background:transparent; color:var(--text); border:1px solid var(--border); border-radius:999px;
+    padding:13px; font-size:0.92rem; font-weight:600; cursor:pointer; text-decoration:none;
+    font-family:inherit; transition:background 0.2s, border-color 0.2s;
   }
-  .btn-google:hover{transform:translateY(-1px);}
+  .btn-google:hover{background:var(--card2); border-color:rgba(145,158,171,0.3);}
   .btn-google svg{width:18px; height:18px; flex:none;}
+
+  .erro{
+    display:none; margin-top:14px; background:rgba(255,86,48,0.1); border:1px solid var(--red);
+    color:var(--red); border-radius:12px; padding:11px 13px; font-size:0.85rem;
+  }
+  .erro.ativo{display:block;}
+  .rodape{margin-top:22px; font-size:0.85rem; color:var(--muted);}
+  .rodape a{color:var(--accent-claro); text-decoration:none; font-weight:600;}
+  .rodape a:hover{text-decoration:underline;}
+  .protegido{
+    margin-top:16px; font-size:0.75rem; color:var(--muted); opacity:0.8;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .protegido svg{width:13px; height:13px;}
+</style><style>
+  .campo-simples{text-align:left; margin-bottom:12px;}
+  .campo-simples label{display:block; font-size:0.78rem; color:var(--muted); margin:0 0 5px 4px;}
+  .campo-simples input{
+    width:100%; background:rgba(255,255,255,0.02); color:var(--text);
+    border:1px solid rgba(0,167,111,0.35); border-radius:999px;
+    padding:13px 16px; font-size:0.95rem; font-family:inherit;
+    transition:border-color 0.2s, box-shadow 0.2s;
+  }
+  .campo-simples input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,167,111,0.16);}
+  .aviso{
+    margin-top:16px; background:rgba(0,167,111,0.08); border:1px solid var(--border);
+    border-radius:14px; padding:11px 13px; font-size:0.78rem; color:var(--muted); line-height:1.45; text-align:left;
+  }
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://analytics.danilashes.com.br/js/pa-a6nLK6VNC0QIFR2mNgXCV.js"></script>
@@ -76,26 +120,49 @@
 </head>
 <body>
 
-<div class="login-box">
-  <div class="logo">FinanCerto</div>
-  <div class="subtitulo">Crie a sua própria casa — isolada de qualquer outra</div>
+<div class="caixa">
+  <div class="marca">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id="fcVerde" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#2ecc8f"/><stop offset="1" stop-color="#0e8f6a"/>
+        </linearGradient>
+      </defs>
+      <path d="M50 6 L88 19 V49 C88 71 71 87 50 95 C29 87 12 71 12 49 V19 Z"
+            fill="none" stroke="url(#fcVerde)" stroke-width="8" stroke-linejoin="round"/>
+      <text x="34" y="46" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif"
+            font-size="21" font-weight="800" fill="url(#fcVerde)">R$</text>
+      <path d="M25 72 L41 56 L50 63 L70 43" fill="none" stroke="url(#fcVerde)"
+            stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M56 43 H70 V57" fill="none" stroke="url(#fcVerde)"
+            stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="nome">FinanCerto</div>
+    <div class="tagline">Seu Controle Financeiro</div>
+  </div>
+
+  <h1>Crie sua casa no FinanCerto</h1>
+  <p class="sub">Seus dados ficam isolados de qualquer outra casa.</p>
+
+  <form id="registroForm">
+    <div class="campo-simples"><label>Nome da casa (ex: "Família Silva")</label>
+      <input type="text" id="nomeCasa" required></div>
+    <div class="campo-simples"><label>Seu nome</label>
+      <input type="text" id="nome" required></div>
+    <div class="campo-simples"><label>Usuário (pra fazer login)</label>
+      <input type="text" id="username" autocomplete="username" required></div>
+    <div class="campo-simples"><label>Senha (mín. 4 caracteres)</label>
+      <input type="password" id="senha" autocomplete="new-password" required minlength="4"></div>
+    <div class="erro" id="registroErro"></div>
+    <button type="submit" class="btn-entrar" id="registroBtn">Criar minha casa</button>
+  </form>
+
+  <div class="divisor">ou</div>
   <a class="btn-google" href="/api/auth/google/login">
     <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.5 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.5 29.6 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-2.1 14.1-5.6l-6.5-5.5C29.6 34.7 27 35.5 24 35.5c-5.3 0-9.7-3.3-11.3-8l-6.6 5.1C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.5 5.5C39.9 37 44 31 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
     Criar minha casa com Google
   </a>
-  <div class="divisor">ou</div>
-  <form id="registroForm">
-    <label>Nome da casa (ex: "Família Silva")</label>
-    <input type="text" id="nomeCasa" required>
-    <label>Seu nome</label>
-    <input type="text" id="nome" required>
-    <label>Usuário (pra fazer login)</label>
-    <input type="text" id="username" autocomplete="username" required>
-    <label>Senha (mín. 4 caracteres)</label>
-    <input type="password" id="senha" autocomplete="new-password" required minlength="4">
-    <div class="erro" id="registroErro"></div>
-    <button type="submit" id="registroBtn">Criar minha casa</button>
-  </form>
+
   <div class="aviso">Você vira o administrador dessa casa. Ninguém de outra casa vê seus dados, e você não vê os de ninguém.</div>
   <div class="rodape">Já tem conta? <a href="/login">Entrar</a></div>
 </div>
