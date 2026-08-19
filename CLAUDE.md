@@ -6,26 +6,41 @@ Docker num servidor Umbrel doméstico. Repositório público:
 
 ## Estado atual (19/08/2026)
 
-Versão no ar: **FinanCerto 3.1** (web em produção, APK publicado na release v3.1).
+Versão no ar: **FinanCerto 3.1** — web em produção, APK na release `v3.1`.
+Repositório publicado e limpo de dados pessoais.
 
-Feito nesta rodada, em ordem:
+### O que existe hoje
 
-- **Identidade FinanCerto** — logo em SVG (escala e serve aos dois temas), 11
-  ícones de PWA gerados dele, telas de entrada e de criar casa refeitas.
-- **Painel redesenhado** — paleta escura neutra, indicadores com variação sobre o
-  mês anterior, gastos por categoria em lista ranqueada (a rosca ficava ilegível
-  com ~20 categorias), gráficos com linha-guia no hover.
-- **Barra superior** — busca em todos os meses (`/api/busca`), sino de contas
-  vencidas com marcar-como-lidas, menu do usuário.
-- **Lançar mais rápido** — sugestão de categoria pelo histórico (`/api/sugestoes`)
-  e teclado numérico próprio com as quatro operações.
-- **Aba Notificações** — o que avisar, botão de teste, e comportamento distinto
-  dentro do app Android (notificação nativa via `PonteApp`).
-- **App Android sem servidor fixo** — endereço perguntado na instalação, testado
-  antes de salvar; código foi para `android/`.
-- **Repositório limpo** — domínio pessoal e analytics saíram do código versionado.
-- **Conciliação** — extratos de Itaú, C6 e Nubank importados até 18/08; as três
-  contas batem com o extrato real.
+**Dashboard** — indicadores em cards com variação sobre o mês anterior, destaque
+do saldo real com número animado e mini-gráfico, fluxo de caixa do mês e diário,
+gastos por categoria em lista ranqueada, tendência de 6 meses, contas vencidas e
+vencendo, parcelas futuras e resumo por conta.
+
+**Lançamentos** — receitas e despesas com categoria, conta, parcelamento e
+recorrência; anexo de comprovante; leitura de nota fiscal por OCR. Ao digitar a
+descrição, sugere lançamentos parecidos já feitos e preenche categoria, valor e
+conta a partir do histórico (`/api/sugestoes`). Campos de valor abrem um teclado
+próprio do app, com as quatro operações.
+
+**Contas e cartões** — saldo por conta com o logo oficial do banco,
+transferências entre contas pareadas (`grupo_transferencia`), cartões com limite
+e fatura, e lançamentos de cartão isolados das despesas do mês
+(`cartao_transacoes`).
+
+**Outras abas** — categorias com cor, calendário, metas, holerite (importa PDF e
+extrai proventos/descontos), empréstimos consignados, notificações e backup
+automático com retenção.
+
+**Barra superior** — busca que varre todos os meses (`/api/busca`), sino de
+contas vencidas com marcar-como-lidas, menu do usuário e alternância de tema.
+
+**Multiusuário** — cada casa é isolada; dentro dela dá para ter mais de um
+usuário, com modo somente-leitura. Login por senha ou Google. Modo demonstração
+troca tudo por dados fictícios.
+
+**App Android** — WebView com bloqueio por digital/PIN, notificação de contas em
+segundo plano, widget de saldo e envio de arquivos. O endereço do servidor é
+perguntado na instalação.
 
 ### Decisões que valem lembrar
 
@@ -34,24 +49,39 @@ Feito nesta rodada, em ordem:
 - **Notificação no navegador só com o app aberto.** Push em segundo plano exigiria
   um serviço externo, o que contraria a ideia de self-hosted. Quem quer aviso com
   o celular guardado usa o app Android, e isso está dito na própria aba.
+- **Dentro do app Android quem notifica é o app**, não o navegador — o WebView não
+  tem a API de notificação, e a página detecta isso pela ponte `FinanCertoApp`.
 - **Logo dos bancos vem do ícone oficial do app de cada um**, guardado localmente
   em `static/logos/`. Favicon e Wikimedia foram testados antes e não serviram
   (resolução baixa ou logotipo por extenso, que não cabe em ícone redondo).
 - **"Marcar como lida" no sino não marca como paga.** São coisas diferentes e o
   toast diz isso — mexer nisso é mexer em dado financeiro.
+- **Gastos por categoria é lista, não rosca.** Com ~20 categorias a legenda da
+  rosca ficava ilegível.
+- **Despesa não paga aparece também no mês seguinte**, marcada como atrasada.
+  Para série recorrente, só a ocorrência não paga mais antiga — senão cada mês
+  sem pagar empilharia mais uma cópia.
+
+### Armadilhas já encontradas (não repetir)
+
+- `hidden` no HTML **perde** para `display:flex` no CSS. Aconteceu com o selo do
+  sino e com o rodapé da barra lateral; precisa de `[hidden]{display:none}`.
+- `transform:none` no `:hover` cancela também a rotação de estado. Por isso o giro
+  da seta de recolher fica no ícone, não no botão.
+- Zerar só o `transform` no hover de botão transparente deixa o brilho verde
+  global virar um halo retangular. Precisa zerar `box-shadow` junto.
+- Trocar `innerHTML` recria o elemento e mata qualquer transição em curso.
+- Chart.js não renderiza gradiente na caixinha da legenda — usar `usePointStyle`.
+- Mudou ícone ou marca? Trocar o `CACHE_NAME` no `sw.js`, senão o service worker
+  segue servindo o arquivo antigo.
 
 ### Próximos passos
 
-1. **Auditoria de segurança pedida, ainda incompleta.** Já verificado: nenhuma
-   rota com IDOR e nenhuma chave em código. Faltam três frentes — isolamento
-   query a query, tratamento de entrada num ponto específico e se as restrições
-   de somente-leitura/administrador valem no servidor ou só na tela. As pistas em
-   aberto estão em `NOTAS-SEGURANCA.md`, que **não é versionado** de propósito:
-   descrever suspeita não confirmada num repositório público é entregar o caminho.
-2. **Foto de perfil dá 404** (`u1_20260810050841.jpeg`) — o arquivo sumiu do
+1. **Foto de perfil dá 404** (`u1_20260810050841.jpeg`) — o arquivo sumiu do
    servidor. Ou subir de novo, ou limpar a referência no banco.
-3. **APK nunca foi testado em aparelho.** Não há emulador no servidor; a validação
+2. **APK nunca foi testado em aparelho.** Não há emulador no servidor; a validação
    foi estática (telas registradas, textos presentes, sem domínio embutido).
+3. **Legenda do gráfico de pizza corta nomes longos no celular** em alguns casos.
 
 ### Onde as coisas ficam
 
@@ -63,6 +93,7 @@ Feito nesta rodada, em ordem:
 | Chave de assinatura do APK | `/home/umbrel/chaves-financerto/` (fora do git) |
 | Backups do banco | `backups/` |
 | Extratos e prints enviados | `../Photos/` |
+| Contexto financeiro pessoal | `NOTAS-PESSOAIS.md` (não versionado) |
 
 ## Como o código está organizado
 
