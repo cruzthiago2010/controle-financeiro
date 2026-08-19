@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle Financeiro</title>
+<title>FinanCerto</title>
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/static/logo-financerto.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icones/icone-180.png">
 <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icon.svg">
-<meta name="theme-color" content="#0b0f19">
+<meta name="theme-color" content="#141a21">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -452,11 +454,11 @@
     position:fixed; top:0; left:0; bottom:0; z-index:40; transition:transform 0.25s ease, width 0.2s ease;
   }
   .sidebar-topo{padding:22px 16px 16px; display:flex; align-items:center; justify-content:space-between; gap:6px;}
-  /* Sem nowrap: "Controle Financeiro" não cabe na largura da barra e era cortado
+  /* Sem nowrap: "FinanCerto" cabe numa linha, mas manter a quebra evita corte se o nome crescer
      no meio ("Controle Finan"). Quebrando em duas linhas o nome aparece inteiro. */
   .sidebar-topo .logo{font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:8px; min-width:0;
-    background:linear-gradient(90deg, #fff, #7fe3d5); -webkit-background-clip:text; background-clip:text; color:transparent;
-    line-height:1.15;}
+    color:#fff; line-height:1.15;}
+  .sidebar-topo .logo .logo-marca{width:26px; height:26px; flex:none;}
   .sidebar-topo .logo .ico{flex:none;}
   :root[data-tema="claro"] .sidebar-topo .logo{background:linear-gradient(90deg, #1c2438, #00a76f); -webkit-background-clip:text; background-clip:text; color:transparent;}
   .sidebar-colapsar{
@@ -887,7 +889,7 @@
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-topo">
-      <span class="logo"><svg class="ico lg" viewBox="0 0 24 24"><use href="#i-carteira"/></svg> <span class="logo-texto">Controle Financeiro</span></span>
+      <span class="logo"><svg class="ico lg logo-marca" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="fcSide" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ecc8f"/><stop offset="1" stop-color="#0e8f6a"/></linearGradient></defs><path d="M50 6 L88 19 V49 C88 71 71 87 50 95 C29 87 12 71 12 49 V19 Z" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linejoin="round"/><path d="M25 72 L41 56 L50 63 L70 43" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M56 43 H70 V57" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg> <span class="logo-texto">FinanCerto</span></span>
       <button class="sidebar-colapsar" id="sidebarColapsarBtn" type="button" title="Recolher menu"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-esquerda"/></svg></button>
     </div>
     <nav class="sidebar-nav">

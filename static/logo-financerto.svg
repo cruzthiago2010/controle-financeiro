@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-label="FinanCerto">
+  <defs>
+    <linearGradient id="fcVerde" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2ecc8f"/>
+      <stop offset="1" stop-color="#0e8f6a"/>
+    </linearGradient>
+  </defs>
+  <!-- Escudo: contorno grosso, miolo vazado (o fundo do app aparece por dentro). -->
+  <path d="M50 6 L88 19 V49 C88 71 71 87 50 95 C29 87 12 71 12 49 V19 Z"
+        fill="none" stroke="url(#fcVerde)" stroke-width="8" stroke-linejoin="round"/>
+  <!-- R$ no alto, à esquerda da seta. -->
+  <text x="34" y="46" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif"
+        font-size="21" font-weight="800" fill="url(#fcVerde)">R$</text>
+  <!-- Seta de alta atravessando o escudo. A ponta é o canto ⌐ no fim da linha. -->
+  <path d="M25 72 L41 56 L50 63 L70 43" fill="none" stroke="url(#fcVerde)"
+        stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M56 43 H70 V57" fill="none" stroke="url(#fcVerde)"
+        stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

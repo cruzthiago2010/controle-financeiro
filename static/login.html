@@ -3,64 +3,100 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Entrar — Controle Financeiro</title>
+<title>Entrar — FinanCerto</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0b1020">
+<link rel="icon" href="/static/logo-financerto.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icones/icone-180.png">
+<meta name="theme-color" content="#141a21">
 <style>
   :root{
-    --bg:#0b1020; --card:#111827; --card2:#161f2e;
-    --border:#232f42; --text:#e5e7eb; --muted:#94a3b8;
-    --accent:#14b8a6; --accent2:#0d9488; --red:#ef4444;
+    --bg:#141a21; --card:#1c252e; --card2:#252f3a;
+    --border:rgba(145,158,171,0.16); --text:#ffffff; --muted:#919eab;
+    --accent:#00a76f; --accent2:#007867; --accent-claro:#2ecc8f; --red:#ff5630;
   }
   *{box-sizing:border-box;}
   body{
-    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    margin:0; min-height:100dvh; display:flex; align-items:center; justify-content:center;
     font-family:-apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background:var(--bg); color:var(--text); padding:24px 20px;
+    position:relative; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  }
+  /* Brilho verde atrás do conteúdo, como no modelo da marca. */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
     background:
-      radial-gradient(circle at 85% -8%, rgba(20,184,166,0.16), transparent 45%),
-      radial-gradient(circle at 10% 110%, rgba(245,158,11,0.12), transparent 44%),
-      var(--bg);
-    color:var(--text); padding:20px;
+      radial-gradient(58% 42% at 50% 34%, rgba(0,167,111,0.20), transparent 70%),
+      radial-gradient(40% 30% at 50% 76%, rgba(0,167,111,0.10), transparent 70%);
   }
-  .login-box{
-    width:100%; max-width:360px; background:linear-gradient(160deg, var(--card), var(--card2));
-    border:1px solid var(--border); border-radius:20px; padding:32px 26px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  .caixa{position:relative; z-index:1; width:100%; max-width:380px; text-align:center;}
+
+  .marca{display:flex; flex-direction:column; align-items:center; gap:2px; margin-bottom:30px;}
+  .marca svg{width:76px; height:76px; filter:drop-shadow(0 0 18px rgba(0,167,111,0.45));}
+  .marca .nome{font-size:1.85rem; font-weight:800; letter-spacing:-0.02em; margin-top:10px;}
+  .marca .tagline{font-size:0.82rem; font-weight:600; color:var(--accent-claro);}
+
+  h1{font-size:1.35rem; font-weight:800; margin:0 0 6px; letter-spacing:-0.01em;}
+  .sub{font-size:0.88rem; color:var(--muted); margin:0 0 24px;}
+
+  /* Campo com ícone dentro e contorno verde discreto, que acende no foco. */
+  .campo{position:relative; margin-bottom:12px;}
+  .campo .ico-campo{
+    position:absolute; left:15px; top:50%; transform:translateY(-50%);
+    width:19px; height:19px; color:var(--muted); pointer-events:none;
   }
-  .logo{
-    text-align:center; font-size:1.4rem; font-weight:800; margin-bottom:6px;
-    background:linear-gradient(90deg, #fff, #7fe3d5); -webkit-background-clip:text; background-clip:text; color:transparent;
+  .campo input{
+    width:100%; background:rgba(255,255,255,0.02); color:var(--text);
+    border:1px solid rgba(0,167,111,0.35); border-radius:999px;
+    padding:14px 16px 14px 44px; font-size:0.95rem; font-family:inherit;
+    transition:border-color 0.2s, box-shadow 0.2s;
   }
-  .subtitulo{text-align:center; color:var(--muted); font-size:0.85rem; margin-bottom:26px;}
-  label{display:block; font-size:0.78rem; color:var(--muted); margin:14px 0 4px;}
-  input{
-    width:100%; background:var(--card2); color:var(--text); border:1px solid var(--border);
-    border-radius:10px; padding:11px 12px; font-size:0.95rem; font-family:inherit;
+  .campo input::placeholder{color:var(--muted);}
+  .campo input:focus{
+    outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,167,111,0.16);
   }
-  input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(20,184,166,0.18);}
-  button{
-    width:100%; margin-top:22px; cursor:pointer; background:linear-gradient(135deg, var(--accent), var(--accent2));
-    border:none; border-radius:10px; padding:12px; font-size:1rem; font-weight:700; color:#fff;
-    box-shadow:0 4px 14px rgba(20,184,166,0.3);
+  .campo .olho{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    background:none; border:none; color:var(--muted); cursor:pointer; padding:8px;
+    display:flex; align-items:center; border-radius:50%;
   }
-  button:disabled{opacity:0.6; cursor:default;}
-  .erro{
-    display:none; margin-top:14px; background:rgba(239,68,68,0.1); border:1px solid var(--red);
-    color:var(--red); border-radius:8px; padding:10px 12px; font-size:0.85rem; text-align:center;
+  .campo .olho:hover{color:var(--text);}
+
+  .btn-entrar{
+    width:100%; margin-top:10px; cursor:pointer; font-family:inherit;
+    background:linear-gradient(135deg, var(--accent-claro), var(--accent));
+    border:none; border-radius:999px; padding:14px; font-size:1rem; font-weight:700; color:#06231a;
+    box-shadow:0 6px 22px rgba(0,167,111,0.35); transition:transform 0.15s, box-shadow 0.2s;
   }
-  .erro.ativo{display:block;}
-  .rodape{text-align:center; margin-top:18px; font-size:0.82rem; color:var(--muted);}
-  .rodape a{color:var(--accent); text-decoration:none;}
-  .divisor{display:flex; align-items:center; gap:10px; margin:20px 0; color:var(--muted); font-size:0.75rem;}
+  .btn-entrar:hover{transform:translateY(-1px); box-shadow:0 10px 28px rgba(0,167,111,0.45);}
+  .btn-entrar:active{transform:translateY(0);}
+  .btn-entrar:disabled{opacity:0.6; cursor:default; transform:none;}
+
+  .divisor{display:flex; align-items:center; gap:12px; margin:20px 0; color:var(--muted); font-size:0.72rem;
+    text-transform:uppercase; letter-spacing:0.08em;}
   .divisor::before, .divisor::after{content:""; flex:1; height:1px; background:var(--border);}
+
   .btn-google{
     width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
-    background:#fff; color:#1f1f1f; border:1px solid var(--border); border-radius:10px;
-    padding:11px; font-size:0.92rem; font-weight:600; cursor:pointer; text-decoration:none;
-    box-shadow:none; margin-top:0;
+    background:transparent; color:var(--text); border:1px solid var(--border); border-radius:999px;
+    padding:13px; font-size:0.92rem; font-weight:600; cursor:pointer; text-decoration:none;
+    font-family:inherit; transition:background 0.2s, border-color 0.2s;
   }
-  .btn-google:hover{transform:translateY(-1px);}
+  .btn-google:hover{background:var(--card2); border-color:rgba(145,158,171,0.3);}
   .btn-google svg{width:18px; height:18px; flex:none;}
+
+  .erro{
+    display:none; margin-top:14px; background:rgba(255,86,48,0.1); border:1px solid var(--red);
+    color:var(--red); border-radius:12px; padding:11px 13px; font-size:0.85rem;
+  }
+  .erro.ativo{display:block;}
+  .rodape{margin-top:22px; font-size:0.85rem; color:var(--muted);}
+  .rodape a{color:var(--accent-claro); text-decoration:none; font-weight:600;}
+  .rodape a:hover{text-decoration:underline;}
+  .protegido{
+    margin-top:16px; font-size:0.75rem; color:var(--muted); opacity:0.8;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .protegido svg{width:13px; height:13px;}
 </style>
 <!-- Privacy-friendly analytics by Plausible -->
 <script async src="https://analytics.danilashes.com.br/js/pa-a6nLK6VNC0QIFR2mNgXCV.js"></script>
@@ -71,32 +107,89 @@
 </head>
 <body>
 
-<div class="login-box">
-  <div class="logo">💰 Controle Financeiro</div>
-  <div class="subtitulo">Entre com seu usuário e senha</div>
+<div class="caixa">
+  <div class="marca">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id="fcVerde" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#2ecc8f"/><stop offset="1" stop-color="#0e8f6a"/>
+        </linearGradient>
+      </defs>
+      <path d="M50 6 L88 19 V49 C88 71 71 87 50 95 C29 87 12 71 12 49 V19 Z"
+            fill="none" stroke="url(#fcVerde)" stroke-width="8" stroke-linejoin="round"/>
+      <text x="34" y="46" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif"
+            font-size="21" font-weight="800" fill="url(#fcVerde)">R$</text>
+      <path d="M25 72 L41 56 L50 63 L70 43" fill="none" stroke="url(#fcVerde)"
+            stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M56 43 H70 V57" fill="none" stroke="url(#fcVerde)"
+            stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="nome">FinanCerto</div>
+    <div class="tagline">Seu Controle Financeiro</div>
+  </div>
+
+  <h1>Bem-vindo ao FinanCerto</h1>
+  <p class="sub">Acesse sua conta para começar.</p>
+
+  <form id="loginForm">
+    <div class="campo">
+      <svg class="ico-campo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      <input type="text" id="username" autocomplete="username" placeholder="Digite seu usuário" required>
+    </div>
+    <div class="campo">
+      <svg class="ico-campo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <input type="password" id="senha" autocomplete="current-password" placeholder="Digite sua senha" required>
+      <button type="button" class="olho" id="verSenha" title="Mostrar senha" aria-label="Mostrar senha">
+        <svg id="olhoIco" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+    <div class="erro" id="loginErro"></div>
+    <button type="submit" class="btn-entrar" id="loginBtn">Entrar</button>
+  </form>
+
+  <div class="divisor">ou</div>
   <a class="btn-google" href="/api/auth/google/login">
     <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.5 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.5 29.6 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-2.1 14.1-5.6l-6.5-5.5C29.6 34.7 27 35.5 24 35.5c-5.3 0-9.7-3.3-11.3-8l-6.6 5.1C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.5 5.5C39.9 37 44 31 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
-    Entrar com Google
+    Continuar com Google
   </a>
-  <div class="divisor">ou</div>
-  <form id="loginForm">
-    <label>Usuário</label>
-    <input type="text" id="username" autocomplete="username" required>
-    <label>Senha</label>
-    <input type="password" id="senha" autocomplete="current-password" required>
-    <div class="erro" id="loginErro"></div>
-    <button type="submit" id="loginBtn">Entrar</button>
-  </form>
-  <div class="rodape">Não tem conta? <a href="/registro">Criar minha casa</a></div>
+
+  <div class="rodape">Não tem uma conta? <a href="/registro">Crie agora.</a></div>
+  <div class="protegido">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+    Seus dados ficam no seu servidor.
+  </div>
 </div>
 
 <script>
+// O botão do Google só aparece se o login com Google estiver configurado.
 fetch("/api/auth/google/status").then(r => r.json()).then(d => {
   if (!d.habilitado){
     document.querySelector(".btn-google").style.display = "none";
     document.querySelector(".divisor").style.display = "none";
   }
 }).catch(() => {});
+
+const OLHO_ABERTO = `<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>`;
+const OLHO_FECHADO = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="m1 1 22 22"/>`;
+document.getElementById("verSenha").addEventListener("click", () => {
+  const campo = document.getElementById("senha");
+  const mostrar = campo.type === "password";
+  campo.type = mostrar ? "text" : "password";
+  document.getElementById("olhoIco").innerHTML = mostrar ? OLHO_FECHADO : OLHO_ABERTO;
+  document.getElementById("verSenha").title = mostrar ? "Ocultar senha" : "Mostrar senha";
+});
+
 (() => {
   const erro = new URLSearchParams(window.location.search).get("erro");
   if (erro){
@@ -107,6 +200,7 @@ fetch("/api/auth/google/status").then(r => r.json()).then(d => {
     el.classList.add("ativo");
   }
 })();
+
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const erroEl = document.getElementById("loginErro");
