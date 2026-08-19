@@ -1,5 +1,8 @@
-const CACHE_NAME = "controle-financeiro-v1";
-const ASSETS_ESSENCIAIS = ["/manifest.json", "/static/icon.svg", "/static/icon-maskable.svg"];
+// O nome do cache precisa mudar a cada troca de ícone/marca: o activate abaixo
+// apaga os caches antigos, e sem isso o navegador seguia servindo o ícone velho.
+const CACHE_NAME = "financerto-v2";
+const ASSETS_ESSENCIAIS = ["/manifest.json", "/static/logo-financerto.svg",
+                           "/static/icones/icone-192.png", "/static/icones/icone-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

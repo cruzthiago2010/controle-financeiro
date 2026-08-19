@@ -77,7 +77,7 @@ if GOOGLE_LOGIN_HABILITADO:
     )
 
 ROTAS_PUBLICAS = {
-    "/login", "/api/login", "/registro", "/api/registro", "/manifest.json", "/sw.js",
+    "/login", "/api/login", "/registro", "/api/registro", "/manifest.json", "/sw.js", "/favicon.ico",
     "/api/auth/google/login", "/api/auth/google/callback", "/api/auth/google/status",
 }
 
@@ -767,6 +767,13 @@ def registro_page():
 @app.route("/manifest.json")
 def manifest():
     return send_from_directory("static", "manifest.json")
+
+
+@app.route("/favicon.ico")
+def favicon():
+    """Navegador pede /favicon.ico sozinho, mesmo com os <link> declarados —
+    sem esta rota o pedido virava 404 e alguns caíam no ícone antigo em cache."""
+    return send_from_directory("static/icones", "icone-32.png", mimetype="image/png")
 
 
 @app.route("/sw.js")
