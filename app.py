@@ -87,7 +87,18 @@ ROTAS_PUBLICAS = {
 
 # Rotas de escrita liberadas pra usuário somente-leitura: alternar modo demo,
 # sair, e mexer na própria conta (senha/foto) — não conta como "editar dados".
-PREFIXOS_ESCRITA_LIBERADOS_LEITURA = ("/api/demo", "/api/logout", "/api/usuarios/")
+# A conta própria entra por sufixo, não pelo prefixo /api/usuarios/: liberar a
+# subárvore inteira deixava a conta somente-leitura chamar /somente-leitura em si
+# mesma e se promover a escrita total. As rotas de senha e foto já conferem
+# sozinhas que o alvo é o próprio usuário.
+PREFIXOS_ESCRITA_LIBERADOS_LEITURA = ("/api/demo", "/api/logout")
+SUFIXOS_CONTA_PROPRIA_LIBERADOS = ("/senha", "/foto")
+
+
+def escrita_liberada_para_leitura(caminho):
+    if caminho.startswith(PREFIXOS_ESCRITA_LIBERADOS_LEITURA):
+        return True
+    return caminho.startswith("/api/usuarios/") and caminho.endswith(SUFIXOS_CONTA_PROPRIA_LIBERADOS)
 
 
 @app.before_request
@@ -105,7 +116,7 @@ def exigir_login():
             request.method not in ("GET", "HEAD", "OPTIONS")
             and not em_demo()
             and session.get("somente_leitura")
-            and not request.path.startswith(PREFIXOS_ESCRITA_LIBERADOS_LEITURA)
+            and not escrita_liberada_para_leitura(request.path)
         ):
             return jsonify({"erro": "acesso somente leitura — essa conta não pode fazer alterações"}), 403
         return None
@@ -1027,15 +1038,21 @@ def alternar_somente_leitura(item_id):
     data = request.get_json(force=True)
     somente_leitura = bool(data.get("somente_leitura"))
     conn = get_db()
+    if not eh_administrador(conn):
+        conn.close()
+        return jsonify({"erro": "só o administrador pode alterar essa configuração"}), 403
     alvo = conn.execute("SELECT casa_id FROM usuarios WHERE id = ?", (item_id,)).fetchone()
     if not alvo or alvo["casa_id"] != minha_casa_id(conn):
         conn.close()
         return jsonify({"erro": "usuário não encontrado"}), 404
+    # O administrador não pode se limitar: esta rota é a única forma de desfazer e
+    # ela mesma é escrita, então ele ficaria trancado fora da própria casa.
+    if item_id == uid():
+        conn.close()
+        return jsonify({"erro": "o administrador não pode limitar a própria conta"}), 403
     conn.execute("UPDATE usuarios SET somente_leitura = ? WHERE id = ?", (int(somente_leitura), item_id))
     conn.commit()
     conn.close()
-    if item_id == uid():
-        session["somente_leitura"] = somente_leitura
     return jsonify({"ok": True})
 
 

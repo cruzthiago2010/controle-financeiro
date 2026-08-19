@@ -77,11 +77,13 @@ perguntado na instalação.
 
 ### Próximos passos
 
-1. **Foto de perfil dá 404** (`u1_20260810050841.jpeg`) — o arquivo sumiu do
-   servidor. Ou subir de novo, ou limpar a referência no banco.
+1. **Foto de perfil dá 404 no modo demonstração.** O arquivo está no servidor;
+   quem erra é `baixar_foto_perfil` (`app.py`), que valida o nome contra o banco
+   atual — e no modo demo esse banco tem `usuarios.foto` nulo. Como os prints do
+   README são feitos em demo, é ali que o 404 aparece. **Não limpar a referência
+   no banco**: apagaria um dado válido por causa de um bug de outro lugar.
 2. **APK nunca foi testado em aparelho.** Não há emulador no servidor; a validação
    foi estática (telas registradas, textos presentes, sem domínio embutido).
-3. **Legenda do gráfico de pizza corta nomes longos no celular** em alguns casos.
 
 ### Onde as coisas ficam
 
