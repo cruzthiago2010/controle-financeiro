@@ -78,11 +78,20 @@ _Capturas feitas com o **modo demonstração** ligado — dados fictícios._
 
 | | |
 |---|---|
+| **Entrar** | ![Tela de entrada](docs/screenshots/login.png) |
+| **Criar casa** | ![Criar casa](docs/screenshots/registro.png) |
 | **Dashboard** | ![Dashboard](docs/screenshots/dashboard.png) |
 | **Receitas & Despesas** | ![Receitas & Despesas](docs/screenshots/lancamentos.png) |
 | **Calendário** | ![Calendário](docs/screenshots/calendario.png) |
 | **Cartões de crédito** | ![Cartões](docs/screenshots/cartoes.png) |
 | **Backup automático** | ![Backup](docs/screenshots/backup.png) |
+
+No celular, quem abre pelo Android recebe o convite para baixar o app; no
+iPhone, o passo a passo para instalar na tela de início.
+
+<p align="center">
+  <img src="docs/screenshots/login-android.png" width="300" alt="Tela de entrada no Android, com o convite para baixar o app">
+</p>
 
 ## Como rodar (mais fácil — via terminal/SSH)
 

@@ -97,6 +97,36 @@
     display:flex; align-items:center; justify-content:center; gap:6px;
   }
   .protegido svg{width:13px; height:13px;}
+  /* Convite específico do aparelho: Android ganha o APK, iPhone ganha o passo
+     a passo do "Adicionar à Tela de Início". Some se a pessoa dispensar. */
+  .convite{
+    display:none; margin-top:20px; padding:14px; text-align:left;
+    background:rgba(0,167,111,0.07); border:1px solid rgba(0,167,111,0.28); border-radius:16px;
+  }
+  .convite.ativo{display:block;}
+  .convite-topo{display:flex; align-items:center; gap:9px;}
+  .convite-topo svg{width:19px; height:19px; color:var(--accent-claro); flex:none;}
+  .convite-titulo{font-size:0.88rem; font-weight:700;}
+  .convite-texto{font-size:0.79rem; color:var(--muted); line-height:1.5; margin-top:6px;}
+  .convite-texto b{color:var(--text); font-weight:600;}
+  .convite-acoes{display:flex; align-items:center; gap:10px; margin-top:12px;}
+  .convite-baixar{
+    flex:1; display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    background:rgba(0,167,111,0.16); border:1px solid rgba(0,167,111,0.4); border-radius:999px;
+    color:var(--accent-claro); font-size:0.84rem; font-weight:700; padding:10px 14px;
+    text-decoration:none; font-family:inherit; cursor:pointer;
+  }
+  .convite-baixar:hover{background:rgba(0,167,111,0.26);}
+  .convite-dispensar{
+    background:none; border:none; color:var(--muted); font-size:0.78rem;
+    cursor:pointer; font-family:inherit; padding:10px 4px;
+  }
+  .convite-dispensar:hover{color:var(--text);}
+  .passo{display:flex; gap:8px; margin-top:7px; font-size:0.79rem; color:var(--muted); align-items:flex-start;}
+  .passo .n{
+    width:17px; height:17px; border-radius:50%; background:rgba(0,167,111,0.2); color:var(--accent-claro);
+    font-size:0.66rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px;
+  }
 </style>
 <!-- Analytics desta instalação (opcional; veja static/analytics.js) -->
 <script async src="/static/analytics.js"></script>
@@ -159,6 +189,18 @@
   </a>
 
   <div class="rodape">Não tem uma conta? <a href="/registro">Crie agora.</a></div>
+
+  <div class="convite" id="convite">
+    <div class="convite-topo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>
+      </svg>
+      <span class="convite-titulo" id="conviteTitulo"></span>
+    </div>
+    <div class="convite-texto" id="conviteTexto"></div>
+    <div class="convite-acoes" id="conviteAcoes"></div>
+  </div>
+
   <div class="protegido">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -195,6 +237,52 @@ document.getElementById("verSenha").addEventListener("click", () => {
       : "Não foi possível entrar com o Google. Tente de novo.";
     el.classList.add("ativo");
   }
+})();
+
+
+// Cada aparelho tem um caminho diferente para "virar app": Android instala o
+// APK, iPhone só permite pela opção Compartilhar do Safari. Mostrar os dois
+// para todo mundo seria ruído, então o convite é escolhido pelo aparelho.
+(() => {
+  const ua = navigator.userAgent || "";
+  const jaEhApp = window.matchMedia("(display-mode: standalone)").matches ||
+                  window.navigator.standalone === true ||
+                  ua.includes("wv");   // WebView: já está dentro do app Android
+  if (jaEhApp || localStorage.getItem("conviteAppDispensado") === "1") return;
+
+  const ehAndroid = /Android/i.test(ua);
+  const ehIOS = /iPhone|iPad|iPod/i.test(ua) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!ehAndroid && !ehIOS) return;
+
+  const caixa = document.getElementById("convite");
+  const titulo = document.getElementById("conviteTitulo");
+  const texto = document.getElementById("conviteTexto");
+  const acoes = document.getElementById("conviteAcoes");
+
+  if (ehAndroid) {
+    titulo.textContent = "Tem app para Android";
+    texto.innerHTML = "Abre mais rápido e adiciona <b>bloqueio por digital</b>, " +
+      "aviso de contas vencendo e widget de saldo na tela inicial.";
+    acoes.innerHTML =
+      '<a class="convite-baixar" href="https://github.com/cruzthiago2010/controle-financeiro/releases/latest" target="_blank" rel="noopener">Baixar o app</a>' +
+      '<button type="button" class="convite-dispensar" id="conviteNao">Agora não</button>';
+  } else {
+    titulo.textContent = "Instale na tela de início";
+    texto.innerHTML = "No iPhone não existe instalador, mas dá para deixar o " +
+      "FinanCerto como um app de verdade, em tela cheia:";
+    texto.innerHTML +=
+      '<div class="passo"><span class="n">1</span><span>Toque em <b>Compartilhar</b> na barra do Safari</span></div>' +
+      '<div class="passo"><span class="n">2</span><span>Escolha <b>Adicionar à Tela de Início</b></span></div>' +
+      '<div class="passo"><span class="n">3</span><span>Confirme em <b>Adicionar</b></span></div>';
+    acoes.innerHTML = '<button type="button" class="convite-dispensar" id="conviteNao">Entendi</button>';
+  }
+
+  caixa.classList.add("ativo");
+  document.getElementById("conviteNao").addEventListener("click", () => {
+    localStorage.setItem("conviteAppDispensado", "1");
+    caixa.classList.remove("ativo");
+  });
 })();
 
 document.getElementById("loginForm").addEventListener("submit", async (e) => {

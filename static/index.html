@@ -598,6 +598,15 @@
     font-size:0.83rem; font-weight:600; padding:9px; border-radius:var(--radius-sm);}
   .sino-rodape button:hover{background:var(--card2); transform:none; box-shadow:none;}
   .sino-vazio{padding:14px 10px; font-size:0.82rem; color:var(--muted); text-align:center;}
+  /* ---- Aba de notificações ---- */
+  .notif-estado{display:flex; align-items:center; gap:9px; font-size:0.9rem; font-weight:600;}
+  .notif-bolinha{width:9px; height:9px; border-radius:50%; background:var(--muted); flex:none;}
+  .notif-bolinha.ligado{background:var(--green); box-shadow:0 0 0 4px rgba(0,167,111,0.15);}
+  .notif-bolinha.bloqueado{background:var(--red); box-shadow:0 0 0 4px rgba(255,86,48,0.15);}
+  .notif-bolinha.pendente{background:var(--yellow); box-shadow:0 0 0 4px rgba(255,171,0,0.15);}
+  .notif-ajuda{font-size:0.79rem; color:var(--muted); line-height:1.5; margin:10px 0 0;}
+  .notif-botoes{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;}
+  .notif-botoes button{flex:1; min-width:170px;}
   /* ---- Sugestões de descrição (aprendidas do histórico) ---- */
   .campo-com-sugestao{position:relative;}
   .campo-com-sugestao input{width:100%;}
@@ -908,6 +917,7 @@
       <button class="nav-item" data-tab="metas" title="Metas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bussola"/></svg></span><span class="nav-label">Metas</span></button>
       <button class="nav-item" data-tab="holerites" title="Holerite"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg></span><span class="nav-label">Holerite</span></button>
       <button class="nav-item" data-tab="consignados" title="Empréstimos" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label">Empréstimos</span></button>
+      <button class="nav-item" data-tab="notificacoes" title="Notificações"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sino"/></svg></span><span class="nav-label">Notificações</span></button>
       <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
     </nav>
     <!-- O usuário agora fica no menu da barra superior. Estes controles seguem
@@ -1263,6 +1273,70 @@
       <input type="number" id="consignadoParcelaTotal" placeholder="Total de parcelas (ex: 12)" min="1">
       <button type="submit">Adicionar empréstimo</button>
     </form>
+  </section>
+
+  <!-- ===================== NOTIFICAÇÕES ===================== -->
+  <section class="painel" id="painel-notificacoes">
+    <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> Avisos de contas</h2>
+      <div class="card">
+        <div class="notif-estado" id="notifEstado">
+          <span class="notif-bolinha" id="notifBolinha"></span>
+          <span id="notifEstadoTexto">Verificando…</span>
+        </div>
+        <p class="notif-ajuda" id="notifAjuda"></p>
+        <div class="notif-botoes">
+          <button type="button" id="notifPermitirBtn" style="display:none;">Permitir notificações</button>
+          <button type="button" class="secondary" id="notifTestarBtn">
+            <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> Testar notificação
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="secao">
+      <h2>O que avisar</h2>
+      <div class="card">
+        <label class="toggle-row">
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> Contas vencendo ou vencidas</span>
+          <span class="toggle-switch"><input type="checkbox" id="notifContas" checked><span class="toggle-slider"></span></span>
+        </label>
+        <label style="margin-top:14px;">Avisar com quantos dias de antecedência</label>
+        <select id="notifDias">
+          <option value="1">1 dia antes</option>
+          <option value="3" selected>3 dias antes</option>
+          <option value="7">7 dias antes</option>
+        </select>
+
+        <label class="toggle-row" style="margin-top:18px;">
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-cartao"/></svg> Cartão perto do limite</span>
+          <span class="toggle-switch"><input type="checkbox" id="notifCartoes" checked><span class="toggle-slider"></span></span>
+        </label>
+        <p class="notif-ajuda">Avisa quando a fatura passa de 80% do limite.</p>
+
+        <label class="toggle-row" style="margin-top:18px;">
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-desce"/></svg> Saldo negativo em alguma conta</span>
+          <span class="toggle-switch"><input type="checkbox" id="notifSaldo" checked><span class="toggle-slider"></span></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="secao">
+      <h2>Com o app fechado</h2>
+      <div class="card">
+        <p class="notif-ajuda" style="margin:0;">
+          Pelo navegador, os avisos só aparecem enquanto o FinanCerto está aberto —
+          é uma limitação de quem roda o próprio servidor, sem um serviço de push.
+          Para receber com o celular guardado, use o <b>app do Android</b>, que
+          confere as contas em segundo plano.
+        </p>
+        <a class="secondary" id="notifBaixarApp" href="https://github.com/cruzthiago2010/controle-financeiro/releases/latest"
+           target="_blank" rel="noopener"
+           style="display:inline-flex; align-items:center; gap:7px; text-decoration:none; margin-top:12px; padding:9px 14px; border-radius:var(--radius-sm);">
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Baixar o app Android
+        </a>
+      </div>
+    </div>
   </section>
 
   <!-- ===================== BACKUP ===================== -->
@@ -3158,6 +3232,7 @@ async function carregarDashboard(){
     d.contas_vencendo.forEach(item => vencContainer.appendChild(criarItemHTML(item)));
   }
   atualizarSino(d.contas_vencendo);
+  verificarAvisos(d);
 
   // Parcelas futuras
   const parcContainer = document.getElementById("listaParcelasFuturas");
@@ -4806,6 +4881,156 @@ function ligarTeclado(input){
   input.addEventListener("click", (e) => { e.stopPropagation(); Teclado.abrir(input); });
 }
 ["valorInput", "editValor"].forEach(id => ligarTeclado(document.getElementById(id)));
+
+
+// ---------- Notificações do navegador ----------
+// Preferência de quem usa, então fica no aparelho — não é dado financeiro.
+const NOTIF_PADRAO = {contas: true, dias: 3, cartoes: true, saldo: true};
+
+function notifConfig(){
+  try { return {...NOTIF_PADRAO, ...JSON.parse(localStorage.getItem("notificacoes") || "{}")}; }
+  catch (e) { return {...NOTIF_PADRAO}; }
+}
+function salvarNotifConfig(c){
+  try { localStorage.setItem("notificacoes", JSON.stringify(c)); } catch (e) {}
+}
+
+function atualizarEstadoNotif(){
+  const bolinha = document.getElementById("notifBolinha");
+  const texto = document.getElementById("notifEstadoTexto");
+  const ajuda = document.getElementById("notifAjuda");
+  const permitir = document.getElementById("notifPermitirBtn");
+  const testar = document.getElementById("notifTestarBtn");
+  if (!bolinha) return;
+
+  bolinha.className = "notif-bolinha";
+  permitir.style.display = "none";
+  testar.disabled = false;
+
+  if (!("Notification" in window)){
+    bolinha.classList.add("bloqueado");
+    texto.textContent = "Este navegador não faz notificações";
+    ajuda.textContent = "Tente por outro navegador ou use o app do Android.";
+    testar.disabled = true;
+    return;
+  }
+  if (Notification.permission === "granted"){
+    bolinha.classList.add("ligado");
+    texto.textContent = "Notificações ligadas";
+    ajuda.textContent = "Você recebe os avisos escolhidos abaixo enquanto o FinanCerto estiver aberto.";
+  } else if (Notification.permission === "denied"){
+    bolinha.classList.add("bloqueado");
+    texto.textContent = "Notificações bloqueadas";
+    // O navegador não deixa pedir de novo depois de negado; só nas configurações do site.
+    ajuda.textContent = "Você negou antes. Para liberar, toque no cadeado ao lado do endereço e permita as notificações deste site.";
+    testar.disabled = true;
+  } else {
+    bolinha.classList.add("pendente");
+    texto.textContent = "Notificações desligadas";
+    ajuda.textContent = "Permita para receber avisos de contas vencendo.";
+    permitir.style.display = "";
+  }
+}
+
+async function pedirPermissaoNotif(){
+  if (!("Notification" in window)) return;
+  const r = await Notification.requestPermission();
+  atualizarEstadoNotif();
+  if (r === "granted") showToast("Notificações ligadas", "ok");
+  else if (r === "denied") showToast("Você bloqueou as notificações", "erro");
+}
+
+// Envia pelo service worker quando dá — é o único jeito que funciona com o
+// app instalado na tela inicial; o construtor direto vale como reserva.
+async function mostrarNotificacao(titulo, corpo, tag){
+  const opcoes = {body: corpo, icon: "/static/icones/icone-192.png",
+                  badge: "/static/icones/icone-96.png", tag: tag || "financerto", lang: "pt-BR"};
+  try {
+    const reg = await navigator.serviceWorker?.ready;
+    if (reg) { await reg.showNotification(titulo, opcoes); return true; }
+  } catch (e) { /* cai no modo direto */ }
+  try { new Notification(titulo, opcoes); return true; } catch (e) { return false; }
+}
+
+// Avisa uma vez por dia por assunto, pra não repetir a cada abertura.
+function jaAvisouHoje(chave){
+  const hoje = hojeISO();
+  let mapa = {};
+  try { mapa = JSON.parse(localStorage.getItem("avisosEnviados") || "{}"); } catch (e) {}
+  if (mapa[chave] === hoje) return true;
+  mapa[chave] = hoje;
+  try { localStorage.setItem("avisosEnviados", JSON.stringify(mapa)); } catch (e) {}
+  return false;
+}
+
+// Roda depois que o dashboard carrega, com os dados que ele já trouxe.
+async function verificarAvisos(d){
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const c = notifConfig();
+
+  if (c.contas){
+    const limite = new Date(); limite.setDate(limite.getDate() + Number(c.dias));
+    const alvo = limite.toISOString().slice(0, 10);
+    const contas = (d.contas_vencendo || []).filter(i => !i.pago && i.vencimento && i.vencimento <= alvo);
+    if (contas.length && !jaAvisouHoje("contas")){
+      const total = contas.reduce((s, i) => s + i.valor, 0);
+      await mostrarNotificacao(
+        contas.length === 1 ? "1 conta para pagar" : `${contas.length} contas para pagar`,
+        `${contas.map(i => i.descricao).slice(0, 3).join(", ")}${contas.length > 3 ? "…" : ""} · ${formatMoeda(total)}`,
+        "contas");
+    }
+  }
+
+  if (c.cartoes){
+    const criticos = (d.cartoes || []).filter(x => x.limite > 0 && (x.fatura_atual / x.limite) >= 0.8);
+    if (criticos.length && !jaAvisouHoje("cartoes")){
+      const x = criticos[0];
+      await mostrarNotificacao("Cartão perto do limite",
+        `${x.nome} está a ${Math.round(x.fatura_atual / x.limite * 100)}% do limite.`, "cartoes");
+    }
+  }
+
+  if (c.saldo){
+    const negativas = (d.contas || []).filter(x => x.saldo_atual < 0);
+    if (negativas.length && !jaAvisouHoje("saldo")){
+      const x = negativas[0];
+      await mostrarNotificacao("Conta negativa",
+        `${x.nome} está em ${formatMoeda(x.saldo_atual)}.`, "saldo");
+    }
+  }
+}
+
+(() => {
+  const c = notifConfig();
+  const contas = document.getElementById("notifContas");
+  const dias = document.getElementById("notifDias");
+  const cartoes = document.getElementById("notifCartoes");
+  const saldo = document.getElementById("notifSaldo");
+  if (!contas) return;
+
+  contas.checked = c.contas; dias.value = String(c.dias);
+  cartoes.checked = c.cartoes; saldo.checked = c.saldo;
+
+  const guardar = () => {
+    salvarNotifConfig({contas: contas.checked, dias: Number(dias.value),
+                       cartoes: cartoes.checked, saldo: saldo.checked});
+    showToast("Preferência salva", "ok");
+  };
+  [contas, dias, cartoes, saldo].forEach(el => el.addEventListener("change", guardar));
+
+  document.getElementById("notifPermitirBtn").addEventListener("click", pedirPermissaoNotif);
+  document.getElementById("notifTestarBtn").addEventListener("click", async () => {
+    if (Notification.permission !== "granted"){
+      await pedirPermissaoNotif();
+      if (Notification.permission !== "granted") return;
+    }
+    const ok = await mostrarNotificacao("FinanCerto",
+      "Notificação de teste — é assim que os avisos vão aparecer.", "teste");
+    showToast(ok ? "Enviamos uma notificação de teste" : "Não foi possível enviar", ok ? "ok" : "erro");
+  });
+
+  atualizarEstadoNotif();
+})();
 
 // ---------- Modo demonstração ----------
 let demoAtivo = false;
