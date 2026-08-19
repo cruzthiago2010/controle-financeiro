@@ -589,6 +589,47 @@
     font-size:0.83rem; font-weight:600; padding:9px; border-radius:var(--radius-sm);}
   .sino-rodape button:hover{background:var(--card2); transform:none; box-shadow:none;}
   .sino-vazio{padding:14px 10px; font-size:0.82rem; color:var(--muted); text-align:center;}
+  /* ---- Sugestões de descrição (aprendidas do histórico) ---- */
+  .campo-com-sugestao{position:relative;}
+  .campo-com-sugestao input{width:100%;}
+  .sugestoes{
+    position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:70; max-height:250px; overflow-y:auto;
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    box-shadow:var(--shadow-hover); padding:5px;
+  }
+  .sugestoes[hidden]{display:none;}
+  .sugestao{display:flex; align-items:center; gap:9px; padding:8px 9px; border-radius:var(--radius-sm); cursor:pointer;}
+  .sugestao:hover, .sugestao.marcada{background:var(--card2);}
+  .sugestao .ponto{width:9px; height:9px; border-radius:50%; flex:none;}
+  .sugestao .txt{min-width:0; flex:1;}
+  .sugestao .nome{font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sugestao .meta{font-size:0.72rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sugestao .val{font-size:0.82rem; font-weight:700; white-space:nowrap; color:var(--muted);}
+
+  /* ---- Teclado numérico do app (evita abrir o teclado do sistema) ---- */
+  .teclado{
+    position:fixed; left:0; right:0; bottom:0; z-index:120; padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+    background:var(--card); border-top:1px solid var(--border); box-shadow:0 -12px 30px rgba(0,0,0,0.35);
+    animation:subir 0.18s ease;
+  }
+  .teclado[hidden]{display:none;}
+  @keyframes subir{from{transform:translateY(100%);} to{transform:translateY(0);}}
+  .teclado-visor{
+    display:flex; align-items:baseline; justify-content:flex-end; gap:8px;
+    background:var(--card2); border-radius:var(--radius-md); padding:12px 14px; margin-bottom:10px;
+  }
+  .teclado-conta{font-size:0.8rem; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .teclado-valor{font-size:1.7rem; font-weight:800; letter-spacing:-0.02em; font-variant-numeric:tabular-nums;}
+  .teclado-grade{display:grid; grid-template-columns:repeat(4, 1fr); gap:7px; max-width:460px; margin:0 auto;}
+  .teclado-grade button{
+    background:var(--card2); border:1px solid var(--border-soft); box-shadow:none; color:var(--text);
+    font-size:1.25rem; font-weight:600; padding:14px 0; border-radius:var(--radius-md);
+  }
+  .teclado-grade button:hover{background:var(--card3); transform:none; box-shadow:none;}
+  .teclado-grade button:active{transform:scale(0.97);}
+  .teclado-grade .op{color:var(--accent); font-size:1.15rem;}
+  .teclado-grade .apagar{color:var(--yellow);}
+  .teclado-grade .ok{background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; border:none; grid-row:span 2;}
   .dropdown-busca{min-width:330px; max-width:420px;}
   .dropdown-busca input[type="search"]{width:100%; margin-bottom:6px;}
   #buscaGlobalResultado{max-height:340px; overflow-y:auto;}
@@ -628,11 +669,25 @@
   .conteudo{flex:1; margin-left:224px; min-width:0; transition:margin-left 0.2s ease;}
   .topbar{
     padding:14px 20px; position:sticky; top:0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
-    background:rgba(11,15,25,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    background:rgba(20,26,33,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
     z-index:20; border-bottom:1px solid var(--border-soft);
   }
   #menuToggle{display:none;}
-  .topbar-acoes{display:flex; gap:6px; margin-left:auto;}
+  .topbar-acoes{display:flex; gap:6px; margin-left:auto; align-items:center;}
+  /* No celular tudo cabe em uma linha só: sem quebra, botões menores e o
+     seletor de mês encolhendo em vez de empurrar as ações pra segunda linha. */
+  @media (max-width: 640px){
+    .topbar{flex-wrap:nowrap; gap:6px; padding:10px 12px;}
+    .topbar .mes-selector{flex:1; min-width:0; gap:4px;}
+    .topbar .mes-selector select{min-width:0; flex:1; padding:8px 6px; font-size:0.85rem;}
+    .topbar-acoes{gap:2px; flex:none;}
+    .topbar .icon-btn{padding:8px;}
+    .topbar .icon-btn .ico{width:19px; height:19px;}
+    /* As setas de mês saem: dá pra trocar pelo próprio seletor, e assim sobra
+       espaço pros botões que só existem aqui em cima. */
+    #mesAnteriorBtn, #mesProximoBtn{display:none;}
+    .mes-aviso{display:none !important;}
+  }
   .icon-btn{
     background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;
     width:36px; height:36px; padding:0; display:flex; align-items:center; justify-content:center;
@@ -847,7 +902,9 @@
       <button class="nav-item" data-tab="consignados" title="Empréstimos" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label">Empréstimos</span></button>
       <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
     </nav>
-    <div class="sidebar-rodape">
+    <!-- O usuário agora fica no menu da barra superior. Estes controles seguem
+         aqui só como alvo dos cliques daquele menu, escondidos da tela. -->
+    <div class="sidebar-rodape" hidden>
       <div class="sidebar-usuario" id="sidebarUsuario" title="Trocar senha">
         <span class="usuario-avatar" id="usuarioAvatar">?</span>
         <span class="nav-label" id="usuarioNomeLabel">...</span>
@@ -945,6 +1002,40 @@
     </header>
 
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Teclado próprio pros campos de valor: abre no lugar do teclado do
+         sistema e ainda faz conta (útil pra somar itens de uma compra). -->
+    <div class="teclado" id="teclado" hidden>
+      <div class="teclado-visor">
+        <span class="teclado-conta" id="tecladoConta"></span>
+        <span class="teclado-valor" id="tecladoValor">0,00</span>
+      </div>
+      <div class="teclado-grade">
+        <button type="button" data-t="7">7</button>
+        <button type="button" data-t="8">8</button>
+        <button type="button" data-t="9">9</button>
+        <button type="button" class="apagar" data-t="del">⌫</button>
+
+        <button type="button" data-t="4">4</button>
+        <button type="button" data-t="5">5</button>
+        <button type="button" data-t="6">6</button>
+        <button type="button" class="op" data-t="÷">÷</button>
+
+        <button type="button" data-t="1">1</button>
+        <button type="button" data-t="2">2</button>
+        <button type="button" data-t="3">3</button>
+        <button type="button" class="op" data-t="×">×</button>
+
+        <button type="button" data-t=",">,</button>
+        <button type="button" data-t="0">0</button>
+        <button type="button" class="op" data-t="−">−</button>
+        <button type="button" class="op" data-t="+">+</button>
+
+        <button type="button" data-t="limpar">C</button>
+        <button type="button" data-t="00">00</button>
+        <button type="button" class="ok" data-t="ok" style="grid-column:span 2;">OK</button>
+      </div>
+    </div>
 
     <main>
 
@@ -1243,7 +1334,7 @@
     <label>Descrição</label>
     <input type="text" id="editDesc">
     <label>Valor (R$)</label>
-    <input type="number" id="editValor" step="0.01">
+    <input type="text" inputmode="none" id="editValor" placeholder="0,00" readonly>
     <label>Categoria</label>
     <select id="editCategoria"></select>
     <label>Vencimento / data</label>
@@ -1347,10 +1438,13 @@
     <input type="hidden" id="tipoInput" value="despesa">
 
     <label>Descrição</label>
-    <input type="text" id="descInput" placeholder="Ex: Mercado, Salário...">
+    <div class="campo-com-sugestao">
+      <input type="text" id="descInput" placeholder="Ex: Mercado, Salário..." autocomplete="off">
+      <div class="sugestoes" id="sugestoesDesc" hidden></div>
+    </div>
 
     <label>Valor (R$)</label>
-    <input type="number" id="valorInput" step="0.01" placeholder="0,00">
+    <input type="text" inputmode="none" id="valorInput" placeholder="0,00" readonly>
 
     <label>Data / vencimento</label>
     <input type="date" id="vencInput">
@@ -2130,7 +2224,7 @@ function modoValorAtual(){
 }
 function atualizarPreviewParcela(){
   if (!document.getElementById("parcelarInput").checked) return;
-  const valor = Number(document.getElementById("valorInput").value) || 0;
+  const valor = lerValor("valorInput");
   const parcelas = Math.max(Number(document.getElementById("parcelasInput").value) || 1, 1);
   const modo = modoValorAtual();
   const valorParcela = modo === "total" ? valor / parcelas : valor;
@@ -2438,7 +2532,7 @@ document.getElementById("transfSalvar").addEventListener("click", async () => {
 document.getElementById("novoSalvar").addEventListener("click", async () => {
   const parcelar = document.getElementById("parcelarInput").checked;
   const numParcelas = parcelar ? Math.max(Number(document.getElementById("parcelasInput").value) || 1, 1) : 1;
-  const valorDigitado = Number(document.getElementById("valorInput").value) || 0;
+  const valorDigitado = lerValor("valorInput");
   const valorParaEnviar = (parcelar && numParcelas > 1 && modoValorAtual() === "total")
     ? Math.round((valorDigitado / numParcelas) * 100) / 100
     : valorDigitado;
@@ -3901,7 +3995,7 @@ function abrirEdicaoPorId(id){
   fecharTodosOsModais();
   document.getElementById("editId").value = item.id;
   document.getElementById("editDesc").value = item.descricao;
-  document.getElementById("editValor").value = item.valor;
+  document.getElementById("editValor").value = formatNumeroSimples(item.valor);
   document.getElementById("editVenc").value = item.vencimento || "";
   document.getElementById("editConta").value = item.conta_id || "";
   document.getElementById("editObs").value = item.observacao || "";
@@ -3943,7 +4037,7 @@ document.getElementById("editSalvar").addEventListener("click", async () => {
   const item = itensPorId[id];
   const body = {
     descricao: document.getElementById("editDesc").value,
-    valor: document.getElementById("editValor").value,
+    valor: lerValor("editValor"),
     categoria: document.getElementById("editCategoria").value,
     vencimento: document.getElementById("editVenc").value,
     conta_id: document.getElementById("editConta").value || null,
@@ -4539,6 +4633,173 @@ document.getElementById("novoUsuarioSalvar").addEventListener("click", async () 
   } catch (e) {}
 });
 
+// ---------- Sugestão de descrição a partir do histórico ----------
+// Ao digitar, oferece lançamentos parecidos já feitos e, ao escolher um, já
+// preenche categoria, valor e conta — assim a padaria de todo dia não precisa
+// ser reclassificada na mão toda vez.
+(() => {
+  const campo = document.getElementById("descInput");
+  const caixa = document.getElementById("sugestoesDesc");
+  if (!campo || !caixa) return;
+  let debounce, itens = [], marcado = -1;
+
+  function fechar(){ caixa.hidden = true; marcado = -1; }
+  function aplicar(s){
+    campo.value = s.descricao;
+    if (s.categoria){
+      const sel = document.getElementById("categoriaInput");
+      if ([...sel.options].some(o => o.value === s.categoria)){
+        sel.value = s.categoria;
+        sel.dispatchEvent(new Event("change"));
+      }
+    }
+    const valorEl = document.getElementById("valorInput");
+    if (s.valor != null && !valorEl.value) valorEl.value = formatNumeroSimples(s.valor);
+    if (s.conta_id){
+      const cs = document.getElementById("contaInput");
+      if (cs && [...cs.options].some(o => Number(o.value) === s.conta_id)) cs.value = s.conta_id;
+    }
+    fechar();
+  }
+  function render(){
+    if (itens.length === 0){ fechar(); return; }
+    caixa.innerHTML = itens.map((s, i) => `
+      <div class="sugestao ${i === marcado ? 'marcada' : ''}" data-i="${i}">
+        <span class="ponto" style="background:${corPara(s.categoria) || 'var(--muted)'}"></span>
+        <span class="txt">
+          <span class="nome">${escapeHtml(s.descricao)}</span>
+          <span class="meta">${s.categoria ? escapeHtml(s.categoria) : 'sem categoria'}${s.vezes > 1 ? ` · ${s.vezes}x` : ''}${s.conta ? ' · ' + escapeHtml(s.conta) : ''}</span>
+        </span>
+        ${s.valor != null ? `<span class="val">${formatMoeda(s.valor)}</span>` : ''}
+      </div>`).join("");
+    caixa.hidden = false;
+    caixa.querySelectorAll(".sugestao").forEach(el => {
+      el.addEventListener("mousedown", (e) => { e.preventDefault(); aplicar(itens[Number(el.dataset.i)]); });
+    });
+  }
+  campo.addEventListener("input", () => {
+    clearTimeout(debounce);
+    const termo = campo.value.trim();
+    if (termo.length < 2){ itens = []; fechar(); return; }
+    debounce = setTimeout(async () => {
+      try {
+        const tipo = document.getElementById("tipoInput").value;
+        const r = await apiFetch(`${API}/sugestoes?q=${encodeURIComponent(termo)}&tipo=${tipo}`, undefined, {silencioso:true});
+        itens = await r.json();
+        marcado = -1;
+        render();
+      } catch (e) { itens = []; fechar(); }
+    }, 220);
+  });
+  // Setas e Enter pra escolher sem tirar a mão do teclado.
+  campo.addEventListener("keydown", (e) => {
+    if (caixa.hidden || itens.length === 0) return;
+    if (e.key === "ArrowDown"){ e.preventDefault(); marcado = (marcado + 1) % itens.length; render(); }
+    else if (e.key === "ArrowUp"){ e.preventDefault(); marcado = (marcado - 1 + itens.length) % itens.length; render(); }
+    else if (e.key === "Enter" && marcado >= 0){ e.preventDefault(); aplicar(itens[marcado]); }
+    else if (e.key === "Escape"){ fechar(); }
+  });
+  campo.addEventListener("blur", () => setTimeout(fechar, 120));
+})();
+
+// ---------- Teclado numérico do app ----------
+// Substitui o teclado do sistema nos campos de valor e resolve continhas
+// simples (útil pra somar itens de uma compra antes de lançar).
+const Teclado = (() => {
+  const el = document.getElementById("teclado");
+  const visorValor = document.getElementById("tecladoValor");
+  const visorConta = document.getElementById("tecladoConta");
+  let alvo = null, texto = "", acumulado = null, operacao = null, recomecar = false;
+
+  function numeroAtual(){ return parseFloat(texto.replace(",", ".")) || 0; }
+  function mostrar(){
+    visorValor.textContent = texto === "" ? "0,00" : texto;
+    visorConta.textContent = operacao ? `${formatNumeroSimples(acumulado)} ${operacao}` : "";
+  }
+  function resolver(){
+    if (operacao == null || acumulado == null) return numeroAtual();
+    const b = numeroAtual();
+    const r = operacao === "+" ? acumulado + b
+            : operacao === "−" ? acumulado - b
+            : operacao === "×" ? acumulado * b
+            : (b === 0 ? acumulado : acumulado / b);
+    acumulado = null; operacao = null;
+    return Math.round(r * 100) / 100;
+  }
+  function abrir(input){
+    alvo = input;
+    texto = (input.value || "").replace(".", ",");
+    acumulado = null; operacao = null; recomecar = true;
+    el.hidden = false;
+    mostrar();
+    // Deixa espaço embaixo pra o teclado não cobrir o campo em foco.
+    document.body.style.paddingBottom = (el.offsetHeight + 20) + "px";
+    input.scrollIntoView({block:"center", behavior:"smooth"});
+  }
+  function fechar(){
+    el.hidden = true; alvo = null;
+    document.body.style.paddingBottom = "";
+  }
+  function tecla(t){
+    if (!alvo) return;
+    if (t === "ok"){
+      const r = resolver();
+      alvo.value = formatNumeroSimples(r);
+      alvo.dispatchEvent(new Event("input", {bubbles:true}));
+      fechar();
+      return;
+    }
+    if (t === "limpar"){ texto = ""; acumulado = null; operacao = null; mostrar(); return; }
+    if (t === "del"){ texto = texto.slice(0, -1); mostrar(); return; }
+    if (["+", "−", "×", "÷"].includes(t)){
+      acumulado = resolver();
+      operacao = t; texto = ""; recomecar = false;
+      mostrar();
+      return;
+    }
+    if (recomecar){ texto = ""; recomecar = false; }
+    if (t === ","){ if (!texto.includes(",")) texto = (texto || "0") + ","; }
+    else if (t === "00"){ if (texto !== "") texto += "00"; }
+    else {
+      // Duas casas depois da vírgula bastam pra dinheiro.
+      if (texto.includes(",") && texto.split(",")[1].length >= 2) return;
+      texto += t;
+    }
+    mostrar();
+  }
+  el.querySelectorAll("[data-t]").forEach(b => {
+    b.addEventListener("click", (e) => { e.preventDefault(); tecla(b.dataset.t); });
+  });
+  // Clicar fora fecha, mas sem perder o que já foi digitado.
+  document.addEventListener("click", (e) => {
+    if (el.hidden) return;
+    if (!e.target.closest("#teclado") && !e.target.classList.contains("usa-teclado")) fechar();
+  });
+  return {abrir, fechar};
+})();
+
+// Lê um campo de valor aceitando vírgula ("12,50") ou ponto ("12.50").
+function lerValor(id){
+  const v = (document.getElementById(id)?.value || "").trim().replace(/\./g, "").replace(",", ".");
+  return Number(v) || 0;
+}
+
+// Formata só o número (sem "R$"), que é o formato aceito pelos campos de valor.
+function formatNumeroSimples(n){
+  return (Number(n) || 0).toFixed(2).replace(".", ",");
+}
+
+// Liga o teclado próprio nos campos de valor.
+function ligarTeclado(input){
+  if (!input || input.dataset.tecladoLigado) return;
+  input.dataset.tecladoLigado = "1";
+  input.classList.add("usa-teclado");
+  input.setAttribute("inputmode", "none");
+  input.addEventListener("focus", (e) => { e.target.blur(); Teclado.abrir(input); });
+  input.addEventListener("click", (e) => { e.stopPropagation(); Teclado.abrir(input); });
+}
+["valorInput", "editValor"].forEach(id => ligarTeclado(document.getElementById(id)));
+
 // ---------- Modo demonstração ----------
 let demoAtivo = false;
 
@@ -4564,6 +4825,10 @@ async function alternarDemo(ativar){
        erro:"Não foi possível alternar o modo demonstração"});
     aplicarEstadoDemo((await res.json()).ativo);
     fecharTodosOsModais();
+    // Entrar/sair do demo troca o usuário por trás; sem recarregar isso o avatar
+    // e o nome continuavam mostrando quem estava logado antes.
+    await carregarUsuarioAtual();
+    await carregarUsuarios();
     await carregarMeses();
     await carregarCategorias();
     await carregarTudo();

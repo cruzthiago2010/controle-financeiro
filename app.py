@@ -1283,6 +1283,62 @@ def listar_lancamentos():
     return jsonify([dict(r) for r in rows])
 
 
+@app.route("/api/sugestoes", methods=["GET"])
+def sugestoes_lancamento():
+    """Sugere descrição, categoria, valor e conta a partir do histórico.
+
+    A ideia é que lançamentos repetidos (a padaria de todo dia, o posto de
+    sempre) não precisem ser reclassificados na mão: agrupa pelo texto da
+    descrição e devolve, pra cada uma, a categoria mais usada e o valor mais
+    recente. Ordena por quantas vezes apareceu, então o que é rotina vem antes.
+    """
+    termo = (request.args.get("q") or "").strip()
+    if len(termo) < 2:
+        return jsonify([])
+    tipo = request.args.get("tipo") or ""
+    conn = get_db()
+    sql = (
+        "SELECT descricao, COUNT(*) AS vezes, MAX(vencimento) AS ultima "
+        "FROM lancamentos WHERE usuario_id = ? AND eh_transferencia = 0 "
+        "AND descricao LIKE ? COLLATE NOCASE "
+    )
+    params = [uid(), f"%{termo}%"]
+    if tipo in ("renda", "despesa"):
+        sql += "AND tipo = ? "
+        params.append(tipo)
+    sql += "GROUP BY descricao COLLATE NOCASE ORDER BY vezes DESC, ultima DESC LIMIT 6"
+    grupos = conn.execute(sql, params).fetchall()
+
+    saida = []
+    for g in grupos:
+        # Categoria mais frequente para essa descrição (ignora as sem categoria).
+        cat = conn.execute(
+            "SELECT categoria, COUNT(*) AS n FROM lancamentos "
+            "WHERE usuario_id = ? AND descricao = ? COLLATE NOCASE "
+            "AND categoria IS NOT NULL AND categoria != '' "
+            "GROUP BY categoria ORDER BY n DESC LIMIT 1",
+            (uid(), g["descricao"]),
+        ).fetchone()
+        # Valor e conta do lançamento mais recente com essa descrição.
+        ult = conn.execute(
+            "SELECT valor, conta_id, conta, tipo FROM lancamentos "
+            "WHERE usuario_id = ? AND descricao = ? COLLATE NOCASE "
+            "ORDER BY vencimento DESC, id DESC LIMIT 1",
+            (uid(), g["descricao"]),
+        ).fetchone()
+        saida.append({
+            "descricao": g["descricao"],
+            "vezes": g["vezes"],
+            "categoria": cat["categoria"] if cat else None,
+            "valor": ult["valor"] if ult else None,
+            "conta_id": ult["conta_id"] if ult else None,
+            "conta": ult["conta"] if ult else None,
+            "tipo": ult["tipo"] if ult else None,
+        })
+    conn.close()
+    return jsonify(saida)
+
+
 @app.route("/api/busca", methods=["GET"])
 def buscar_lancamentos():
     """Procura em todos os meses, não só no que está aberto na tela.
