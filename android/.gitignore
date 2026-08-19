@@ -1,0 +1,13 @@
+# Saídas de build
+build/
+app/build/
+.gradle/
+local.properties
+*.apk
+*.aab
+
+# Chave de assinatura — NUNCA versionar. Quem tem a chave pode publicar
+# atualizações que se passam por este app.
+*.jks
+*.keystore
+*.idsig

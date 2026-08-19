@@ -1,0 +1,22 @@
+FROM eclipse-temurin:17-jdk
+
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+ENV PATH=$PATH:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:/opt/gradle/bin
+
+RUN apt-get update && apt-get install -y --no-install-recommends unzip curl && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
+    curl -sSL -o /tmp/cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
+    unzip -q /tmp/cmdline-tools.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools && \
+    mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
+    rm /tmp/cmdline-tools.zip
+
+RUN curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip && \
+    unzip -q /tmp/gradle.zip -d /opt && \
+    mv /opt/gradle-8.7 /opt/gradle && \
+    rm /tmp/gradle.zip
+
+RUN yes | sdkmanager --licenses > /dev/null && \
+    sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+WORKDIR /project

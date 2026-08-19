@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.ControleFinanceiro" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">#0b0f19</item>
+        <item name="android:windowBackground">#0b0f19</item>
+    </style>
+</resources>

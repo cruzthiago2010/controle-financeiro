@@ -133,10 +133,39 @@ jeito que pelo `/registro`. Pra ativar:
 Sem essas variáveis definidas, o botão simplesmente não aparece — o login
 por usuário/senha continua funcionando normalmente.
 
-## Instalar como app (PWA)
+## Instalar no celular
 
-No celular (Android/Chrome), acesse o app pelo navegador e use "Adicionar à tela
-inicial" — ele abre em tela cheia, como um app instalado.
+### App Android (recomendado)
+
+Baixe o APK na [página de releases](../../releases/latest) e instale. Como não
+vem da Play Store, o Android pede para autorizar a instalação de "fontes
+desconhecidas" na primeira vez.
+
+Na primeira abertura o app pergunta o endereço do **seu** servidor — não vem
+apontado para lugar nenhum. Vale tanto um domínio quanto o endereço na sua rede:
+
+```
+financeiro.seudominio.com.br
+192.168.1.10:8420
+```
+
+Ele testa a conexão antes de salvar, então erro de digitação aparece na hora em
+vez de virar tela branca. Para trocar depois, use "Trocar servidor" na tela de
+erro de conexão.
+
+O que o app faz além de abrir o site:
+
+- **Bloqueio por digital ou PIN** ao abrir, usando o desbloqueio do próprio
+  aparelho. Se o celular não tiver nenhum bloqueio configurado, abre direto —
+  não faz sentido proteger o app se a tela do celular está aberta.
+- **Aviso de contas vencendo**, checado em segundo plano.
+- **Widget de saldo** para a tela inicial.
+- Envio de arquivos (comprovantes e notas) direto da galeria ou da câmera.
+
+### Ou como PWA
+
+Sem instalar nada: acesse pelo Chrome e use "Adicionar à tela inicial". Abre em
+tela cheia, mas sem digital, widget nem notificações.
 
 ## Estrutura
 
@@ -155,6 +184,11 @@ inicial" — ele abre em tela cheia, como um app instalado.
 - `data/` — onde o banco SQLite, a chave de sessão, os comprovantes, os
   holerites e as fotos ficam salvos (fica fora do container, não perde
   dados ao atualizar)
+- `android/` — código do app Android (WebView com digital, notificação de
+  contas e widget de saldo). Para compilar o seu:
+  `docker build -t android-build-env -f android/Dockerfile.build android/` e
+  depois `gradle assembleRelease` dentro dele. O APK sai sem assinatura;
+  assine com a sua própria chave.
 - `umbrel-app.yml` — manifesto opcional, caso queira publicar como app
   formal numa community app store do Umbrel
 
