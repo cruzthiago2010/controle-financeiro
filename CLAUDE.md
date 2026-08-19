@@ -35,8 +35,10 @@ automático com retenção.
 contas vencidas com marcar-como-lidas, menu do usuário e alternância de tema.
 
 **Multiusuário** — cada casa é isolada; dentro dela dá para ter mais de um
-usuário, com modo somente-leitura. Login por senha ou Google. Modo demonstração
-troca tudo por dados fictícios.
+usuário, com modo somente-leitura. O administrador da casa é o usuário de menor
+`id` dentro dela (`eh_administrador`), e só ele adiciona usuário, alterna o
+somente-leitura de alguém e mexe na configuração da casa. Login por senha ou
+Google. Modo demonstração troca tudo por dados fictícios.
 
 **App Android** — WebView com bloqueio por digital/PIN, notificação de contas em
 segundo plano, widget de saldo e envio de arquivos. O endereço do servidor é
@@ -58,6 +60,15 @@ perguntado na instalação.
   toast diz isso — mexer nisso é mexer em dado financeiro.
 - **Gastos por categoria é lista, não rosca.** Com ~20 categorias a legenda da
   rosca ficava ilegível.
+- **Permissão se decide no servidor, não na tela.** Esconder botão é conforto;
+  quem barra é o `before_request` (somente-leitura) mais o `eh_administrador`
+  dentro da rota. Toda rota nova que cria usuário ou muda permissão precisa da
+  checagem explícita — foi assim que duas brechas apareceram em agosto/2026.
+- **A isenção de escrita do somente-leitura vale por sufixo, não por prefixo.**
+  `/api/usuarios/` inteiro liberado deixava a conta somente-leitura chamar
+  `/somente-leitura` em si mesma e se promover. Só `/senha` e `/foto` passam.
+- **O administrador não pode se marcar como somente-leitura.** A rota que desfaz
+  é escrita e exige administrador, então ele se trancaria fora da própria casa.
 - **Despesa não paga aparece também no mês seguinte**, marcada como atrasada.
   Para série recorrente, só a ocorrência não paga mais antiga — senão cada mês
   sem pagar empilharia mais uma cópia.
@@ -143,7 +154,8 @@ próprio script.
 
 `/home/umbrel/umbrel/home/controle-financeiro-staging/` é uma cópia que sobe na
 porta 8421 com um clone do banco de produção. Mudança visual grande vai pra lá
-primeiro. A senha do usuário 1 é trocada pra uma conhecida só nessa cópia; a
+primeiro. As senhas ali são trocadas pra uma conhecida só nessa cópia — vale
+trocar também a de um usuário comum quando o teste precisa de dois perfis; a
 produção nunca é tocada. Derrubar com `docker compose down` quando terminar.
 
 ## Ver o resultado
@@ -158,6 +170,12 @@ Pra telas que exigem login, escrever um script Playwright próprio e rodar com
 `--entrypoint node navegador-local`. O login do app é por formulário com cookie
 de sessão, não por token em localStorage.
 
+`/home/umbrel/navegador/testar-admin.js` serve de molde pra testar permissão:
+entra no staging com dois perfis (administrador e usuário comum), diz se cada
+botão está visível, e ainda chama a API pelo `fetch` da própria página pra
+conferir que o servidor recusa sozinho quem a tela apenas esconderia. Mudança de
+permissão só está verificada quando as duas metades passam.
+
 ## Isolamento de dados
 
 SQLite não tem row-level security: a separação depende inteiramente das queries.
@@ -168,8 +186,10 @@ SQLite não tem row-level security: a separação depende inteiramente das queri
 
 Toda query nova precisa filtrar por `uid()` ou `minha_casa_id(conn)`. Rota que
 recebe ID na URL precisa de `pertence_ao_usuario` ou `pertence_a_minha_casa`
-antes de tocar no registro. Já existem outras famílias reais no banco (casas 3 e
-4), então vazamento aqui é vazamento de verdade.
+antes de tocar no registro. Estar na mesma casa não basta pra rota que muda
+permissão ou cria usuário: essas exigem `eh_administrador(conn)` também. Já
+existem outras famílias reais no banco (casas 3 e 4), então vazamento aqui é
+vazamento de verdade.
 
 ## Nada de dados pessoais no repositório
 
