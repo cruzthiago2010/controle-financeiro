@@ -1321,7 +1321,7 @@
       </div>
     </div>
 
-    <div class="secao">
+    <div class="secao" id="secaoAppFechado">
       <h2>Com o app fechado</h2>
       <div class="card">
         <p class="notif-ajuda" style="margin:0;">
@@ -4895,6 +4895,12 @@ function salvarNotifConfig(c){
   try { localStorage.setItem("notificacoes", JSON.stringify(c)); } catch (e) {}
 }
 
+// Dentro do app Android existe a ponte FinanCertoApp; ali quem notifica é o
+// próprio app, que também confere as contas com o celular guardado.
+function dentroDoApp(){
+  return typeof window.FinanCertoApp !== "undefined" && !!window.FinanCertoApp.ehApp;
+}
+
 function atualizarEstadoNotif(){
   const bolinha = document.getElementById("notifBolinha");
   const texto = document.getElementById("notifEstadoTexto");
@@ -4906,6 +4912,20 @@ function atualizarEstadoNotif(){
   bolinha.className = "notif-bolinha";
   permitir.style.display = "none";
   testar.disabled = false;
+
+  // No app o WebView não tem a API do navegador, mas a notificação nativa é
+  // melhor: chega mesmo com o app fechado. Dizer "não faz notificações" aqui
+  // seria o contrário da verdade.
+  if (dentroDoApp()){
+    const liberado = (() => { try { return window.FinanCertoApp.podeNotificar(); } catch (e) { return true; } })();
+    bolinha.classList.add(liberado ? "ligado" : "pendente");
+    texto.textContent = liberado ? "Notificações pelo app" : "Notificações desativadas no Android";
+    ajuda.textContent = liberado
+      ? "Os avisos vêm do próprio app e chegam mesmo com o FinanCerto fechado."
+      : "Libere as notificações do FinanCerto nas configurações do Android para receber os avisos.";
+    document.getElementById("secaoAppFechado")?.setAttribute("hidden", "");
+    return;
+  }
 
   if (!("Notification" in window)){
     bolinha.classList.add("bloqueado");
@@ -4943,6 +4963,9 @@ async function pedirPermissaoNotif(){
 // Envia pelo service worker quando dá — é o único jeito que funciona com o
 // app instalado na tela inicial; o construtor direto vale como reserva.
 async function mostrarNotificacao(titulo, corpo, tag){
+  if (dentroDoApp()){
+    try { return window.FinanCertoApp.notificar(titulo, corpo); } catch (e) { return false; }
+  }
   const opcoes = {body: corpo, icon: "/static/icones/icone-192.png",
                   badge: "/static/icones/icone-96.png", tag: tag || "financerto", lang: "pt-BR"};
   try {
@@ -4965,7 +4988,7 @@ function jaAvisouHoje(chave){
 
 // Roda depois que o dashboard carrega, com os dados que ele já trouxe.
 async function verificarAvisos(d){
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!dentroDoApp() && (!("Notification" in window) || Notification.permission !== "granted")) return;
   const c = notifConfig();
 
   if (c.contas){
@@ -5020,7 +5043,7 @@ async function verificarAvisos(d){
 
   document.getElementById("notifPermitirBtn").addEventListener("click", pedirPermissaoNotif);
   document.getElementById("notifTestarBtn").addEventListener("click", async () => {
-    if (Notification.permission !== "granted"){
+    if (!dentroDoApp() && Notification.permission !== "granted"){
       await pedirPermissaoNotif();
       if (Notification.permission !== "granted") return;
     }

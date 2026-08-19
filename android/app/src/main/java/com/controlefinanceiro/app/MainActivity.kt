@@ -114,6 +114,9 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
 
+        // Deixa a página saber que está dentro do app e usar a notificação nativa.
+        webView.addJavascriptInterface(PonteApp(applicationContext), "FinanCertoApp")
+
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
 
