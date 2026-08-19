@@ -21,3 +21,6 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# Analytics desta instalação — cada um usa o seu (veja static/analytics.js)
+static/analytics.js

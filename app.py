@@ -61,10 +61,13 @@ app.secret_key = obter_secret_key()
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 # Precisa bater exatamente com o URI cadastrado no Google Cloud Console.
-GOOGLE_REDIRECT_URI = os.environ.get(
-    "GOOGLE_REDIRECT_URI", "https://financeiro.danilashes.com.br/api/auth/google/callback"
-)
-GOOGLE_LOGIN_HABILITADO = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
+# Sem padrão de propósito: cada instalação usa o próprio domínio, definido
+# em GOOGLE_REDIRECT_URI (veja o .env.example).
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
+# O redirect URI entra na conta: sem ele o fluxo quebraria só no meio do
+# caminho, com um erro do Google difícil de entender. Melhor o botão nem
+# aparecer enquanto a configuração estiver incompleta.
+GOOGLE_LOGIN_HABILITADO = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI)
 
 oauth = OAuth(app)
 if GOOGLE_LOGIN_HABILITADO:

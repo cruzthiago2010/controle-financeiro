@@ -1,7 +1,11 @@
-# Controle Financeiro — Self-hosted
+<p align="center">
+  <img src="static/logo-financerto.svg" width="96" alt="FinanCerto">
+</p>
+
+# FinanCerto — Self-hosted
 
 App de controle financeiro mensal (renda, despesas, cartões),
-feito para rodar no seu próprio servidor (home lab,ou qualquer
+feito para rodar no seu próprio servidor (home lab, ou qualquer
 Docker). Todos os dados ficam salvos localmente em SQLite, dentro da pasta
 `data/` — nada sai do seu servidor.
 
