@@ -24,3 +24,6 @@ Thumbs.db
 
 # Analytics desta instalação — cada um usa o seu (veja static/analytics.js)
 static/analytics.js
+
+# Auditoria em andamento — não publicar suspeita não confirmada
+NOTAS-SEGURANCA.md

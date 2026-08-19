@@ -4,6 +4,66 @@ Controle financeiro pessoal/familiar self-hosted. Flask + SQLite, servido por
 Docker num servidor Umbrel doméstico. Repositório público:
 `github.com/cruzthiago2010/controle-financeiro`.
 
+## Estado atual (19/08/2026)
+
+Versão no ar: **FinanCerto 3.1** (web em produção, APK publicado na release v3.1).
+
+Feito nesta rodada, em ordem:
+
+- **Identidade FinanCerto** — logo em SVG (escala e serve aos dois temas), 11
+  ícones de PWA gerados dele, telas de entrada e de criar casa refeitas.
+- **Painel redesenhado** — paleta escura neutra, indicadores com variação sobre o
+  mês anterior, gastos por categoria em lista ranqueada (a rosca ficava ilegível
+  com ~20 categorias), gráficos com linha-guia no hover.
+- **Barra superior** — busca em todos os meses (`/api/busca`), sino de contas
+  vencidas com marcar-como-lidas, menu do usuário.
+- **Lançar mais rápido** — sugestão de categoria pelo histórico (`/api/sugestoes`)
+  e teclado numérico próprio com as quatro operações.
+- **Aba Notificações** — o que avisar, botão de teste, e comportamento distinto
+  dentro do app Android (notificação nativa via `PonteApp`).
+- **App Android sem servidor fixo** — endereço perguntado na instalação, testado
+  antes de salvar; código foi para `android/`.
+- **Repositório limpo** — domínio pessoal e analytics saíram do código versionado.
+- **Conciliação** — extratos de Itaú, C6 e Nubank importados até 18/08; as três
+  contas batem com o extrato real.
+
+### Decisões que valem lembrar
+
+- **Sem framework no frontend.** Tudo em `static/index.html`. Cresceu bastante,
+  mas trocar isso agora é reescrita — só considerar se virar impeditivo.
+- **Notificação no navegador só com o app aberto.** Push em segundo plano exigiria
+  um serviço externo, o que contraria a ideia de self-hosted. Quem quer aviso com
+  o celular guardado usa o app Android, e isso está dito na própria aba.
+- **Logo dos bancos vem do ícone oficial do app de cada um**, guardado localmente
+  em `static/logos/`. Favicon e Wikimedia foram testados antes e não serviram
+  (resolução baixa ou logotipo por extenso, que não cabe em ícone redondo).
+- **"Marcar como lida" no sino não marca como paga.** São coisas diferentes e o
+  toast diz isso — mexer nisso é mexer em dado financeiro.
+
+### Próximos passos
+
+1. **Auditoria de segurança pedida, ainda incompleta.** Já verificado: nenhuma
+   rota com IDOR e nenhuma chave em código. Faltam três frentes — isolamento
+   query a query, tratamento de entrada num ponto específico e se as restrições
+   de somente-leitura/administrador valem no servidor ou só na tela. As pistas em
+   aberto estão em `NOTAS-SEGURANCA.md`, que **não é versionado** de propósito:
+   descrever suspeita não confirmada num repositório público é entregar o caminho.
+2. **Foto de perfil dá 404** (`u1_20260810050841.jpeg`) — o arquivo sumiu do
+   servidor. Ou subir de novo, ou limpar a referência no banco.
+3. **APK nunca foi testado em aparelho.** Não há emulador no servidor; a validação
+   foi estática (telas registradas, textos presentes, sem domínio embutido).
+
+### Onde as coisas ficam
+
+| O quê | Onde |
+|---|---|
+| Produção | container `controle-financeiro`, porta 8420 |
+| Staging | `../controle-financeiro-staging/`, porta 8421 |
+| Navegador para prints | `/home/umbrel/navegador/ver.sh` |
+| Chave de assinatura do APK | `/home/umbrel/chaves-financerto/` (fora do git) |
+| Backups do banco | `backups/` |
+| Extratos e prints enviados | `../Photos/` |
+
 ## Como o código está organizado
 
 Duas peças grandes, sem framework de frontend:
