@@ -314,15 +314,102 @@
   .alocacao-linha:last-child{border-bottom:none;}
   .alocacao-dot{width:12px; height:12px; border-radius:50%; flex:none;}
   .alocacao-nome{flex:1; min-width:0; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .alocacao-stepper{display:flex; align-items:center; gap:4px; flex:none;}
-  .alocacao-stepper button{width:26px; height:26px; padding:0; flex:none; background:var(--card2); color:var(--text); box-shadow:none; font-weight:700;}
-  .alocacao-stepper button:hover{background:var(--card3);}
-  .alocacao-stepper input{width:44px; text-align:center; padding:5px 2px; flex:none;}
-  .alocacao-stepper span{font-size:0.8rem; color:var(--muted);}
+  /* Caixa única com − campo + dentro dela, como no Investidor10 — os botões
+     não flutuam soltos ao lado do campo. */
+  .alocacao-stepper{display:flex; align-items:center; gap:2px; flex:none; background:var(--card2);
+    border:1px solid var(--border); border-radius:var(--radius-sm); padding:2px 6px;}
+  .alocacao-stepper button{width:24px; height:24px; padding:0; flex:none; background:transparent; color:var(--muted);
+    box-shadow:none; font-weight:700; font-size:1rem; line-height:1;}
+  .alocacao-stepper button:hover{background:transparent; color:var(--text); transform:none; box-shadow:none;}
+  /* width com !important porque o input global é width:100% — sem isso o campo
+     estica e empurra o botão "+" pra fora da caixa. */
+  .alocacao-stepper input{width:46px !important; text-align:center; padding:4px 2px; flex:none;
+    background:transparent; border:none; box-shadow:none; font-weight:700;}
+  .alocacao-stepper input::-webkit-outer-spin-button,
+  .alocacao-stepper input::-webkit-inner-spin-button{appearance:none; margin:0;}
+  .alocacao-stepper input[type=number]{appearance:textfield; -moz-appearance:textfield;}
+  .alocacao-stepper .simbolo{font-size:0.8rem; color:var(--muted);}
   .alocacao-remover{flex:none;}
   .alocacao-adicionar{display:flex; gap:8px; margin:10px 0 16px;}
   .alocacao-adicionar select{flex:1;}
   .alocacao-adicionar button{flex:none; white-space:nowrap;}
+  .posicao-classe{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    box-shadow:var(--shadow-card); margin-bottom:10px; overflow:hidden;}
+  .posicao-header{display:flex; align-items:center; gap:14px; padding:14px 16px; cursor:pointer; flex-wrap:wrap;}
+  .posicao-header .posicao-nome{display:flex; align-items:center; gap:8px; font-weight:700; flex:1 1 160px; min-width:0;}
+  .posicao-header .posicao-metrica{text-align:right; min-width:78px;}
+  .posicao-header .posicao-metrica .rotulo{font-size:0.68rem; color:var(--muted); display:block;}
+  .posicao-header .posicao-chevron{transition:transform 0.2s; flex:none; transform:rotate(-90deg);}
+  .posicao-classe.aberta .posicao-chevron{transform:rotate(90deg);}
+  .posicao-tabela-wrap{overflow-x:auto; border-top:1px solid var(--border-soft);}
+  .posicao-tabela{border-collapse:collapse; width:100%; font-size:0.78rem; white-space:nowrap;}
+  .posicao-tabela th, .posicao-tabela td{padding:9px 12px; text-align:right;}
+  .posicao-tabela th:first-child, .posicao-tabela td:first-child{text-align:left;}
+  .posicao-tabela th{color:var(--muted); font-weight:600; font-size:0.7rem; border-bottom:1px solid var(--border-soft);}
+  .posicao-tabela tbody tr:hover{background:var(--card2);}
+  .posicao-tabela .posicao-ativo-nome{display:flex; align-items:center; gap:8px; font-weight:600;}
+  /* Coluna ordenável: a seta só aparece na coluna que está ordenando, e o
+     cabeçalho inteiro é clicável. */
+  .posicao-tabela th.ordenavel{cursor:pointer; user-select:none;}
+  .posicao-tabela th.ordenavel:hover{color:var(--text);}
+  .posicao-tabela th.ordenavel .seta{opacity:0; margin-left:3px;}
+  .posicao-tabela th.ordenavel.ordenando .seta{opacity:1;}
+  /* Marca do ativo: sem chamada externa nenhuma, as iniciais do ticker num
+     círculo colorido pelo próprio ticker — a logo oficial só existe em API
+     paga e o app não depende de nenhuma pra desenhar a carteira. */
+  .ativo-marca{width:26px; height:26px; border-radius:50%; flex:none; display:flex; align-items:center;
+    justify-content:center; font-size:0.62rem; font-weight:800; color:#fff; letter-spacing:-0.3px;}
+  .classe-ponto{width:10px; height:10px; border-radius:3px; flex:none;}
+  .posicao-rodape{display:flex; justify-content:flex-end; gap:8px; padding:10px 14px; border-top:1px solid var(--border-soft);}
+  .posicao-rodape button{font-size:0.78rem; padding:7px 12px;}
+  .badge-comprar{font-size:0.7rem; font-weight:700; padding:3px 9px; border-radius:999px; display:inline-block;}
+  .badge-comprar.sim{background:rgba(0,167,111,0.15); color:var(--green);}
+  .badge-comprar.nao{background:rgba(255,86,48,0.13); color:var(--red);}
+  .posicao-acoes{position:relative; display:inline-block;}
+  .posicao-menu{position:absolute; right:0; top:100%; z-index:30; background:var(--card2); border:1px solid var(--border);
+    border-radius:var(--radius-sm); box-shadow:var(--shadow-hover); min-width:170px; padding:4px; text-align:left;}
+  .posicao-menu button{display:block; width:100%; text-align:left; background:transparent; color:var(--text);
+    box-shadow:none; font-size:0.78rem; font-weight:500; padding:7px 10px; border-radius:6px;}
+  .posicao-menu button:hover{background:var(--card3); transform:none; box-shadow:none;}
+  .posicao-menu button.perigo{color:var(--red);}
+  .posicao-detalhe-linha > td{padding:0 !important; background:var(--card2);}
+  /* Rola dentro de si: um ativo antigo tem dezenas de proventos, e sem limite
+     a linha aberta empurrava a tabela inteira páginas abaixo. */
+  .posicao-detalhe-caixa{padding:12px 16px; border-top:1px solid var(--border-soft); white-space:normal;
+    max-height:260px; overflow-y:auto;}
+  .posicao-detalhe-caixa .investimento-op-linha{border-bottom:1px solid var(--border-soft);}
+  .posicao-detalhe-caixa .investimento-op-linha:last-child{border-bottom:none;}
+  /* Duas colunas: gráfico grande à esquerda, painel de apoio à direita —
+     mesma divisão do Investidor10. Abaixo de 900px vira uma coluna só. */
+  .invest-colunas{display:grid; grid-template-columns:1.6fr 1fr; gap:12px; margin-bottom:18px; align-items:stretch;}
+  .invest-colunas-estreita{grid-template-columns:1fr 2fr;}
+  @media (max-width:900px){ .invest-colunas, .invest-colunas-estreita{grid-template-columns:1fr;} }
+  .invest-painel{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    box-shadow:var(--shadow-card); padding:14px 16px;}
+  .invest-painel .chart-box{background:transparent; border:none; box-shadow:none; padding:0; margin:0;}
+  .invest-painel-titulo{font-size:0.9rem; margin:0 0 10px;}
+  .invest-painel-subtitulo{font-size:0.78rem; color:var(--muted); margin:16px 0 6px; font-weight:600;}
+  .invest-painel-topo{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px;}
+  .invest-painel-topo .invest-painel-titulo{margin:0;}
+  .invest-toggle-periodo{height:auto;}
+  .invest-toggle-periodo button{font-size:0.74rem; padding:5px 12px;}
+  .invest-rosca-com-legenda{display:flex; flex-direction:column; gap:10px;}
+  .invest-legenda{display:flex; flex-direction:column; gap:5px;}
+  /* .linha, não .item: já existe um .item global com fundo próprio, que
+     transformava cada entrada da legenda num card. */
+  .invest-legenda .linha{display:flex; align-items:center; gap:8px; font-size:0.76rem;}
+  .invest-legenda .ponto{width:10px; height:10px; border-radius:3px; flex:none;}
+  .invest-legenda .nome{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted);}
+  .invest-legenda .pct{font-weight:700; flex:none;}
+  .invest-secao-topo{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:4px 0 10px;}
+  .invest-secao-topo .investimento-subtitulo{margin:0;}
+  .invest-contagem{color:var(--muted); font-weight:400; font-size:0.82rem;}
+  .invest-cards-laterais{display:flex; flex-direction:column; gap:10px;}
+  .invest-resumo-linha{display:flex; flex-direction:column; gap:1px; padding:9px 0; border-bottom:1px solid var(--border-soft);}
+  .invest-resumo-linha .rotulo{font-size:0.72rem; color:var(--muted);}
+  .invest-resumo-linha .valor{font-size:1.05rem; font-weight:700;}
+  .invest-resumo-linha .valor.a-receber{color:var(--yellow);}
+  .invest-painel-resumo .invest-resumo-linha:first-of-type .valor{font-size:1.3rem; color:var(--green);}
   .meta-card .investimento-toggle{background:transparent; color:var(--muted); border:none; box-shadow:none;
     width:100%; text-align:left; padding:4px 0; font-size:0.8rem; font-weight:600; cursor:pointer;}
   .meta-card .investimento-toggle:hover{color:var(--text); background:transparent; transform:none; box-shadow:none;}
@@ -385,6 +472,9 @@
   body.somente-leitura .investimento-op-form,
   body.somente-leitura #btnAdicionarAtivo,
   body.somente-leitura #btnConfigurarAlocacao,
+  body.somente-leitura #btnConfigurarAlocacao2,
+  body.somente-leitura .posicao-add,
+  body.somente-leitura .posicao-menu .perigo,
   body.somente-leitura #btnImportarProventos,
   body.somente-leitura .marcar-recebido,
   body.somente-leitura .holerite-card .holerite-acoes,
@@ -1323,44 +1413,120 @@
   <section class="painel" id="painel-investimentos">
     <div class="secao">
       <h2>Investimentos</h2>
-      <div class="segmented investimento-subnav" id="investimentoSubnav" style="max-width:280px;">
+      <div class="segmented investimento-subnav" id="investimentoSubnav" style="max-width:560px; flex-wrap:wrap; height:auto;">
         <button type="button" class="ativo" data-sub="resumo">Resumo</button>
+        <button type="button" data-sub="posicoes">Posições</button>
         <button type="button" data-sub="proventos">Proventos</button>
+        <button type="button" data-sub="patrimonio">Patrimônio</button>
+        <button type="button" data-sub="rentabilidade">Rentabilidade</button>
       </div>
 
       <div id="subInvestimentosResumo">
-        <div class="investimento-resumo">
-          <div><span class="label">Total investido</span><span class="valor" id="investPatrimonioInvestido">R$ 0,00</span></div>
-          <div><span class="label">Valor atual</span><span class="valor" id="investPatrimonioAtual">R$ 0,00</span> <span id="investVariacaoMes"></span></div>
-          <div><span class="label">Lucro total</span><span class="valor" id="investLucroTotal">R$ 0,00</span></div>
-          <div><span class="label">Proventos recebidos (12M)</span><span class="valor" id="investProventos12m">R$ 0,00</span></div>
-          <div><span class="label">Rentabilidade (12M)</span><span class="valor" id="investRentabilidade12m">—</span></div>
-          <div><span class="label">Rentabilidade total</span><span class="valor" id="investRentabilidadeTotal">—</span></div>
-        </div>
+        <div class="grid2" id="investKpiCards" style="margin-bottom:16px;"></div>
         <div class="investimento-resumo">
           <button type="button" class="secondary" id="btnAtualizarCotacoes">Atualizar cotações</button>
-          <button type="button" class="secondary" id="btnConfigurarAlocacao">Configurar % Ideal</button>
           <button type="button" id="btnAdicionarAtivo">+ Adicionar ativo</button>
         </div>
-        <div class="chart-box" style="max-height:260px; margin-bottom:18px;"><canvas id="chartEvolucaoPatrimonio"></canvas></div>
-        <div class="chart-box" style="max-width:320px; max-height:260px; margin:0 auto 18px;"><canvas id="chartInvestimentosClasse"></canvas></div>
-        <h3 class="investimento-subtitulo">Meus ativos</h3>
-        <div class="investimento-classes-grid" id="listaClassesInvestimento"></div>
-        <div class="metas-grid" id="listaInvestimentos"></div>
+        <div class="invest-colunas">
+          <div class="invest-painel">
+            <h3 class="invest-painel-titulo">Evolução do patrimônio</h3>
+            <div class="chart-box" style="max-height:280px;"><canvas id="chartEvolucaoPatrimonio"></canvas></div>
+          </div>
+          <div class="invest-painel">
+            <h3 class="invest-painel-titulo">Ativos na carteira</h3>
+            <div class="invest-rosca-com-legenda">
+              <div class="chart-box" style="max-height:230px;"><canvas id="chartInvestimentosClasse"></canvas></div>
+              <div class="invest-legenda" id="legendaClasses"></div>
+            </div>
+          </div>
+        </div>
+        <div class="invest-secao-topo">
+          <h3 class="investimento-subtitulo">Meus ativos <span class="invest-contagem" id="contagemAtivosResumo"></span></h3>
+          <button type="button" class="secondary" id="btnConfigurarAlocacao">Configurar % Ideal da carteira</button>
+        </div>
+        <div id="listaPosicoesResumo"></div>
+      </div>
+
+      <div id="subInvestimentosPosicoes" hidden>
+        <div class="grid2" id="investKpiCardsPosicoes" style="margin-bottom:16px;"></div>
+        <div class="invest-secao-topo">
+          <h3 class="investimento-subtitulo">Meus ativos <span class="invest-contagem" id="contagemAtivosPosicoes"></span></h3>
+          <button type="button" class="secondary" id="btnConfigurarAlocacao2">Configurar % Ideal da carteira</button>
+        </div>
+        <div id="listaPosicoes"></div>
+      </div>
+
+      <div id="subInvestimentosPatrimonio" hidden>
+        <div class="invest-painel" style="margin-bottom:16px;">
+          <h3 class="invest-painel-titulo">Evolução do patrimônio</h3>
+          <div class="chart-box" style="max-height:340px;"><canvas id="chartPatrimonioGrande"></canvas></div>
+        </div>
+        <h3 class="investimento-subtitulo">Patrimônio por mês</h3>
+        <div id="tabelaPatrimonioMensal"></div>
+      </div>
+
+      <div id="subInvestimentosRentabilidade" hidden>
+        <div class="invest-colunas invest-colunas-estreita">
+          <div class="invest-cards-laterais" id="cardsRentabilidade"></div>
+          <div class="invest-painel">
+            <h3 class="invest-painel-titulo">Rentabilidade comparada com o CDI</h3>
+            <div class="chart-box" style="max-height:300px;"><canvas id="chartRentabilidade"></canvas></div>
+          </div>
+        </div>
+        <h3 class="investimento-subtitulo" style="margin-top:18px;">Rentabilidade mês a mês</h3>
+        <div id="tabelaRentabilidade"></div>
       </div>
 
       <div id="subInvestimentosProventos" hidden>
-        <div class="investimento-resumo">
-          <div><span class="label">Total a receber</span><span class="valor" id="proventosTotalReceber">R$ 0,00</span></div>
-          <button type="button" class="secondary" id="btnImportarProventos" style="align-self:center;">Importar proventos</button>
+        <div class="invest-colunas invest-colunas-estreita">
+          <div class="invest-painel invest-painel-resumo">
+            <h3 class="invest-painel-titulo">Resumo</h3>
+            <div class="invest-resumo-linha">
+              <span class="rotulo">Média mensal (últ. 12 meses)</span>
+              <span class="valor" id="proventosMediaMensal">R$ 0,00</span>
+            </div>
+            <div class="invest-resumo-linha">
+              <span class="rotulo">Total de 12 meses</span>
+              <span class="valor" id="proventosTotal12m">R$ 0,00</span>
+            </div>
+            <div class="invest-resumo-linha">
+              <span class="rotulo">Total da carteira</span>
+              <span class="valor" id="proventosTotalCarteira">R$ 0,00</span>
+            </div>
+            <div class="invest-resumo-linha">
+              <span class="rotulo">A receber</span>
+              <span class="valor a-receber" id="proventosTotalReceber">R$ 0,00</span>
+            </div>
+            <h4 class="invest-painel-subtitulo">Distribuição em 12 meses</h4>
+            <div class="chart-box" style="max-height:190px;"><canvas id="chartProventosPorAtivo"></canvas></div>
+            <div class="invest-legenda" id="legendaProventosAtivo"></div>
+          </div>
+          <div class="invest-painel">
+            <div class="invest-painel-topo">
+              <h3 class="invest-painel-titulo">Evolução de proventos</h3>
+              <div class="segmented invest-toggle-periodo" id="proventosPeriodo">
+                <button type="button" class="ativo" data-periodo="mensal">Mensal</button>
+                <button type="button" data-periodo="anual">Anual</button>
+              </div>
+            </div>
+            <div class="chart-box" style="max-height:270px;"><canvas id="chartEvolucaoProventos"></canvas></div>
+            <button type="button" class="secondary" id="btnImportarProventos" style="margin-top:12px;">Importar proventos agora</button>
+            <div style="font-size:0.72rem; color:var(--muted); margin-top:8px;">Dividendos, JCP e rendimentos já declarados na B3 entram sozinhos 1x por dia — o botão força uma busca agora.</div>
+          </div>
         </div>
-        <div style="font-size:0.72rem; color:var(--muted); margin:-10px 0 14px;">Dividendos/JCP/Rendimentos já declarados pelas empresas (B3) são importados sozinhos 1x por dia — o botão força uma busca agora.</div>
-        <div class="chart-box" style="max-height:240px; margin-bottom:18px;"><canvas id="chartEvolucaoProventos"></canvas></div>
-        <div class="chart-box" style="max-width:320px; max-height:240px; margin:0 auto 18px;"><canvas id="chartProventosPorAtivo"></canvas></div>
-        <h3 class="investimento-subtitulo">Proventos do mês</h3>
-        <div id="tabelaProventosMes"></div>
-        <h3 class="investimento-subtitulo" style="margin-top:22px;">Histórico</h3>
+
+        <h3 class="investimento-subtitulo" style="margin-top:18px;">Histórico mensal</h3>
         <div id="historicoProventos"></div>
+
+        <div class="invest-secao-topo" style="margin-top:22px;">
+          <h3 class="investimento-subtitulo">Meus proventos</h3>
+          <div class="segmented invest-toggle-periodo" id="proventosFiltroStatus">
+            <button type="button" class="ativo" data-status="todos">Todos</button>
+            <button type="button" data-status="recebidos">Recebidos</button>
+            <button type="button" data-status="a_receber">A receber</button>
+          </div>
+        </div>
+        <div id="tabelaProventosDetalhe"></div>
       </div>
     </div>
   </section>
@@ -1884,6 +2050,44 @@
   </div>
 </div>
 
+<!-- Modal de provento avulso — o que a corretora anunciou pra um ativo. Fica
+     separado do modal de compra/venda porque as perguntas são outras: data com,
+     tipo de pagamento e se o dinheiro já caiu na conta. -->
+<div class="modal-overlay" id="modalProvento">
+  <div class="modal-box">
+    <h3 id="proventoTitulo">Lançar provento</h3>
+    <label>Tipo de pagamento</label>
+    <select id="proventoTipoPagamento">
+      <option value="dividendo">Dividendo</option>
+      <option value="jscp">JSCP (15% de IR na fonte)</option>
+      <option value="rendimento">Rendimento</option>
+    </select>
+    <div class="campos-2col">
+      <div>
+        <label>Data com (opcional)</label>
+        <input type="date" id="proventoDataCom">
+      </div>
+      <div>
+        <label>Data de pagamento</label>
+        <input type="date" id="proventoData">
+      </div>
+    </div>
+    <label>Valor bruto anunciado (R$)</label>
+    <input type="number" id="proventoValor" step="0.01" min="0.01" placeholder="0,00">
+    <label class="toggle-row">
+      <span>Já caiu na conta</span>
+      <span class="toggle-switch"><input type="checkbox" id="proventoPago" checked><span class="toggle-slider"></span></span>
+    </label>
+    <div class="formula-box">
+      <div class="linha total"><span>Valor líquido</span><span id="proventoLiquidoTexto">R$ 0,00</span></div>
+    </div>
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="proventoCancelar">Cancelar</button>
+      <button type="button" id="proventoSalvar">Registrar provento</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal de % Ideal por classe -->
 <div class="modal-overlay" id="modalAlocacaoIdeal">
   <div class="modal-box">
@@ -2113,7 +2317,7 @@ const ICO = {
 };
 let mesAtual = null;
 let categoriasCache = {receita:[], despesa:[]};
-let chartComparacao = null, chartCategoria = null, chartTendencia = null, chartFluxoCaixa = null, chartHolerites = null, chartInvestimentosClasse = null, chartEvolucaoPatrimonio = null;
+let chartComparacao = null, chartCategoria = null, chartTendencia = null, chartFluxoCaixa = null, chartHolerites = null, chartInvestimentosClasse = null, chartEvolucaoPatrimonio = null, chartPatrimonioGrande = null, chartRentabilidade = null;
 
 // Balão do gráfico com a mesma cara dos cards, em vez do preto padrão do Chart.js.
 const TOOLTIP_ESTILO = {
@@ -4234,7 +4438,7 @@ const ROTULOS_TIPO_PAGAMENTO = {dividendo: "Dividendo", jscp: "JSCP", rendimento
 const NOMES_MESES_CURTOS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
 async function carregarInvestimentos(){
-  const container = document.getElementById("listaInvestimentos");
+  const container = document.getElementById("listaPosicoesResumo");
   container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
   try {
     const res = await apiFetch(`${API}/investimentos`, undefined, {erro:"Não foi possível carregar os investimentos"});
@@ -4247,91 +4451,269 @@ async function carregarInvestimentos(){
     const resAloc = await apiFetch(`${API}/investimentos/alocacao-ideal`, undefined, {silencioso: true});
     alocacaoIdealCache = await resAloc.json();
   } catch (e) { alocacaoIdealCache = {}; }
-  renderizarInvestimentos();
-  renderizarClassesInvestimento();
+  renderizarPosicoes("listaPosicoesResumo");
+  renderizarPosicoes("listaPosicoes");
   atualizarGraficoInvestimentosClasse();
   carregarResumoInvestimentos();
 }
 
-function renderizarInvestimentos(){
-  const container = document.getElementById("listaInvestimentos");
-  container.innerHTML = "";
-  if (investimentosCache.length === 0){
-    container.innerHTML = `<div class="empty">Nenhum investimento cadastrado ainda.</div>`;
-    return;
-  }
-  investimentosCache.forEach(inv => container.appendChild(criarInvestimentoCardHTML(inv)));
+// "Meus ativos": uma faixa por classe com o consolidado dela (quantos ativos,
+// valor total, variação, rentabilidade, % na carteira contra o % ideal), que
+// abre numa tabela com cada ativo. É a mesma lista nas abas Resumo e Posições,
+// por isso recebe o container por parâmetro. Tudo sai do investimentosCache —
+// nenhuma rota nova.
+const COLUNAS_POSICAO = {
+  nome: {rotulo: "Ativo", valor: a => a.nome.toLowerCase()},
+  quantidade: {rotulo: "Quant.", valor: a => a.quantidade || 0},
+  preco_medio: {rotulo: "Preço médio", valor: a => a.preco_medio || 0},
+  cotacao_atual: {rotulo: "Preço atual", valor: a => a.cotacao_atual || 0},
+  variacao: {rotulo: "Variação", valor: a => (a.valor_atual || 0) - (a.valor_investido || 0)},
+  rentabilidade: {rotulo: "Rentabilidade", valor: a => a.rentabilidade_pct ?? -Infinity},
+  saldo: {rotulo: "Saldo", valor: a => a.valor_atual || 0},
+  pct_carteira: {rotulo: "% Carteira", valor: a => a.valor_atual || 0},
+  pct_ideal: {rotulo: "% Ideal", valor: () => 0},
+  comprar: {rotulo: "Comprar ?", valor: () => 0},
+};
+// Ordenação escolhida por classe, guardada fora do HTML pra sobreviver ao
+// innerHTML que redesenha a tabela a cada clique.
+const ordenacaoPosicao = {};
+
+function marcaAtivo(texto){
+  const sigla = (texto || "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "?";
+  return `<span class="ativo-marca" style="background:${corPara(texto || "")}">${sigla}</span>`;
 }
 
-// "Meus ativos" — um card por classe, agregando os investimentos daquela
-// classe (Valor total, Variação em R$, Rentabilidade %, % na carteira).
-// Calculado aqui no front a partir do que /api/investimentos já devolve —
-// não precisa de rota nova.
-function renderizarClassesInvestimento(){
-  const container = document.getElementById("listaClassesInvestimento");
+function pctFormatado(pct, comSinal){
+  if (pct === null || pct === undefined) return "—";
+  return `${comSinal && pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+}
+
+function renderizarPosicoes(containerId){
+  const container = document.getElementById(containerId);
+  if (!container) return;
   container.innerHTML = "";
-  if (investimentosCache.length === 0) return;
+  const contagem = document.getElementById(
+    containerId === "listaPosicoes" ? "contagemAtivosPosicoes" : "contagemAtivosResumo");
+  if (contagem) contagem.textContent = investimentosCache.length ? `(${investimentosCache.length})` : "";
+  if (investimentosCache.length === 0){
+    container.innerHTML = `<div class="empty">Nenhum ativo na carteira ainda. Use "+ Adicionar ativo" pra registrar a primeira compra.</div>`;
+    return;
+  }
   const porClasse = {};
-  investimentosCache.forEach(inv => {
-    if (!porClasse[inv.classe]) porClasse[inv.classe] = {investido: 0, atual: 0, quantidade: 0};
-    porClasse[inv.classe].investido += inv.valor_investido || 0;
-    porClasse[inv.classe].atual += inv.valor_atual || 0;
-    porClasse[inv.classe].quantidade += 1;
+  investimentosCache.forEach(inv => (porClasse[inv.classe] = porClasse[inv.classe] || []).push(inv));
+  const patrimonioTotal = investimentosCache.reduce((s, i) => s + (i.valor_atual || 0), 0);
+
+  Object.entries(porClasse).forEach(([classe, ativos]) => {
+    container.appendChild(criarBlocoClasse(classe, ativos, patrimonioTotal, containerId));
   });
-  const patrimonioTotal = Object.values(porClasse).reduce((s, c) => s + c.atual, 0);
-  Object.entries(porClasse).forEach(([classe, c]) => {
-    const variacao = c.atual - c.investido;
-    const rentPct = c.investido > 0 ? (variacao / c.investido) * 100 : null;
-    const pctCarteira = patrimonioTotal > 0 ? (c.atual / patrimonioTotal) * 100 : 0;
-    const pctIdeal = alocacaoIdealCache[classe];
-    const div = document.createElement("div");
-    div.className = "investimento-classe-card";
-    div.innerHTML = `
-      <div class="classe-nome">${ROTULOS_CLASSE_INVESTIMENTO[classe] || classe} (${c.quantidade} ${c.quantidade === 1 ? "ativo" : "ativos"})</div>
-      <div class="classe-linha"><span>Valor total</span><span>${formatMoeda(c.atual)}</span></div>
-      <div class="classe-linha"><span>Variação</span><span class="${variacao >= 0 ? "positivo" : "negativo"}">${variacao >= 0 ? "+" : ""}${formatMoeda(variacao)}</span></div>
-      <div class="classe-linha"><span>Rentabilidade</span><span class="${(rentPct || 0) >= 0 ? "positivo" : "negativo"}">${rentPct !== null ? (rentPct >= 0 ? "+" : "") + rentPct.toFixed(2) + "%" : "—"}</span></div>
-      <div class="classe-linha"><span>% na carteira</span><span>${pctCarteira.toFixed(0)}%</span></div>
-      <div class="classe-linha"><span>% Ideal</span><span>${pctIdeal !== undefined ? pctIdeal.toFixed(0) + "%" : "—"}</span></div>
-      <div class="classe-linha"><span>Comprar?</span><span>${pctIdeal !== undefined ? (pctCarteira < pctIdeal ? "Sim" : "Não") : "—"}</span></div>
-    `;
-    container.appendChild(div);
+}
+
+function criarBlocoClasse(classe, ativos, patrimonioTotal, containerId){
+  const atual = ativos.reduce((s, a) => s + (a.valor_atual || 0), 0);
+  const investido = ativos.reduce((s, a) => s + (a.valor_investido || 0), 0);
+  const variacao = atual - investido;
+  const rentPct = investido > 0 ? (variacao / investido) * 100 : null;
+  const pctCarteira = patrimonioTotal > 0 ? (atual / patrimonioTotal) * 100 : 0;
+  const temTicker = CLASSES_COM_TICKER_INVEST.includes(classe);
+  const pctIdealClasse = alocacaoIdealCache[classe];
+  // O % ideal do ativo é a meta da classe dividida entre os ativos dela —
+  // mesma leitura do Investidor10: 25% em ações com 2 papéis = 12,5% cada.
+  const pctIdealAtivo = pctIdealClasse !== undefined && ativos.length ? pctIdealClasse / ativos.length : undefined;
+
+  const colunas = ["nome", ...(temTicker ? ["quantidade", "preco_medio", "cotacao_atual"] : []),
+    "variacao", "rentabilidade", "saldo", "pct_carteira", "pct_ideal", "comprar"];
+  const ordem = ordenacaoPosicao[classe] || {coluna: "saldo", desc: true};
+  const ativosOrdenados = ativos.slice().sort((a, b) => {
+    const va = COLUNAS_POSICAO[ordem.coluna].valor(a), vb = COLUNAS_POSICAO[ordem.coluna].valor(b);
+    if (va === vb) return 0;
+    return (va > vb ? 1 : -1) * (ordem.desc ? -1 : 1);
   });
+
+  const div = document.createElement("div");
+  div.className = "posicao-classe";
+  div.innerHTML = `
+    <div class="posicao-header">
+      <span class="posicao-nome"><span class="classe-ponto" style="background:${corDaClasse(classe)}"></span>${ROTULOS_CLASSE_INVESTIMENTO[classe] || classe}</span>
+      <span class="posicao-metrica"><span class="rotulo">Ativos</span>${ativos.length}</span>
+      <span class="posicao-metrica"><span class="rotulo">Valor total</span>${formatMoeda(atual)}</span>
+      <span class="posicao-metrica"><span class="rotulo">Variação</span><span class="${variacao >= 0 ? "positivo" : "negativo"}">${variacao >= 0 ? "+" : ""}${formatMoeda(variacao)}</span></span>
+      <span class="posicao-metrica"><span class="rotulo">Rentabilidade</span><span class="${(rentPct || 0) >= 0 ? "positivo" : "negativo"}">${pctFormatado(rentPct, true)}</span></span>
+      <span class="posicao-metrica"><span class="rotulo">% na carteira</span>${pctCarteira.toFixed(1)}% <span style="color:var(--muted);">/ ${pctIdealClasse !== undefined ? pctIdealClasse.toFixed(0) + "%" : "—"}</span></span>
+      <svg class="ico posicao-chevron" viewBox="0 0 24 24"><use href="#i-esquerda"/></svg>
+    </div>
+    <div class="posicao-tabela-wrap" hidden>
+      <table class="posicao-tabela">
+        <thead><tr>
+          ${colunas.map(c => `<th class="ordenavel ${ordem.coluna === c ? "ordenando" : ""}" data-coluna="${c}">${COLUNAS_POSICAO[c].rotulo}<span class="seta">${ordem.desc ? "▾" : "▴"}</span></th>`).join("")}
+          <th>Opções</th>
+        </tr></thead>
+        <tbody>
+          ${ativosOrdenados.map(a => {
+            const varAtivo = (a.valor_atual || 0) - (a.valor_investido || 0);
+            const pctAtivo = patrimonioTotal > 0 ? ((a.valor_atual || 0) / patrimonioTotal) * 100 : 0;
+            const comprar = pctIdealAtivo !== undefined ? pctAtivo < pctIdealAtivo : null;
+            return `<tr data-id="${a.id}">
+              <td><span class="posicao-ativo-nome">${marcaAtivo(a.ticker || a.nome)}${escapeHtml(a.ticker || a.nome)}</span></td>
+              ${temTicker ? `<td>${formatQuantidade(a.quantidade)}</td><td>${formatMoeda(a.preco_medio)}</td><td>${a.cotacao_atual ? formatMoeda(a.cotacao_atual) : "—"}</td>` : ""}
+              <td class="${varAtivo >= 0 ? "positivo" : "negativo"}">${varAtivo >= 0 ? "+" : ""}${formatMoeda(varAtivo)}</td>
+              <td class="${(a.rentabilidade_pct || 0) >= 0 ? "positivo" : "negativo"}">${pctFormatado(a.rentabilidade_pct, true)}</td>
+              <td>${formatMoeda(a.valor_atual)}</td>
+              <td>${pctAtivo.toFixed(2)}%</td>
+              <td>${pctIdealAtivo !== undefined ? pctIdealAtivo.toFixed(2) + "%" : "—"}</td>
+              <td>${comprar === null ? "—" : `<span class="badge-comprar ${comprar ? "sim" : "nao"}">${comprar ? "Sim" : "Não"}</span>`}</td>
+              <td><div class="posicao-acoes"><button type="button" class="icon posicao-menu-btn" title="Opções">⋯</button></div></td>
+            </tr>
+            <tr class="posicao-detalhe-linha" data-detalhe="${a.id}" hidden><td colspan="${colunas.length + 1}"><div class="posicao-detalhe-caixa"></div></td></tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+      <div class="posicao-rodape">
+        <button type="button" class="secondary posicao-add" data-classe="${classe}">+ Adicionar lançamento</button>
+      </div>
+    </div>
+  `;
+
+  const tabelaWrap = div.querySelector(".posicao-tabela-wrap");
+  div.querySelector(".posicao-header").addEventListener("click", () => {
+    tabelaWrap.hidden = !tabelaWrap.hidden;
+    div.classList.toggle("aberta", !tabelaWrap.hidden);
+  });
+  div.querySelectorAll("th.ordenavel").forEach(th => {
+    th.addEventListener("click", () => {
+      const coluna = th.dataset.coluna;
+      const atualOrdem = ordenacaoPosicao[classe] || {coluna: "saldo", desc: true};
+      ordenacaoPosicao[classe] = {coluna, desc: atualOrdem.coluna === coluna ? !atualOrdem.desc : true};
+      renderizarPosicoes(containerId);
+      // Redesenhar fecha todos os blocos; reabrir só este mantém o usuário
+      // olhando pra mesma tabela que ele acabou de ordenar.
+      const novo = document.getElementById(containerId).querySelectorAll(".posicao-classe")[
+        Object.keys(agruparPorClasse()).indexOf(classe)];
+      if (novo) novo.querySelector(".posicao-header").click();
+    });
+  });
+  div.querySelectorAll(".posicao-menu-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrirMenuPosicao(btn, containerId);
+    });
+  });
+  div.querySelector(".posicao-add").addEventListener("click", (e) => {
+    e.stopPropagation();
+    abrirModalAdicionarAtivo({classe});
+  });
+  return div;
+}
+
+function agruparPorClasse(){
+  const porClasse = {};
+  investimentosCache.forEach(inv => (porClasse[inv.classe] = porClasse[inv.classe] || []).push(inv));
+  return porClasse;
+}
+
+function abrirMenuPosicao(btn, containerId){
+  document.querySelectorAll(".posicao-menu").forEach(m => m.remove());
+  const linha = btn.closest("tr");
+  const id = linha.dataset.id;
+  const inv = investimentosCache.find(i => i.id == id);
+  if (!inv) return;
+  const menu = document.createElement("div");
+  menu.className = "posicao-menu";
+  menu.innerHTML = `
+    <button type="button" data-acao="lancamentos">Ver lançamentos</button>
+    <button type="button" data-acao="comprar">Registrar compra</button>
+    <button type="button" data-acao="vender">Registrar venda</button>
+    <button type="button" data-acao="provento">Lançar provento</button>
+    <button type="button" class="perigo" data-acao="excluir">Excluir ativo</button>
+  `;
+  btn.parentElement.appendChild(menu);
+  const fechar = () => menu.remove();
+  setTimeout(() => document.addEventListener("click", fechar, {once: true}), 0);
+
+  menu.addEventListener("click", async (e) => {
+    const acao = e.target.dataset.acao;
+    if (!acao) return;
+    e.stopPropagation();
+    fechar();
+    if (acao === "lancamentos"){
+      const detalhe = linha.parentElement.querySelector(`[data-detalhe="${id}"]`);
+      const caixa = detalhe.querySelector(".posicao-detalhe-caixa");
+      detalhe.hidden = !detalhe.hidden;
+      if (!detalhe.hidden) await carregarOperacoesInvestimento(inv, caixa);
+    } else if (acao === "excluir"){
+      if (!confirm(`Excluir "${inv.nome}"? Isso também apaga o histórico de operações e os lançamentos ligados a ele nas contas.`)) return;
+      try {
+        await apiFetch(`${API}/investimentos/${inv.id}`, {method:"DELETE"}, {sucesso:"Ativo excluído", erro:"Não foi possível excluir"});
+        await carregarInvestimentos();
+        renderizarPosicoes(containerId);
+      } catch (err) {}
+    } else if (acao === "provento"){
+      abrirModalProvento(inv);
+    } else {
+      abrirModalAdicionarAtivo({investimento: inv, tipo: acao === "vender" ? "resgate" : "aporte"});
+    }
+  });
+}
+
+function formatQuantidade(q){
+  if (!q) return "0";
+  // Cripto tem fração longa (0,02 BTC); ação e FII são sempre inteiros —
+  // mostrar "600,00000000" só polui a tabela.
+  return Number.isInteger(q) ? String(q) : q.toFixed(8).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",");
 }
 
 async function carregarResumoInvestimentos(){
   try {
     const res = await apiFetch(`${API}/investimentos/resumo`, undefined, {silencioso: true});
     const resumo = await res.json();
-    document.getElementById("investPatrimonioInvestido").textContent = formatMoeda(resumo.patrimonio_investido);
-    document.getElementById("investPatrimonioAtual").textContent = formatMoeda(resumo.patrimonio_atual);
-    const variacaoEl = document.getElementById("investVariacaoMes");
-    if (resumo.variacao_pct_mes !== null && resumo.variacao_pct_mes !== undefined){
-      const positivo = resumo.variacao_pct_mes >= 0;
-      variacaoEl.innerHTML = `<span class="investimento-variacao ${positivo ? "positivo" : "negativo"}">${positivo ? "+" : ""}${resumo.variacao_pct_mes.toFixed(2)}% no mês</span>`;
-    } else {
-      variacaoEl.innerHTML = "";
-    }
-    document.getElementById("investLucroTotal").textContent = formatMoeda(resumo.lucro_total);
-    document.getElementById("investProventos12m").textContent = formatMoeda(resumo.proventos_recebidos_12m);
-    document.getElementById("investRentabilidade12m").innerHTML = fmtPctResumo(resumo.rentabilidade_pct_12m);
-    document.getElementById("investRentabilidadeTotal").innerHTML = fmtPctResumo(resumo.rentabilidade_pct_total);
+    renderizarKpiCardsInvestimentos(resumo);
     atualizarGraficoEvolucaoPatrimonio(resumo.evolucao || []);
   } catch (e) {}
 }
 
-function fmtPctResumo(pct){
-  if (pct === null || pct === undefined) return "—";
+// Mesmo padrão visual dos cards do Dashboard principal (.card.kpi) — cor de
+// fundo do ícone (tint) e a variação embaixo do valor, no mesmo estilo.
+function kpiInvestimento(icone, tintBg, tintCor, rotulo, valorHTML, varHTML){
+  return `<div class="card kpi">
+    <div class="kpi-topo">
+      <div class="label">${rotulo}</div>
+      <div class="kpi-ico" style="--tint-bg:${tintBg}; --tint-cor:${tintCor}">${svgIco(icone, "ico")}</div>
+    </div>
+    <div class="valor">${valorHTML}</div>
+    ${varHTML || ""}
+  </div>`;
+}
+function kpiVarPct(pct, rotulo){
+  if (pct === null || pct === undefined) return "";
   const positivo = pct >= 0;
-  return `<span class="${positivo ? "positivo" : "negativo"}">${positivo ? "+" : ""}${pct.toFixed(2)}%</span>`;
+  return `<div class="kpi-var ${positivo ? "sobe" : "desce"}">${svgIco(positivo ? "sobe" : "desce", "ico")}
+    ${positivo ? "+" : ""}${pct.toFixed(2)}% <span class="ref">${rotulo}</span></div>`;
 }
 
-function atualizarGraficoEvolucaoPatrimonio(evolucao){
-  if (chartEvolucaoPatrimonio) chartEvolucaoPatrimonio.destroy();
-  const ctx = document.getElementById("chartEvolucaoPatrimonio");
-  if (!ctx || evolucao.length === 0) return;
+function renderizarKpiCardsInvestimentos(resumo){
+  const V_VERDE = ["rgba(0,167,111,0.12)", "#00a76f"], V_AZUL = ["rgba(0,184,217,0.12)", "#00b8d9"],
+        V_AMBAR = ["rgba(255,171,0,0.12)", "#ffab00"], V_ROXO = ["rgba(142,51,255,0.12)", "#8e33ff"];
+  const html = [
+    kpiInvestimento("carteira", ...V_AZUL, "Patrimônio total", formatMoeda(resumo.patrimonio_atual),
+      `${kpiVarPct(resumo.rentabilidade_pct_total, "desde o início")}
+       <div class="kpi-var"><span class="ref">Valor investido: ${formatMoeda(resumo.patrimonio_investido)}</span></div>`),
+    kpiInvestimento("sobe", ...V_VERDE, "Lucro total", formatMoeda(resumo.lucro_total),
+      `<div class="kpi-var"><span class="ref">Ganho de capital: ${formatMoeda(resumo.ganho_capital)}</span></div>
+       <div class="kpi-var"><span class="ref">Proventos recebidos: ${formatMoeda(resumo.dividendos_recebidos_total)}</span></div>`),
+    kpiInvestimento("recibo", ...V_AMBAR, "Proventos recebidos (12M)", formatMoeda(resumo.proventos_recebidos_12m),
+      `<div class="kpi-var"><span class="ref">Total da carteira: ${formatMoeda(resumo.dividendos_recebidos_total)}</span></div>`),
+    kpiInvestimento("grafico", ...V_ROXO, "Rentabilidade (12M)",
+      pctFormatado(resumo.rentabilidade_pct_12m, true),
+      `<div class="kpi-var"><span class="ref">Rentabilidade total: ${pctFormatado(resumo.rentabilidade_pct_total, true)}</span></div>`),
+  ].join("");
+  document.getElementById("investKpiCards").innerHTML = html;
+  document.getElementById("investKpiCardsPosicoes").innerHTML = html;
+}
+
+function construirGraficoEvolucaoPatrimonio(canvasId, evolucao){
+  const ctx = document.getElementById(canvasId);
+  if (!ctx || evolucao.length === 0) return null;
   const corTexto = document.documentElement.getAttribute("data-tema") === "claro" ? "#6b7694" : "#8b96b3";
-  chartEvolucaoPatrimonio = new Chart(ctx.getContext("2d"), {
+  return new Chart(ctx.getContext("2d"), {
     type: "bar",
     data: {
       labels: evolucao.map(e => formatMes(e.mes)),
@@ -4339,13 +4721,13 @@ function atualizarGraficoEvolucaoPatrimonio(evolucao){
         {label: "Valor aplicado", data: evolucao.map(e => e.valor_investido), backgroundColor: "rgba(0,167,111,0.85)", borderRadius: 6},
         // Empilhado sobre o valor aplicado: só o ganho (ou perda, que o Chart.js
         // desenha abaixo de zero sozinho) — a barra inteira soma o valor atual.
-        {label: "Ganho", data: evolucao.map(e => round2(e.valor_atual - e.valor_investido)), backgroundColor: "rgba(0,184,217,0.85)", borderRadius: 6},
+        {label: "Ganho de capital", data: evolucao.map(e => round2(e.valor_atual - e.valor_investido)), backgroundColor: "rgba(0,184,217,0.85)", borderRadius: 6},
       ],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: {
-        x: {stacked: true, ticks: {color: corTexto}, grid: {display: false}},
+        x: {stacked: true, ticks: {color: corTexto, autoSkip: true, maxTicksLimit: 12, maxRotation: 0}, grid: {display: false}},
         y: {stacked: true, ticks: {color: corTexto}, grid: {color: "rgba(128,128,128,0.15)"}},
       },
       plugins: {
@@ -4355,154 +4737,234 @@ function atualizarGraficoEvolucaoPatrimonio(evolucao){
     },
   });
 }
+function atualizarGraficoEvolucaoPatrimonio(evolucao){
+  if (chartEvolucaoPatrimonio) chartEvolucaoPatrimonio.destroy();
+  chartEvolucaoPatrimonio = construirGraficoEvolucaoPatrimonio("chartEvolucaoPatrimonio", evolucao);
+}
 function round2(v){ return Math.round(v * 100) / 100; }
 
-function atualizarGraficoInvestimentosClasse(){
-  const porClasse = {};
-  investimentosCache.forEach(i => { porClasse[i.classe] = (porClasse[i.classe] || 0) + (i.valor_atual || 0); });
-  const labels = Object.keys(porClasse).map(c => ROTULOS_CLASSE_INVESTIMENTO[c] || c);
-  const valores = Object.values(porClasse);
-  if (chartInvestimentosClasse) chartInvestimentosClasse.destroy();
-  const ctx = document.getElementById("chartInvestimentosClasse");
-  if (!ctx || valores.length === 0) return;
-  const total = valores.reduce((a, b) => a + b, 0);
-  const corTexto = document.documentElement.getAttribute("data-tema") === "claro" ? "#1c2438" : "#e8ecf5";
-  chartInvestimentosClasse = new Chart(ctx.getContext("2d"), {
+async function carregarPatrimonio(){
+  try {
+    const res = await apiFetch(`${API}/investimentos/resumo?meses=24`, undefined, {silencioso: true});
+    const resumo = await res.json();
+    if (chartPatrimonioGrande) chartPatrimonioGrande.destroy();
+    chartPatrimonioGrande = construirGraficoEvolucaoPatrimonio("chartPatrimonioGrande", resumo.evolucao || []);
+    const tabela = document.getElementById("tabelaPatrimonioMensal");
+    const linhas = (resumo.evolucao || []).slice().reverse();
+    tabela.innerHTML = linhas.length === 0 ? `<div class="empty">Sem dados ainda — a evolução mensal começa a partir de agora.</div>` : `
+      <div style="overflow-x:auto;">
+        <table class="tabela-historico-proventos">
+          <thead><tr><th>Mês</th><th>Valor aplicado</th><th>Valor atual</th><th>Ganho</th></tr></thead>
+          <tbody>
+            ${linhas.map(e => {
+              const ganho = e.valor_atual - e.valor_investido;
+              return `<tr><td>${formatMes(e.mes)}</td><td>${formatMoeda(e.valor_investido)}</td><td>${formatMoeda(e.valor_atual)}</td>
+                <td class="${ganho >= 0 ? "positivo" : "negativo"}">${ganho >= 0 ? "+" : ""}${formatMoeda(ganho)}</td></tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (e) {}
+}
+
+// Card no formato do Investidor10: o número grande é a rentabilidade da
+// carteira e a linha de baixo diz quanto isso ficou acima ou abaixo do CDI
+// do mesmo período — a comparação que interessa a quem investe no Brasil.
+function cardRentabilidade(titulo, pct, cdiPct){
+  const acimaCdi = (pct !== null && pct !== undefined && cdiPct !== null && cdiPct !== undefined) ? pct - cdiPct : null;
+  return `<div class="invest-painel">
+    <div class="invest-painel-titulo">${titulo}</div>
+    <div class="invest-resumo-linha" style="border:none; padding-top:0;">
+      <span class="rotulo">Rentabilidade</span>
+      <span class="valor ${(pct || 0) >= 0 ? "positivo" : "negativo"}" style="font-size:1.4rem;">${pctFormatado(pct, true)}</span>
+    </div>
+    <div style="font-size:0.74rem; color:var(--muted);">
+      ${acimaCdi !== null
+        ? `<span class="${acimaCdi >= 0 ? "positivo" : "negativo"}">${Math.abs(acimaCdi).toFixed(2)}% ${acimaCdi >= 0 ? "acima" : "abaixo"} do CDI</span> · CDI no período: ${cdiPct.toFixed(2)}%`
+        : "Sem CDI do período pra comparar"}
+    </div>
+  </div>`;
+}
+
+function renderizarTabelaRentabilidade(tabela){
+  const container = document.getElementById("tabelaRentabilidade");
+  if (!tabela || tabela.length === 0){
+    container.innerHTML = `<div class="empty">Ainda não há um mês fechado pra calcular o retorno.</div>`;
+    return;
+  }
+  const celula = v => v === undefined
+    ? "<td>—</td>"
+    : `<td class="${v >= 0 ? "positivo" : "negativo"}">${v >= 0 ? "+" : ""}${v.toFixed(2)}%</td>`;
+  container.innerHTML = `
+    <div style="overflow-x:auto;">
+      <table class="tabela-historico-proventos">
+        <thead><tr><th>Ano</th>${NOMES_MESES_CURTOS.map(m => `<th>${m}</th>`).join("")}<th>Retorno anual</th><th>Acumulado</th></tr></thead>
+        <tbody>
+          ${tabela.map(linha => `
+            <tr>
+              <td>${linha.ano}</td>
+              ${NOMES_MESES_CURTOS.map((_, i) => celula(linha.meses[String(i + 1).padStart(2, "0")])).join("")}
+              <td class="${linha.retorno_anual >= 0 ? "positivo" : "negativo"}"><strong>${pctFormatado(linha.retorno_anual, true)}</strong></td>
+              <td class="${linha.acumulado >= 0 ? "positivo" : "negativo"}"><strong>${pctFormatado(linha.acumulado, true)}</strong></td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function carregarRentabilidade(){
+  try {
+    const res = await apiFetch(`${API}/investimentos/rentabilidade`, undefined, {silencioso: true});
+    const r = await res.json();
+    document.getElementById("cardsRentabilidade").innerHTML = [
+      cardRentabilidade("Rentabilidade total", r.rentabilidade_total_pct, r.cdi_total_pct),
+      cardRentabilidade("Últimos 12 meses", r.rentabilidade_12m_pct, r.cdi_12m_pct),
+      cardRentabilidade("Mês atual", r.rentabilidade_mes_pct, r.cdi_mes_pct),
+    ].join("");
+    renderizarTabelaRentabilidade(r.tabela);
+    if (chartRentabilidade) chartRentabilidade.destroy();
+    const ctx = document.getElementById("chartRentabilidade");
+    const serie = r.serie || [];
+    if (ctx && serie.length){
+      const corTexto = document.documentElement.getAttribute("data-tema") === "claro" ? "#6b7694" : "#8b96b3";
+      chartRentabilidade = new Chart(ctx.getContext("2d"), {
+        type: "line",
+        data: {
+          labels: serie.map(s => formatMes(s.mes)),
+          datasets: [
+            {label: "Rentabilidade", data: serie.map(s => s.rentabilidade_pct), borderColor: "#8e33ff", backgroundColor: "rgba(142,51,255,0.12)", fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2},
+            {label: "CDI", data: serie.map(s => s.cdi_pct), borderColor: "#ffab00", backgroundColor: "transparent", tension: 0.3, pointRadius: 0, borderWidth: 2},
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: {mode: "index", intersect: false},
+          scales: {
+            // Série longa (anos de histórico) não cabe com um rótulo por mês —
+            // o Chart.js escolhe quantos mostrar sem deixar o eixo ilegível.
+            x: {ticks: {color: corTexto, autoSkip: true, maxTicksLimit: 12, maxRotation: 0}, grid: {display: false}},
+            y: {ticks: {color: corTexto, callback: v => v + "%"}, grid: {color: "rgba(128,128,128,0.15)"}},
+          },
+          plugins: {
+            legend: {position: "bottom", labels: {usePointStyle: true, color: corTexto}},
+            tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y !== null ? ctx.parsed.y.toFixed(2) : "—"}%`}},
+          },
+        },
+      });
+    }
+  } catch (e) {}
+}
+
+// Rosca sem legenda própria do Chart.js: a legenda vira uma lista ao lado,
+// com nome e percentual alinhados, que é como o Investidor10 mostra e o que
+// aguenta muitas classes sem virar uma parede de chips.
+function roscaComLegenda(chartAtual, canvasId, legendaId, itens, formatarValor){
+  if (chartAtual) chartAtual.destroy();
+  const ctx = document.getElementById(canvasId);
+  const legenda = document.getElementById(legendaId);
+  if (legenda) legenda.innerHTML = "";
+  if (!ctx || itens.length === 0) return null;
+  // Cada item pode trazer a própria cor (as classes trazem, pra fatia e ponto
+  // do cabeçalho combinarem e não mudarem quando a ordem muda).
+  const cores = itens.map((item, i) => item.cor || PALETA_CORES.slice(1)[i % (PALETA_CORES.length - 1)]);
+  const total = itens.reduce((s, i) => s + i.valor, 0);
+  if (legenda){
+    legenda.innerHTML = itens.map((item, i) => `
+      <div class="linha">
+        <span class="ponto" style="background:${cores[i]}"></span>
+        <span class="nome">${escapeHtml(item.nome)}</span>
+        <span class="pct">${total ? ((item.valor / total) * 100).toFixed(2) : "0.00"}%</span>
+      </div>`).join("");
+  }
+  return new Chart(ctx.getContext("2d"), {
     type: "doughnut",
     // PALETA_CORES é indexada por hash (corPara), não por posição — os dois primeiros
     // tons são de propósito iguais nesse uso. Aqui o Chart.js pinta por índice
     // sequencial, então usa a partir do 2º item pra cada fatia sair de uma cor diferente.
-    data: {labels, datasets: [{data: valores, backgroundColor: PALETA_CORES.slice(1), borderWidth: 0}]},
+    data: {labels: itens.map(i => i.nome), datasets: [{data: itens.map(i => i.valor), backgroundColor: cores, borderWidth: 0}]},
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false, cutout: "62%",
       plugins: {
-        legend: {
-          position: "bottom",
-          labels: {
-            usePointStyle: true, color: corTexto,
-            generateLabels: (chart) => chart.data.labels.map((label, i) => {
-              const valor = chart.data.datasets[0].data[i];
-              const pct = total ? ((valor / total) * 100).toFixed(1) : "0.0";
-              return {
-                text: `${label} (${pct}%)`, fillStyle: chart.data.datasets[0].backgroundColor[i],
-                strokeStyle: chart.data.datasets[0].backgroundColor[i], index: i,
-              };
-            }),
-          },
-        },
-        tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.label}: ${formatMoeda(ctx.parsed)}`}},
+        legend: {display: false},
+        tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.label}: ${formatarValor(ctx.parsed)}`}},
       },
     },
   });
 }
 
-function criarInvestimentoCardHTML(inv){
-  const div = document.createElement("div");
-  div.className = "meta-card investimento-card";
-  const positivo = (inv.rentabilidade_valor || 0) >= 0;
-  const temTicker = CLASSES_COM_TICKER_INVEST.includes(inv.classe);
-  div.innerHTML = `
-    <div class="meta-topo">
-      <span class="meta-nome">${escapeHtml(inv.nome)}</span>
-      <button class="icon danger" title="Excluir investimento">${ICO.x}</button>
-    </div>
-    <div class="meta-prazo">${ROTULOS_CLASSE_INVESTIMENTO[inv.classe] || inv.classe}${inv.ticker ? " · " + escapeHtml(inv.ticker) : ""}${inv.classe === "renda_fixa" && inv.tipo_investimento ? " · " + escapeHtml(ROTULOS_TIPO_INVESTIMENTO[inv.tipo_investimento] || inv.tipo_investimento) : ""}${inv.classe === "renda_fixa" && inv.emissor ? " · " + escapeHtml(inv.emissor) : ""}</div>
-    <div class="meta-valores"><span>Investido: ${formatMoeda(inv.valor_investido)}</span><span>Atual: ${formatMoeda(inv.valor_atual)}</span></div>
-    <div class="meta-valores">
-      <span class="${positivo ? "positivo" : "negativo"}">${positivo ? "+" : ""}${formatMoeda(inv.rentabilidade_valor)}${inv.rentabilidade_pct !== null && inv.rentabilidade_pct !== undefined ? ` (${positivo ? "+" : ""}${inv.rentabilidade_pct.toFixed(2)}%)` : ""}</span>
-      ${temTicker ? `<span>${inv.quantidade || 0} un · PM ${formatMoeda(inv.preco_medio)}</span>` : ""}
-    </div>
-    ${temTicker && !inv.cotacao_atual ? `<div class="cotacao-desatualizada">Cotação não configurada — usando o valor investido como aproximação</div>` : ""}
-    <button type="button" class="investimento-toggle">Ver operações ▾</button>
-    <div class="investimento-detalhe" hidden>
-      <div class="investimento-op-lista"></div>
-      <form class="investimento-op-form">
-        <select class="op-tipo">
-          <option value="provento">Provento</option>
-          ${["outro", "fundo"].includes(inv.classe) ? `<option value="reavaliacao">Atualizar valor</option>` : ""}
-        </select>
-        <select class="op-tipo-pagamento">
-          <option value="dividendo">Dividendo</option>
-          <option value="jscp">JSCP (15% de IR)</option>
-          <option value="rendimento">Rendimento</option>
-        </select>
-        <input type="number" class="op-valor" placeholder="Valor bruto (R$)" step="0.01" min="0.01">
-        <input type="date" class="op-data-com" title="Data Com (opcional)">
-        <input type="date" class="op-data" value="${hojeISO()}">
-        <div class="op-liquido-preview" style="flex:1 1 100%; font-size:0.76rem; color:var(--muted);"></div>
-        <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); flex:1 1 100%;">
-          <input type="checkbox" class="op-pago" checked style="width:auto;"> Já caiu na conta (senão fica "a receber")
-        </label>
-        <button type="submit">Registrar</button>
-      </form>
-    </div>
-  `;
-  div.querySelector(".meta-topo button").addEventListener("click", async () => {
-    if (!confirm(`Excluir "${inv.nome}"? Isso também apaga o histórico de operações e os lançamentos ligados a ele nas contas.`)) return;
-    try {
-      await apiFetch(`${API}/investimentos/${inv.id}`, {method:"DELETE"}, {sucesso:"Investimento excluído", erro:"Não foi possível excluir"});
-      carregarInvestimentos();
-    } catch (e) {}
-  });
-  const detalhe = div.querySelector(".investimento-detalhe");
-  const toggle = div.querySelector(".investimento-toggle");
-  toggle.addEventListener("click", async () => {
-    const abrindo = detalhe.hidden;
-    detalhe.hidden = !abrindo;
-    toggle.textContent = abrindo ? "Ocultar operações ▴" : "Ver operações ▾";
-    if (abrindo) await carregarOperacoesInvestimento(inv, detalhe.querySelector(".investimento-op-lista"));
-  });
-  const opForm = div.querySelector(".investimento-op-form");
-  const opPagoLabel = opForm.querySelector(".op-pago").closest("label");
-  const opTipoPagamento = opForm.querySelector(".op-tipo-pagamento");
-  const opDataCom = opForm.querySelector(".op-data-com");
-  const opValor = opForm.querySelector(".op-valor");
-  const opLiquidoPreview = opForm.querySelector(".op-liquido-preview");
-  function atualizarCamposProvento(){
-    const ehProvento = opForm.querySelector(".op-tipo").value === "provento";
-    opPagoLabel.style.display = ehProvento ? "" : "none";
-    opTipoPagamento.style.display = ehProvento ? "" : "none";
-    opDataCom.style.display = ehProvento ? "" : "none";
-    atualizarLiquidoPreview();
-  }
-  function atualizarLiquidoPreview(){
-    const ehProvento = opForm.querySelector(".op-tipo").value === "provento";
-    if (!ehProvento){ opLiquidoPreview.textContent = ""; return; }
-    const bruto = parseFloat(opValor.value) || 0;
-    const liquido = opTipoPagamento.value === "jscp" ? bruto * 0.85 : bruto;
-    opLiquidoPreview.textContent = bruto > 0 ? `Líquido estimado: ${formatMoeda(liquido)}` : "";
-  }
-  opForm.querySelector(".op-tipo").addEventListener("change", atualizarCamposProvento);
-  opTipoPagamento.addEventListener("change", atualizarLiquidoPreview);
-  opValor.addEventListener("input", atualizarLiquidoPreview);
-  atualizarCamposProvento();
-  opForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const tipoOp = opForm.querySelector(".op-tipo").value;
-    const body = {
-      tipo: tipoOp,
-      valor: opValor.value,
-      data: opForm.querySelector(".op-data").value,
-    };
-    if (tipoOp === "provento"){
-      body.pago = opForm.querySelector(".op-pago").checked;
-      body.tipo_pagamento = opTipoPagamento.value;
-      body.data_com = opDataCom.value || null;
-    }
-    try {
-      await apiFetch(`${API}/investimentos/${inv.id}/operacoes`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
-        {sucesso: body.pago === false ? "Provento agendado como a receber" : "Operação registrada", erro:"Não foi possível registrar a operação"});
-      form.reset();
-      form.querySelector(".op-data").value = hojeISO();
-      form.querySelector(".op-pago").checked = true;
-      atualizarCamposProvento();
-      carregarInvestimentos();
-      carregarContas();
-    } catch (err) {}
-  });
-  return div;
+// Cor fixa por classe: a fatia da rosca e o ponto do cabeçalho de "Meus
+// ativos" são a mesma cor, e ela não muda quando a ordem por valor muda.
+// Escolhidas à mão em vez de tiradas da PALETA_CORES por índice — ali a
+// renda fixa calhava num cinza quase branco, que some no tema claro.
+const CORES_CLASSE_INVESTIMENTO = {
+  acao: "#00a76f", fii: "#00b8d9", etf: "#ffab00", bdr: "#8e33ff", cripto: "#f0932b",
+  stock: "#4dd0e1", reit: "#f78fb3", etf_internacional: "#82e0aa",
+  renda_fixa: "#2f80ed", fundo: "#a3826c", outro: "#8b96b3",
+};
+function corDaClasse(classe){
+  return CORES_CLASSE_INVESTIMENTO[classe] || "#8b96b3";
 }
+
+function atualizarGraficoInvestimentosClasse(){
+  const porClasse = {};
+  investimentosCache.forEach(i => { porClasse[i.classe] = (porClasse[i.classe] || 0) + (i.valor_atual || 0); });
+  const itens = Object.entries(porClasse)
+    .map(([c, valor]) => ({nome: ROTULOS_CLASSE_INVESTIMENTO[c] || c, valor, cor: corDaClasse(c)}))
+    .sort((a, b) => b.valor - a.valor);
+  chartInvestimentosClasse = roscaComLegenda(
+    chartInvestimentosClasse, "chartInvestimentosClasse", "legendaClasses", itens, formatMoeda);
+}
+
+// O provento avulso é lançado por um modal próprio, aberto pelo menu de
+// opções da linha do ativo — o formulário embutido em card que existia aqui
+// saiu junto com os cards, que a tabela de posições substituiu.
+function abrirModalProvento(inv){
+  proventoInvestimentoAtual = inv;
+  document.getElementById("proventoTitulo").textContent = `Lançar provento — ${inv.nome}`;
+  document.getElementById("proventoTipoPagamento").value = inv.classe === "fii" ? "rendimento" : "dividendo";
+  document.getElementById("proventoDataCom").value = "";
+  document.getElementById("proventoData").value = hojeISO();
+  document.getElementById("proventoValor").value = "";
+  document.getElementById("proventoPago").checked = true;
+  atualizarLiquidoProvento();
+  document.getElementById("modalProvento").classList.add("ativo");
+}
+let proventoInvestimentoAtual = null;
+
+function atualizarLiquidoProvento(){
+  const bruto = parseFloat(document.getElementById("proventoValor").value) || 0;
+  // JSCP tem 15% de IR retido na fonte; dividendo e rendimento não têm.
+  const liquido = document.getElementById("proventoTipoPagamento").value === "jscp" ? bruto * 0.85 : bruto;
+  document.getElementById("proventoLiquidoTexto").textContent = formatMoeda(liquido);
+}
+document.getElementById("proventoValor").addEventListener("input", atualizarLiquidoProvento);
+document.getElementById("proventoTipoPagamento").addEventListener("change", atualizarLiquidoProvento);
+document.getElementById("proventoCancelar").addEventListener("click", () => {
+  document.getElementById("modalProvento").classList.remove("ativo");
+});
+document.getElementById("proventoSalvar").addEventListener("click", async () => {
+  if (!proventoInvestimentoAtual) return;
+  const valor = parseFloat(document.getElementById("proventoValor").value) || 0;
+  if (valor <= 0){ showToast("Informe o valor bruto do provento", "erro"); return; }
+  const pago = document.getElementById("proventoPago").checked;
+  const body = {
+    tipo: "provento", valor,
+    data: document.getElementById("proventoData").value || hojeISO(),
+    data_com: document.getElementById("proventoDataCom").value || null,
+    tipo_pagamento: document.getElementById("proventoTipoPagamento").value,
+    pago,
+  };
+  try {
+    await apiFetch(`${API}/investimentos/${proventoInvestimentoAtual.id}/operacoes`, {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body),
+    }, {sucesso: pago ? "Provento registrado" : "Provento agendado como a receber", erro: "Não foi possível registrar o provento"});
+    document.getElementById("modalProvento").classList.remove("ativo");
+    carregarInvestimentos();
+    carregarContas();
+    if (proventosCache) carregarProventos();
+  } catch (e) {}
+});
 
 async function carregarOperacoesInvestimento(inv, container){
   container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
@@ -4513,10 +4975,14 @@ async function carregarOperacoesInvestimento(inv, container){
       container.innerHTML = `<div class="empty" style="padding:4px 0;">Nenhuma operação registrada ainda.</div>`;
       return;
     }
-    const ROTULOS_TIPO_OP = {aporte: "Aporte", resgate: "Resgate", provento: "Provento", reavaliacao: "Valor atualizado"};
+    const ROTULOS_TIPO_OP = {aporte: "Compra", resgate: "Venda", provento: "Provento", reavaliacao: "Valor atualizado"};
     container.innerHTML = operacoes.map(op => `
       <div class="investimento-op-linha">
-        <span class="op-desc">${ROTULOS_TIPO_OP[op.tipo] || op.tipo} · ${formatData(op.data)}${op.quantidade ? ` · ${op.quantidade} un × ${formatMoeda(op.preco_unitario)}` : ""}</span>
+        <span class="op-desc">${ROTULOS_TIPO_OP[op.tipo] || op.tipo} · ${formatData(op.data)}${
+          op.tipo === "provento"
+            ? (op.tipo_pagamento ? ` · ${ROTULOS_TIPO_PAGAMENTO[op.tipo_pagamento] || op.tipo_pagamento}` : "")
+            : (op.quantidade ? ` · ${formatQuantidade(op.quantidade)} × ${formatMoeda(op.preco_unitario)}` : "")
+        }</span>
         <span>${formatMoeda(op.valor)} <button type="button" class="icon danger op-excluir" data-id="${op.id}" title="Excluir operação">${ICO.x}</button></span>
       </div>
     `).join("");
@@ -4527,6 +4993,9 @@ async function carregarOperacoesInvestimento(inv, container){
           await apiFetch(`${API}/investimentos/operacoes/${btn.dataset.id}`, {method:"DELETE"}, {sucesso:"Operação excluída", erro:"Não foi possível excluir"});
           carregarInvestimentos();
           carregarContas();
+          // Só se a aba Proventos já tiver sido aberta — senão seria uma
+          // requisição pra atualizar uma tela que o usuário nem viu ainda.
+          if (proventosCache) carregarProventos();
           await carregarOperacoesInvestimento(inv, container);
         } catch (e) {}
       });
@@ -4555,9 +5024,11 @@ document.getElementById("btnImportarProventos").addEventListener("click", async 
   try {
     await apiFetch(`${API}/investimentos/importar-proventos`, {method:"POST"}, {sucesso:"Proventos importados", erro:"Não foi possível importar"});
     carregarProventos();
+    carregarInvestimentos();   // proventos novos entram no lucro total e nos cards
+    carregarContas();          // e caem como receita nas contas
   } catch (err) {}
   btn.disabled = false;
-  btn.textContent = "Importar proventos";
+  btn.textContent = "Importar proventos agora";
 });
 
 // ---------- Modal "Adicionar ativo" (compra/venda) ----------
@@ -4583,7 +5054,10 @@ function atualizarRotulosTipoAtivo(tipo){
   document.getElementById("ativoSalvar").textContent = compra ? "Registrar compra" : "Registrar venda";
 }
 
-function abrirModalAdicionarAtivo(){
+// `opcoes` deixa abrir o modal já apontado pro que o usuário clicou: a classe
+// escolhida no rodapé de um bloco, ou um ativo específico quando vem do menu
+// de uma linha (aí só falta a quantidade e o preço).
+function abrirModalAdicionarAtivo(opcoes = {}){
   document.getElementById("ativoClasseInput").value = "";
   document.getElementById("ativoTickerInput").value = "";
   document.getElementById("ativoNomeInput").value = "";
@@ -4607,13 +5081,28 @@ function abrirModalAdicionarAtivo(){
   document.getElementById("ativoValorWrap").style.display = "none";
   document.getElementById("ativoContaInput").disabled = false;
   ativoNomeSelecionado = "";
+  const tipo = opcoes.tipo === "resgate" ? "resgate" : "aporte";
   document.querySelectorAll("#ativoTipoSegmented button").forEach(b => b.classList.remove("ativo"));
-  document.querySelector('#ativoTipoSegmented button[data-tipo="aporte"]').classList.add("ativo");
-  atualizarRotulosTipoAtivo("aporte");
+  document.querySelector(`#ativoTipoSegmented button[data-tipo="${tipo}"]`).classList.add("ativo");
+  atualizarRotulosTipoAtivo(tipo);
+
+  const inv = opcoes.investimento;
+  const classe = inv ? inv.classe : opcoes.classe;
+  if (classe){
+    document.getElementById("ativoClasseInput").value = classe;
+    document.getElementById("ativoClasseInput").dispatchEvent(new Event("change"));
+  }
+  if (inv){
+    ativoNomeSelecionado = inv.nome;
+    if (inv.ticker) document.getElementById("ativoTickerInput").value = inv.ticker;
+    else document.getElementById("ativoNomeInput").value = inv.nome;
+    if (inv.conta_id) document.getElementById("ativoContaInput").value = inv.conta_id;
+    if (inv.cotacao_atual) document.getElementById("ativoPrecoInput").value = inv.cotacao_atual;
+  }
   atualizarValorTotalAtivo();
   document.getElementById("modalAdicionarAtivo").classList.add("ativo");
 }
-document.getElementById("btnAdicionarAtivo").addEventListener("click", abrirModalAdicionarAtivo);
+document.getElementById("btnAdicionarAtivo").addEventListener("click", () => abrirModalAdicionarAtivo());
 document.getElementById("ativoCancelar").addEventListener("click", () => {
   document.getElementById("modalAdicionarAtivo").classList.remove("ativo");
 });
@@ -4622,8 +5111,7 @@ document.getElementById("ativoCancelar").addEventListener("click", () => {
 let chartAlocacaoIdeal = null;
 
 function criarLinhaAlocacao(classe, valor){
-  const idx = Object.keys(ROTULOS_CLASSE_INVESTIMENTO).indexOf(classe);
-  const cor = PALETA_CORES.slice(1)[idx % (PALETA_CORES.length - 1)];
+  const cor = corDaClasse(classe);  // mesma cor da rosca "Ativos na carteira"
   const div = document.createElement("div");
   div.className = "alocacao-linha";
   div.dataset.classe = classe;
@@ -4633,7 +5121,7 @@ function criarLinhaAlocacao(classe, valor){
     <div class="alocacao-stepper">
       <button type="button" class="alocacao-menos">−</button>
       <input type="number" class="alocacao-input" data-classe="${classe}" min="0" max="100" step="1" value="${valor}">
-      <span>%</span>
+      <span class="simbolo">%</span>
       <button type="button" class="alocacao-mais">+</button>
     </div>
     <button type="button" class="icon danger alocacao-remover" title="Remover">${ICO.x}</button>
@@ -4668,7 +5156,11 @@ function atualizarNovaClasseOpcoes(){
 function atualizarGraficoAlocacaoIdeal(){
   const linhas = [...document.querySelectorAll(".alocacao-linha")];
   const total = linhas.reduce((s, el) => s + (parseFloat(el.querySelector(".alocacao-input").value) || 0), 0);
-  document.getElementById("alocacaoTotalTexto").textContent = `${total.toFixed(0)}%`;
+  const alvoTotal = document.getElementById("alocacaoTotalTexto");
+  alvoTotal.textContent = `${total.toFixed(0)}%`;
+  // Verde só quando fecha em 100%: a soma é a meta da carteira inteira, e
+  // fechar em 80% ou 120% faria o "Comprar?" de cada ativo mentir.
+  alvoTotal.className = linhas.length === 0 ? "" : (Math.round(total) === 100 ? "positivo" : "negativo");
   if (chartAlocacaoIdeal) chartAlocacaoIdeal.destroy();
   const ctx = document.getElementById("chartAlocacaoIdeal");
   if (!ctx || linhas.length === 0) return;
@@ -4686,7 +5178,7 @@ function atualizarGraficoAlocacaoIdeal(){
   });
 }
 
-document.getElementById("btnConfigurarAlocacao").addEventListener("click", () => {
+function abrirModalAlocacaoIdeal(){
   const classesNaCarteira = [...new Set(investimentosCache.map(inv => inv.classe))];
   const classes = [...new Set([...classesNaCarteira, ...Object.keys(alocacaoIdealCache)])];
   const campos = document.getElementById("alocacaoIdealCampos");
@@ -4699,7 +5191,10 @@ document.getElementById("btnConfigurarAlocacao").addEventListener("click", () =>
   atualizarNovaClasseOpcoes();
   atualizarGraficoAlocacaoIdeal();
   document.getElementById("modalAlocacaoIdeal").classList.add("ativo");
-});
+}
+// O botão aparece nas duas abas que mostram "Meus ativos" (Resumo e Posições).
+document.getElementById("btnConfigurarAlocacao").addEventListener("click", abrirModalAlocacaoIdeal);
+document.getElementById("btnConfigurarAlocacao2").addEventListener("click", abrirModalAlocacaoIdeal);
 document.getElementById("alocacaoAdicionarBtn").addEventListener("click", () => {
   const classe = document.getElementById("alocacaoNovaClasse").value;
   if (!classe) return;
@@ -4902,45 +5397,73 @@ document.getElementById("ativoSalvar").addEventListener("click", async () => {
   } catch (e) {}
 });
 
-// ---------- Sub-abas Resumo / Proventos ----------
+// ---------- Sub-abas de Investimentos ----------
+const SUB_ABAS_INVESTIMENTO = ["resumo", "posicoes", "proventos", "patrimonio", "rentabilidade"];
 document.querySelectorAll("#investimentoSubnav button").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("#investimentoSubnav button").forEach(b => b.classList.remove("ativo"));
     btn.classList.add("ativo");
-    const ehResumo = btn.dataset.sub === "resumo";
-    document.getElementById("subInvestimentosResumo").hidden = !ehResumo;
-    document.getElementById("subInvestimentosProventos").hidden = ehResumo;
-    if (!ehResumo) carregarProventos();
+    const sub = btn.dataset.sub;
+    SUB_ABAS_INVESTIMENTO.forEach(nome => {
+      document.getElementById("subInvestimentos" + nome.charAt(0).toUpperCase() + nome.slice(1)).hidden = nome !== sub;
+    });
+    if (sub === "posicoes") renderizarPosicoes("listaPosicoes");
+    if (sub === "proventos") carregarProventos();
+    if (sub === "patrimonio") carregarPatrimonio();
+    if (sub === "rentabilidade") carregarRentabilidade();
   });
 });
 
 let chartEvolucaoProventos = null, chartProventosPorAtivo = null;
 
+// Aba Proventos: resumo lateral, evolução (mensal ou anual), histórico ano×mês
+// e a lista completa "Meus proventos" — os quatro blocos que o Investidor10
+// mostra. Tudo vem de /api/investimentos/proventos numa chamada só; alternar
+// entre mensal/anual ou filtrar por status é trabalho de tela, não de rota.
+let proventosCache = null;
+let proventosPeriodo = "mensal";
+let proventosFiltroStatus = "todos";
+const PROVENTOS_POR_PAGINA = 25;
+let proventosVisiveis = PROVENTOS_POR_PAGINA;
+
 async function carregarProventos(){
-  let resumo;
   try {
     const res = await apiFetch(`${API}/investimentos/proventos`, undefined, {erro:"Não foi possível carregar os proventos"});
-    resumo = await res.json();
+    proventosCache = await res.json();
   } catch (e) { return; }
+  renderizarProventos();
+}
 
+function renderizarProventos(){
+  const resumo = proventosCache;
+  if (!resumo) return;
+
+  document.getElementById("proventosMediaMensal").textContent = formatMoeda(resumo.media_mensal_12m);
+  document.getElementById("proventosTotal12m").textContent = formatMoeda(resumo.total_12m);
+  document.getElementById("proventosTotalCarteira").textContent = formatMoeda(resumo.total_carteira);
   document.getElementById("proventosTotalReceber").textContent = formatMoeda(resumo.total_a_receber);
 
   const corTexto = document.documentElement.getAttribute("data-tema") === "claro" ? "#6b7694" : "#8b96b3";
   if (chartEvolucaoProventos) chartEvolucaoProventos.destroy();
   const ctxEvo = document.getElementById("chartEvolucaoProventos");
-  if (ctxEvo && resumo.evolucao.length){
+  const anual = proventosPeriodo === "anual";
+  const serie = anual ? (resumo.evolucao_anual || []) : (resumo.evolucao || []);
+  if (ctxEvo && serie.length){
     chartEvolucaoProventos = new Chart(ctxEvo.getContext("2d"), {
       type: "bar",
       data: {
-        labels: resumo.evolucao.map(e => formatMes(e.mes)),
+        labels: serie.map(e => anual ? e.ano : formatMes(e.mes)),
         datasets: [
-          {label: "Recebido", data: resumo.evolucao.map(e => e.recebido), backgroundColor: "rgba(0,167,111,0.85)", borderRadius: 6},
-          {label: "A receber", data: resumo.evolucao.map(e => e.a_receber), backgroundColor: "rgba(255,171,0,0.85)", borderRadius: 6},
+          {label: "Recebidos", data: serie.map(e => e.recebido), backgroundColor: "rgba(0,167,111,0.85)", borderRadius: 6},
+          {label: "A receber", data: serie.map(e => e.a_receber), backgroundColor: "rgba(255,171,0,0.85)", borderRadius: 6},
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        scales: {x: {ticks: {color: corTexto}, grid: {display: false}}, y: {ticks: {color: corTexto}, grid: {color: "rgba(128,128,128,0.15)"}}},
+        scales: {
+          x: {stacked: true, ticks: {color: corTexto}, grid: {display: false}},
+          y: {stacked: true, ticks: {color: corTexto}, grid: {color: "rgba(128,128,128,0.15)"}},
+        },
         plugins: {
           legend: {position: "bottom", labels: {usePointStyle: true, color: corTexto}},
           tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}},
@@ -4949,81 +5472,124 @@ async function carregarProventos(){
     });
   }
 
-  if (chartProventosPorAtivo) chartProventosPorAtivo.destroy();
-  const ctxAtivo = document.getElementById("chartProventosPorAtivo");
-  if (ctxAtivo && resumo.por_ativo.length){
-    chartProventosPorAtivo = new Chart(ctxAtivo.getContext("2d"), {
-      type: "doughnut",
-      data: {
-        labels: resumo.por_ativo.map(a => a.nome),
-        datasets: [{data: resumo.por_ativo.map(a => a.valor), backgroundColor: PALETA_CORES.slice(1), borderWidth: 0}],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: {position: "bottom", labels: {usePointStyle: true, color: corTexto}},
-          tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.label}: ${formatMoeda(ctx.parsed)}`}},
-        },
-      },
-    });
-  }
+  chartProventosPorAtivo = roscaComLegenda(
+    chartProventosPorAtivo, "chartProventosPorAtivo", "legendaProventosAtivo",
+    (resumo.por_ativo || []).map(a => ({nome: a.nome, valor: a.valor})), formatMoeda);
 
-  const tabela = document.getElementById("tabelaProventosMes");
-  if (resumo.tabela_mes_atual.length === 0){
-    tabela.innerHTML = `<div class="empty">Nenhum provento neste mês.</div>`;
-  } else {
-    tabela.innerHTML = resumo.tabela_mes_atual.map(op => `
-      <div class="provento-linha">
-        <span class="provento-ativo">${escapeHtml(op.investimento_nome)} · ${formatData(op.data)}${op.tipo_pagamento ? " · " + (ROTULOS_TIPO_PAGAMENTO[op.tipo_pagamento] || op.tipo_pagamento) : ""}${op.origem === "auto_brapi" ? ` <span class="provento-status pago" style="font-weight:400;">Importado</span>` : ""}</span>
-        <span class="provento-valor">
-          ${op.valor_bruto && op.valor_bruto !== op.valor ? `<span style="color:var(--muted); font-weight:400; margin-right:6px;">bruto ${formatMoeda(op.valor_bruto)}</span>` : ""}
-          ${formatMoeda(op.valor)}
-        </span>
-        <span class="provento-status ${op.pago ? "pago" : "a-receber"}">
-          ${op.pago ? "Pago" : "A receber"}
-          ${!op.pago && op.lancamento_id ? `<button type="button" class="secondary marcar-recebido" data-lancamento="${op.lancamento_id}">Marcar recebido</button>` : ""}
-        </span>
-      </div>
-    `).join("");
-    tabela.querySelectorAll(".marcar-recebido").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        try {
-          await apiFetch(`${API}/lancamentos/${btn.dataset.lancamento}/pagamento`, {
-            method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({pago: true}),
-          }, {sucesso: "Provento marcado como recebido", erro: "Não foi possível marcar como recebido"});
-          carregarProventos();
-        } catch (e) {}
-      });
-    });
-  }
-
-  const historico = document.getElementById("historicoProventos");
-  if (!resumo.historico_anual || resumo.historico_anual.length === 0){
-    historico.innerHTML = `<div class="empty">Sem histórico ainda.</div>`;
-  } else {
-    historico.innerHTML = `
-      <div style="overflow-x:auto;">
-        <table class="tabela-historico-proventos">
-          <thead><tr><th>Ano</th>${NOMES_MESES_CURTOS.map(m => `<th>${m}</th>`).join("")}<th>Média</th><th>Total</th></tr></thead>
-          <tbody>
-            ${resumo.historico_anual.map(linha => `
-              <tr>
-                <td>${linha.ano}</td>
-                ${NOMES_MESES_CURTOS.map((_, i) => {
-                  const numeroMes = String(i + 1).padStart(2, "0");
-                  const valor = linha.meses[numeroMes];
-                  return `<td>${valor ? formatMoeda(valor) : "—"}</td>`;
-                }).join("")}
-                <td><strong>${formatMoeda(linha.media)}</strong></td>
-                <td><strong>${formatMoeda(linha.total)}</strong></td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
+  renderizarHistoricoProventos(resumo.historico_anual || []);
+  renderizarTabelaProventos(resumo.detalhados || []);
 }
+
+function renderizarHistoricoProventos(historico){
+  const container = document.getElementById("historicoProventos");
+  if (historico.length === 0){
+    container.innerHTML = `<div class="empty">Nenhum provento recebido ainda.</div>`;
+    return;
+  }
+  container.innerHTML = `
+    <div style="overflow-x:auto;">
+      <table class="tabela-historico-proventos">
+        <thead><tr><th>Ano</th>${NOMES_MESES_CURTOS.map(m => `<th>${m}</th>`).join("")}<th>Média</th><th>Total</th></tr></thead>
+        <tbody>
+          ${historico.map(linha => `
+            <tr>
+              <td>${linha.ano}</td>
+              ${NOMES_MESES_CURTOS.map((_, i) => {
+                const valor = linha.meses[String(i + 1).padStart(2, "0")];
+                return `<td>${valor ? formatMoeda(valor) : "—"}</td>`;
+              }).join("")}
+              <td><strong>${formatMoeda(linha.media)}</strong></td>
+              <td><strong>${formatMoeda(linha.total)}</strong></td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderizarTabelaProventos(todos){
+  const container = document.getElementById("tabelaProventosDetalhe");
+  const lista = todos.filter(p =>
+    proventosFiltroStatus === "todos" ||
+    (proventosFiltroStatus === "recebidos" ? p.pago : !p.pago));
+  if (lista.length === 0){
+    container.innerHTML = `<div class="empty">Nenhum provento nesse filtro.</div>`;
+    return;
+  }
+  // Uma carteira antiga acumula centenas de proventos; despejar tudo de uma
+  // vez faz a página crescer sem fim. Mostra um bloco por vez, do mais
+  // recente pro mais antigo, com um botão pra continuar.
+  const total = lista.reduce((s, p) => s + p.valor_liquido, 0);
+  const visiveis = lista.slice(0, proventosVisiveis);
+  const restantes = lista.length - visiveis.length;
+  container.innerHTML = `
+    <div style="overflow-x:auto;">
+      <table class="posicao-tabela">
+        <thead><tr>
+          <th>Ativo</th><th>Tipo de ativo</th><th>Status</th><th>Tipo de pagamento</th>
+          <th>Data com</th><th>Data de pagamento</th><th>Quantidade</th>
+          <th>Valor por cota</th><th>Valor bruto</th><th>Total líquido</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${visiveis.map(p => `
+            <tr>
+              <td><span class="posicao-ativo-nome">${marcaAtivo(p.ticker || p.ativo)}${escapeHtml(p.ticker || p.ativo)}</span></td>
+              <td>${ROTULOS_CLASSE_INVESTIMENTO[p.classe] || p.classe}</td>
+              <td><span class="provento-status ${p.pago ? "pago" : "a-receber"}">${p.pago ? "Pago" : "A receber"}</span></td>
+              <td>${ROTULOS_TIPO_PAGAMENTO[p.tipo_pagamento] || "—"}</td>
+              <td>${p.data_com ? formatData(p.data_com) : "—"}</td>
+              <td>${formatData(p.data_pagamento)}</td>
+              <td>${p.quantidade ? formatQuantidade(p.quantidade) : "—"}</td>
+              <td>${p.valor_por_cota ? formatMoeda(p.valor_por_cota) : "—"}</td>
+              <td>${formatMoeda(p.valor_bruto)}</td>
+              <td><strong>${formatMoeda(p.valor_liquido)}</strong></td>
+              <td>${!p.pago && p.lancamento_id ? `<button type="button" class="secondary marcar-recebido" data-lancamento="${p.lancamento_id}">Marcar recebido</button>` : ""}</td>
+            </tr>`).join("")}
+        </tbody>
+        <tfoot><tr>
+          <td colspan="9"><strong>Total (${lista.length})</strong></td>
+          <td colspan="2"><strong>${formatMoeda(total)}</strong></td>
+        </tr></tfoot>
+      </table>
+    </div>
+    ${restantes > 0 ? `<div style="text-align:center; margin-top:10px;">
+      <button type="button" class="secondary" id="proventosVerMais">Ver mais ${Math.min(restantes, PROVENTOS_POR_PAGINA)} de ${restantes}</button>
+    </div>` : ""}`;
+  const verMais = document.getElementById("proventosVerMais");
+  if (verMais) verMais.addEventListener("click", () => {
+    proventosVisiveis += PROVENTOS_POR_PAGINA;
+    renderizarTabelaProventos(todos);
+  });
+  container.querySelectorAll(".marcar-recebido").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await apiFetch(`${API}/lancamentos/${btn.dataset.lancamento}/pagamento`, {
+          method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({pago: true}),
+        }, {sucesso: "Provento marcado como recebido", erro: "Não foi possível marcar como recebido"});
+        carregarProventos();
+        carregarContas();
+      } catch (e) {}
+    });
+  });
+}
+
+document.querySelectorAll("#proventosPeriodo button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#proventosPeriodo button").forEach(b => b.classList.remove("ativo"));
+    btn.classList.add("ativo");
+    proventosPeriodo = btn.dataset.periodo;
+    renderizarProventos();
+  });
+});
+document.querySelectorAll("#proventosFiltroStatus button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#proventosFiltroStatus button").forEach(b => b.classList.remove("ativo"));
+    btn.classList.add("ativo");
+    proventosFiltroStatus = btn.dataset.status;
+    proventosVisiveis = PROVENTOS_POR_PAGINA;  // troca de filtro volta ao início da lista
+    renderizarTabelaProventos((proventosCache && proventosCache.detalhados) || []);
+  });
+});
+
 
 // ---------- Holerite ----------
 function renderizarChartHolerites(holerites){

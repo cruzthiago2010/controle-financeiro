@@ -170,7 +170,11 @@ CATEGORIAS_DESPESA_PADRAO = ["Mercado", "Combustível", "Aluguel", "Energia", "�
 
 
 def get_db():
-    conn = sqlite3.connect(caminho_banco_atual())
+    # timeout de 30s (o padrão são 5): os dois ciclos de investimento rodam em
+    # threads próprias e escrevem em rajada, e no SQLite quem escreve tranca o
+    # banco inteiro. Sem essa folga, uma requisição que caísse junto de uma
+    # gravação longa morria com "database is locked" em vez de só esperar.
+    conn = sqlite3.connect(caminho_banco_atual(), timeout=30)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -2308,6 +2312,12 @@ def _bcb_serie(codigo, data_inicial, data_final):
         # uma resposta grande, não é sinal de que o serviço esteja fora do ar.
         timeout=60,
     )
+    # O SGS responde 404 quando não existe nenhum ponto no intervalo pedido —
+    # o que acontece todo dia, já que o CDI de hoje só é publicado à noite.
+    # Isso é "ainda não tem dado", não falha: devolver vazio deixa o ciclo
+    # seguir em silêncio em vez de encher o log de erro.
+    if resp.status_code == 404:
+        return []
     resp.raise_for_status()
     return resp.json()
 
@@ -2362,19 +2372,24 @@ def fator_indexador_em(conn, indexador, data_iso):
 def buscar_cotacoes_brapi(tickers):
     """Cotação de ações/FIIs/ETFs da B3 via brapi.dev. Sem BRAPI_TOKEN configurado
     só funciona pros tickers de teste gratuitos da própria brapi — o resto fica
-    sem atualizar (o card mostra "cotação não configurada")."""
+    sem atualizar (o card mostra "cotação não configurada"). O plano gratuito só
+    aceita 1 ativo por requisição (pedir vários de uma vez dá 400 e derruba a
+    atualização inteira), então busca um de cada vez — cada falha isolada só
+    deixa aquele ticker desatualizado, não trava o resto."""
     if not tickers:
         return {}
     params = {"token": BRAPI_TOKEN} if BRAPI_TOKEN else {}
-    resp = requests.get(
-        f"https://brapi.dev/api/quote/{','.join(tickers)}", params=params, timeout=15,
-    )
-    resp.raise_for_status()
     resultado = {}
-    for item in resp.json().get("results", []):
-        preco = item.get("regularMarketPrice")
-        if preco is not None:
-            resultado[item["symbol"]] = preco
+    for ticker in tickers:
+        try:
+            resp = requests.get(f"https://brapi.dev/api/quote/{ticker}", params=params, timeout=15)
+            resp.raise_for_status()
+            for item in resp.json().get("results", []):
+                preco = item.get("regularMarketPrice")
+                if preco is not None:
+                    resultado[item["symbol"]] = preco
+        except Exception as e:
+            print(f"[investimentos] falha ao buscar cotação B3 de {ticker}: {e}", flush=True)
     return resultado
 
 
@@ -2418,6 +2433,134 @@ def buscar_cambio_usd_brl():
     pública já usada pro CDI/IPCA."""
     linhas = _bcb_serie(1, datetime.now() - timedelta(days=7), datetime.now())
     return float(str(linhas[-1]["valor"]).replace(",", ".")) if linhas else None
+
+
+# ------------------- Histórico mensal de preço -------------------
+# O módulo nasceu em agosto/2026, mas as compras do usuário são bem mais
+# antigas. Sem preço do passado, "Evolução do Patrimônio" teria uma barra só e
+# "Rentabilidade comparada com o CDI" ficaria sem linha nenhuma. As três fontes
+# já usadas pra cotação do dia também servem o fechamento mês a mês, então a
+# reconstrução histórica não traz dependência externa nova.
+
+def _historico_para_meses(pontos):
+    """Converte [(timestamp_unix, preço)] no fechamento de cada mês. Quando o
+    mesmo mês aparece mais de uma vez fica valendo o ponto mais recente."""
+    por_mes = {}
+    for ts, valor in pontos:
+        if valor is None:
+            continue
+        mes = datetime.fromtimestamp(ts).strftime("%Y-%m")
+        por_mes[mes] = float(valor)
+    return por_mes
+
+
+def buscar_historico_cripto(ticker):
+    """Histórico de cripto em reais. A CoinGecko gratuita só devolve 365 dias
+    (mais que isso é 401), então ela entra como plano B — o principal é o
+    Yahoo, que tem a série longa mas cota em dólar e por isso precisa do
+    câmbio mês a mês. `ticker` é o id da CoinGecko (ex.: "bitcoin"); o
+    símbolo curto que o Yahoo quer (BTC) vem do catálogo local."""
+    resp = requests.get(
+        f"https://api.coingecko.com/api/v3/coins/{ticker}/market_chart",
+        params={"vs_currency": "brl", "days": "365"}, timeout=25,
+    )
+    resp.raise_for_status()
+    # a CoinGecko devolve o timestamp em milissegundos
+    return _historico_para_meses([(p[0] / 1000, p[1]) for p in resp.json().get("prices", [])])
+
+
+def simbolo_cripto(conn, ticker):
+    """Símbolo curto (BTC) do id da CoinGecko (bitcoin), pra montar o par que
+    o Yahoo entende. Sai do catálogo local — que já é atualizado todo dia
+    pela busca com autocompletar —, sem chamada externa nova."""
+    row = conn.execute(
+        "SELECT simbolo FROM ativo_catalogo WHERE classe = 'cripto' AND ticker = ?", (ticker,)
+    ).fetchone()
+    return (row["simbolo"] or "").upper() if row and row["simbolo"] else None
+
+
+def buscar_historico_yahoo(ticker):
+    """Histórico mensal do Yahoo Finance. Vale também pra B3, com o sufixo
+    ".SA" — o plano gratuito da brapi.dev só libera `range` até 3 meses (fora
+    os poucos tickers de demonstração), o que não desenha ano nenhum. O Yahoo
+    devolve 10 anos em reais sem chave, então quem manda no histórico é ele;
+    a brapi.dev continua sendo a fonte da cotação do dia e dos proventos."""
+    resp = requests.get(
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+        params={"range": "10y", "interval": "1mo"},
+        headers={"User-Agent": "Mozilla/5.0"}, timeout=25,
+    )
+    resp.raise_for_status()
+    r = resp.json()["chart"]["result"][0]
+    fechamentos = r["indicators"]["quote"][0]["close"]
+    return _historico_para_meses(list(zip(r["timestamp"], fechamentos)))
+
+
+def atualizar_historico_cotacoes(conn, somente_faltantes=False):
+    """Preenche o histórico mensal de cada ticker que alguém tem na carteira.
+    Roda no ciclo diário: preço de mês fechado não muda mais, então só os
+    meses ainda ausentes precisam de rede — quem já tem série completa custa
+    uma requisição por dia, não uma por hora. Com `somente_faltantes` pula
+    quem já tem série gravada, que é o que o botão "Atualizar cotações"
+    precisa: buscar o passado de um ativo recém-cadastrado sem refazer o de
+    todos os outros e deixar o usuário esperando."""
+    agora = datetime.now().isoformat()
+
+    def gravar_serie(chave, serie):
+        if not serie:
+            return
+        conn.executemany(
+            "INSERT INTO investimento_cotacao_historico (chave, mes, valor, atualizado_em) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(chave, mes) DO UPDATE SET valor = excluded.valor, atualizado_em = excluded.atualizado_em",
+            [(chave, mes, valor, agora) for mes, valor in serie.items()],
+        )
+        conn.commit()
+
+    # O câmbio vem primeiro porque a cripto depende dele: a série longa do
+    # Yahoo é em dólar e precisa virar real mês a mês antes de ser gravada.
+    # A fonte é o próprio Banco Central (série 1 do SGS), a mesma do dólar do
+    # dia, o que mantém passado e presente coerentes.
+    cambio_por_mes = {}
+    try:
+        linhas = _bcb_serie(1, datetime.now() - timedelta(days=365 * 10), datetime.now())
+        for linha in linhas:
+            _, mes, ano = linha["data"].split("/")
+            cambio_por_mes[f"{ano}-{mes}"] = float(str(linha["valor"]).replace(",", "."))
+        gravar_serie("USD_BRL", cambio_por_mes)
+    except Exception as e:
+        print(f"[investimentos] falha no histórico do câmbio: {e}", flush=True)
+
+    alvos = conn.execute(
+        "SELECT DISTINCT ticker, classe FROM investimentos WHERE ticker IS NOT NULL"
+    ).fetchall()
+    for alvo in alvos:
+        ticker, classe = alvo["ticker"], alvo["classe"]
+        if somente_faltantes and conn.execute(
+            "SELECT 1 FROM investimento_cotacao_historico WHERE chave = ? LIMIT 1", (ticker,)
+        ).fetchone():
+            continue
+        try:
+            if classe == "cripto":
+                simbolo = simbolo_cripto(conn, ticker)
+                serie = {}
+                if simbolo and cambio_por_mes:
+                    em_dolar = buscar_historico_yahoo(f"{simbolo}-USD")
+                    serie = {
+                        mes: valor * cambio_por_mes[mes]
+                        for mes, valor in em_dolar.items() if mes in cambio_por_mes
+                    }
+                if not serie:
+                    serie = buscar_historico_cripto(ticker)  # último ano, já em reais
+            elif classe in CLASSES_YAHOO:
+                serie = buscar_historico_yahoo(ticker)
+            elif classe in CLASSES_COM_DIVIDENDO_B3:
+                serie = buscar_historico_yahoo(f"{ticker}.SA")
+            else:
+                continue
+        except Exception as e:
+            print(f"[investimentos] falha no histórico de {ticker}: {e}", flush=True)
+            continue
+        gravar_serie(ticker, serie)
 
 
 def buscar_e_cachear_yahoo(conn, classe, q):
@@ -2514,26 +2657,116 @@ def atualizar_todas_cotacoes(conn):
     conn.commit()
 
 
-def atualizar_snapshots_patrimonio(conn):
-    """Um retrato por usuário do patrimônio investido no mês atual — não é
-    histórico de verdade (só existe a partir de quando isso entrou no ar),
-    mas é a única forma honesta de desenhar a evolução sem inventar dado do
-    passado. Roda junto do ciclo de cotação: o mês atual vai se atualizando
-    o dia inteiro, os meses passados nunca mais são tocados."""
-    mes = datetime.now().strftime("%Y-%m")
+def ultimo_dia_do_mes(mes):
+    ano, m = int(mes[:4]), int(mes[5:7])
+    return f"{mes}-{calendar.monthrange(ano, m)[1]:02d}"
+
+
+def preco_historico(conn, chave, mes, cache=None):
+    """Fechamento do ticker naquele mês. Mês sem pregão registrado (feriado,
+    ativo recém-listado, buraco na série) cai no fechamento anterior mais
+    próximo, em vez de zerar o patrimônio daquele mês no gráfico."""
+    if cache is not None and (chave, mes) in cache:
+        return cache[(chave, mes)]
+    row = conn.execute(
+        "SELECT valor FROM investimento_cotacao_historico WHERE chave = ? AND mes <= ? ORDER BY mes DESC LIMIT 1",
+        (chave, mes),
+    ).fetchone()
+    valor = row["valor"] if row else None
+    if cache is not None:
+        cache[(chave, mes)] = valor
+    return valor
+
+
+def patrimonio_em_mes(conn, invs_com_ops, mes, cache_preco=None):
+    """Quanto a carteira valia no fim de um mês qualquer — a soma, ativo a
+    ativo, da posição que existia naquela data avaliada ao preço daquela data.
+    É o que dá história ao gráfico de patrimônio e à comparação com o CDI."""
+    fim = ultimo_dia_do_mes(mes)
+    investido_total = atual_total = 0.0
+    for inv, operacoes in invs_com_ops:
+        ops = [o for o in operacoes if o["data"] <= fim]
+        if not ops:
+            continue
+        investido = sum(o["valor"] for o in ops if o["tipo"] == "aporte") - sum(
+            o["valor"] for o in ops if o["tipo"] == "resgate"
+        )
+        if inv["classe"] in CLASSES_COM_TICKER:
+            quantidade, custo = 0.0, 0.0
+            for o in ops:
+                if o["tipo"] == "aporte":
+                    quantidade += o["quantidade"] or 0
+                    custo += o["valor"]
+                elif o["tipo"] == "resgate":
+                    qtd = o["quantidade"] or 0
+                    preco_medio = (custo / quantidade) if quantidade else 0
+                    custo -= preco_medio * qtd
+                    quantidade -= qtd
+            preco = preco_historico(conn, inv["ticker"], mes, cache_preco)
+            fator_cambio = 1.0
+            if inv["classe"] in CLASSES_YAHOO:
+                fator_cambio = preco_historico(conn, "USD_BRL", mes, cache_preco) or 1.0
+            atual = quantidade * preco * fator_cambio if (preco and quantidade) else custo
+        elif inv["classe"] == "renda_fixa":
+            atual = valor_atual_renda_fixa(conn, inv, ops, ate=fim)
+        else:
+            reavaliacoes = [o for o in ops if o["tipo"] == "reavaliacao"]
+            atual = reavaliacoes[-1]["valor"] if reavaliacoes else investido
+        investido_total += investido
+        atual_total += atual
+    return round(investido_total, 2), round(atual_total, 2)
+
+
+def atualizar_snapshots_patrimonio(conn, somente_mes_atual=False):
+    """Reconstrói o retrato mensal do patrimônio de cada usuário desde a
+    primeira compra, usando o histórico de preço de cada ativo. Recalcula
+    tudo em vez de só carimbar o mês atual: uma compra antiga lançada hoje
+    (ou um histórico de preço que só chegou agora) muda o passado do gráfico,
+    e ficar com o retrato velho seria mostrar um patrimônio que nunca houve.
+    O mês corrente sai do valor de mercado de agora, não do fechamento.
+
+    Com `somente_mes_atual` refaz só o mês corrente. É o que o ciclo horário
+    precisa — o passado só muda quando chega histórico novo, e refazê-lo com
+    o histórico ainda pela metade (logo que o app sobe, antes do ciclo diário
+    terminar) gravaria meses passados no valor de custo em vez do de mercado."""
     agora = datetime.now().isoformat()
+    mes_atual = datetime.now().strftime("%Y-%m")
     usuarios = conn.execute("SELECT DISTINCT usuario_id FROM investimentos").fetchall()
     for u in usuarios:
         usuario_id = u["usuario_id"]
         invs = conn.execute("SELECT * FROM investimentos WHERE usuario_id = ?", (usuario_id,)).fetchall()
-        investido = sum(investimento_computado(conn, i)["valor_investido"] for i in invs)
-        atual = sum(investimento_computado(conn, i)["valor_atual"] for i in invs)
-        conn.execute(
+        if not invs:
+            continue
+        invs_com_ops = [
+            (inv, conn.execute(
+                "SELECT * FROM investimento_operacoes WHERE investimento_id = ? ORDER BY data, id", (inv["id"],)
+            ).fetchall())
+            for inv in invs
+        ]
+        primeira = conn.execute(
+            "SELECT MIN(data) as data FROM investimento_operacoes WHERE usuario_id = ?", (usuario_id,)
+        ).fetchone()
+        if not primeira or not primeira["data"]:
+            continue
+
+        cache_preco = {}
+        linhas = []
+        mes = mes_atual if somente_mes_atual else primeira["data"][:7]
+        while mes <= mes_atual:
+            if mes == mes_atual:
+                investido = sum(investimento_computado(conn, i)["valor_investido"] for i in invs)
+                atual = sum(investimento_computado(conn, i)["valor_atual"] for i in invs)
+            else:
+                investido, atual = patrimonio_em_mes(conn, invs_com_ops, mes, cache_preco)
+            linhas.append((usuario_id, mes, round(investido, 2), round(atual, 2), agora))
+            mes = mes_seguinte(mes)
+
+        conn.executemany(
             "INSERT INTO investimento_snapshot_mensal (usuario_id, mes, valor_investido, valor_atual, atualizado_em) "
             "VALUES (?, ?, ?, ?, ?) ON CONFLICT(usuario_id, mes) DO UPDATE SET "
             "valor_investido = excluded.valor_investido, valor_atual = excluded.valor_atual, "
             "atualizado_em = excluded.atualizado_em",
-            (usuario_id, mes, investido, atual, agora),
+            linhas,
         )
     conn.commit()
 
@@ -2545,7 +2778,7 @@ def _loop_atualizar_cotacoes():
         try:
             conn = get_db()
             atualizar_todas_cotacoes(conn)
-            atualizar_snapshots_patrimonio(conn)
+            atualizar_snapshots_patrimonio(conn, somente_mes_atual=True)
             conn.close()
         except Exception as e:
             print(f"[investimentos] falha no ciclo de cotações: {e}", flush=True)
@@ -2600,11 +2833,14 @@ def atualizar_catalogo_ativos(conn):
             timeout=30,
         )
         resp.raise_for_status()
-        linhas = [(item["id"], f'{item["name"]} ({item["symbol"].upper()})') for item in resp.json()]
+        linhas = [
+            (item["id"], f'{item["name"]} ({item["symbol"].upper()})', item["symbol"].upper())
+            for item in resp.json()
+        ]
         conn.execute("DELETE FROM ativo_catalogo WHERE classe = 'cripto'")
         conn.executemany(
-            "INSERT INTO ativo_catalogo (classe, ticker, nome) VALUES ('cripto', ?, ?) "
-            "ON CONFLICT(classe, ticker) DO UPDATE SET nome = excluded.nome",
+            "INSERT INTO ativo_catalogo (classe, ticker, nome, simbolo) VALUES ('cripto', ?, ?, ?) "
+            "ON CONFLICT(classe, ticker) DO UPDATE SET nome = excluded.nome, simbolo = excluded.simbolo",
             linhas,
         )
         conn.commit()
@@ -2633,6 +2869,31 @@ def buscar_dividendos_brapi(ticker):
     return resultados[0].get("dividendsData", {}).get("cashDividends") or []
 
 
+def buscar_dividendos_yahoo(ticker_b3):
+    """Plano B pro histórico de proventos. O módulo de dividendos da brapi.dev
+    é pago fora dos poucos tickers de demonstração — sem ele a aba Proventos
+    ficaria vazia pra quase toda a carteira. O Yahoo entrega menos: só a data
+    ex-dividendo e o valor por cota, sem separar dividendo de JCP e sem a data
+    de pagamento. Então o que vem daqui é tratado como dividendo pago na
+    própria data-com, e é substituído se um dia a brapi.dev responder pelo
+    mesmo provento."""
+    resp = requests.get(
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker_b3}",
+        params={"range": "10y", "interval": "1mo", "events": "div"},
+        headers={"User-Agent": "Mozilla/5.0"}, timeout=25,
+    )
+    resp.raise_for_status()
+    eventos = (resp.json()["chart"]["result"][0].get("events") or {}).get("dividends") or {}
+    return [
+        {
+            "lastDatePrior": datetime.fromtimestamp(e["date"]).strftime("%Y-%m-%d"),
+            "paymentDate": datetime.fromtimestamp(e["date"]).strftime("%Y-%m-%d"),
+            "rate": e["amount"], "label": "DIVIDENDO",
+        }
+        for e in eventos.values() if e.get("date") and e.get("amount")
+    ]
+
+
 def quantidade_em_data(conn, investimento_id, data_limite):
     """Quantas cotas/ações o investimento tinha numa data específica — soma
     os aportes e subtrai os resgates até aquela data, pra saber quem tinha
@@ -2648,8 +2909,15 @@ def quantidade_em_data(conn, investimento_id, data_limite):
     return quantidade
 
 
-def _registrar_provento_importado(conn, inv, data_pagamento, data_com, tipo_pagamento, valor_bruto, valor_liquido, pago):
-    _, conta_nome = resolver_conta(conn, inv["conta_id"])
+def _registrar_provento_importado(conn, inv, data_pagamento, data_com, tipo_pagamento, valor_bruto, valor_liquido,
+                                  pago, quantidade=None, valor_por_cota=None):
+    # Não dá pra usar resolver_conta aqui: ela valida contra o uid() da sessão
+    # e a importação também roda no ciclo de segundo plano, fora de qualquer
+    # request. O dono é o do próprio investimento.
+    conta = conn.execute(
+        "SELECT nome FROM contas WHERE id = ? AND usuario_id = ?", (inv["conta_id"], inv["usuario_id"])
+    ).fetchone()
+    conta_nome = conta["nome"] if conta else ""
     mes = data_pagamento[:7]
     agora = datetime.now().isoformat()
     if pago:
@@ -2664,24 +2932,30 @@ def _registrar_provento_importado(conn, inv, data_pagamento, data_com, tipo_paga
          pago_val, data_pagamento_val, "Importado automaticamente (brapi.dev)", agora, inv["usuario_id"]),
     )
     lancamento_id = cur.lastrowid
+    # quantidade/preco_unitario aqui são as cotas na data base e o valor por
+    # cota anunciado — é o que a tabela "Meus proventos" mostra, e guardar
+    # agora evita ter que reconstituir depois a posição daquela data.
     conn.execute(
         "INSERT INTO investimento_operacoes (investimento_id, usuario_id, tipo, valor, data, lancamento_id, "
-        "observacao, criado_em, tipo_pagamento, data_com, valor_bruto, origem) "
-        "VALUES (?, ?, 'provento', ?, ?, ?, ?, ?, ?, ?, ?, 'auto_brapi')",
+        "observacao, criado_em, tipo_pagamento, data_com, valor_bruto, quantidade, preco_unitario, origem) "
+        "VALUES (?, ?, 'provento', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'auto_brapi')",
         (inv["id"], inv["usuario_id"], valor_liquido, data_pagamento, lancamento_id,
-         "Importado automaticamente", agora, tipo_pagamento, data_com, valor_bruto),
+         "Importado automaticamente", agora, tipo_pagamento, data_com, valor_bruto, quantidade, valor_por_cota),
     )
 
 
 def importar_proventos_automaticos(conn):
-    """Busca o histórico de dividendos já declarados (brapi.dev) dos ativos
-    com ticker que alguém já tem cadastrado, e cria a operação de provento
-    sozinho — sem repetir o que já foi importado antes. Só ação/FII/ETF/BDR
-    têm esse dado na B3; cripto e os ativos americanos (Yahoo) não entram
-    aqui. Data de pagamento no passado nasce "Pago" (é fato já ocorrido,
-    oficial da B3, não depende de confirmação); no futuro nasce "A receber"."""
-    if not BRAPI_TOKEN:
-        return
+    """Busca o histórico de proventos já declarados dos ativos com ticker que
+    alguém tem cadastrado e cria a operação sozinho — sem repetir o que já foi
+    importado antes. Só ação/FII/ETF/BDR têm esse dado na B3; cripto e os
+    ativos americanos não entram aqui. Data de pagamento no passado nasce
+    "Pago" (é fato já ocorrido, oficial da B3, não depende de confirmação);
+    no futuro nasce "A receber".
+
+    Fonte preferida é a brapi.dev, que traz tipo do pagamento, data-com e data
+    de pagamento separadas. Quando ela recusa — o módulo de dividendos é pago
+    e o plano gratuito só libera os tickers de demonstração — cai pro Yahoo,
+    que tem menos detalhe mas cobre a carteira inteira."""
     invs = conn.execute(
         "SELECT * FROM investimentos WHERE classe IN ({}) AND ticker IS NOT NULL".format(
             ",".join("?" * len(CLASSES_COM_DIVIDENDO_B3))
@@ -2690,11 +2964,17 @@ def importar_proventos_automaticos(conn):
     ).fetchall()
     hoje = datetime.now().strftime("%Y-%m-%d")
     for inv in invs:
+        dividendos = []
         try:
             dividendos = buscar_dividendos_brapi(inv["ticker"])
         except Exception as e:
-            print(f"[investimentos] falha ao buscar proventos de {inv['ticker']}: {e}", flush=True)
-            continue
+            print(f"[investimentos] proventos de {inv['ticker']} pela brapi falharam ({e}); tentando Yahoo", flush=True)
+        if not dividendos:
+            try:
+                dividendos = buscar_dividendos_yahoo(f"{inv['ticker']}.SA")
+            except Exception as e:
+                print(f"[investimentos] falha ao buscar proventos de {inv['ticker']}: {e}", flush=True)
+                continue
         for d in dividendos:
             payment_date = (d.get("paymentDate") or "")[:10]
             data_com = (d.get("lastDatePrior") or "")[:10] or None
@@ -2706,10 +2986,18 @@ def importar_proventos_automaticos(conn):
             if quantidade <= 0:
                 continue  # não tinha o ativo na data base, não faz jus a esse provento
             valor_bruto = round(quantidade * rate, 2)
+            # Um provento é único pela data-base e pelo valor por cota anunciado.
+            # Comparar por isso (e não pela data de pagamento) é o que evita
+            # duplicar quando o mesmo provento chega pelas duas fontes: o Yahoo
+            # não sabe a data de pagamento e usa a própria data-com no lugar.
             ja_existe = conn.execute(
-                "SELECT 1 FROM investimento_operacoes WHERE investimento_id = ? AND tipo = 'provento' "
-                "AND data = ? AND tipo_pagamento = ? AND ABS(COALESCE(valor_bruto, 0) - ?) < 0.01",
-                (inv["id"], payment_date, tipo_pagamento, valor_bruto),
+                "SELECT id FROM investimento_operacoes WHERE investimento_id = ? AND tipo = 'provento' AND ("
+                "  (COALESCE(data_com, data) = ? AND ABS(COALESCE(preco_unitario, -1) - ?) < 0.000001)"
+                # os proventos importados antes de o valor por cota passar a ser
+                # gravado só dão pra reconhecer pela data de pagamento e pelo valor
+                "  OR (preco_unitario IS NULL AND data = ? AND ABS(COALESCE(valor_bruto, 0) - ?) < 0.01)"
+                ")",
+                (inv["id"], data_com or payment_date, rate, payment_date, valor_bruto),
             ).fetchone()
             if ja_existe:
                 continue
@@ -2717,7 +3005,7 @@ def importar_proventos_automaticos(conn):
             try:
                 _registrar_provento_importado(
                     conn, inv, payment_date, data_com, tipo_pagamento, valor_bruto, valor_liquido,
-                    pago=payment_date <= hoje,
+                    pago=payment_date <= hoje, quantidade=quantidade, valor_por_cota=rate,
                 )
                 conn.commit()
             except Exception as e:
@@ -2732,7 +3020,9 @@ def _loop_atualizar_catalogo():
         try:
             conn = get_db()
             atualizar_catalogo_ativos(conn)
+            atualizar_historico_cotacoes(conn)
             importar_proventos_automaticos(conn)
+            atualizar_snapshots_patrimonio(conn)
             conn.close()
         except Exception as e:
             print(f"[investimentos] falha no ciclo do catálogo: {e}", flush=True)
@@ -2744,23 +3034,26 @@ def iniciar_agendador_catalogo():
     t.start()
 
 
-def valor_atual_renda_fixa(conn, inv, operacoes):
+def valor_atual_renda_fixa(conn, inv, operacoes, ate=None):
     """Cada aporte rende de forma independente a partir da própria data —
     aproximação razoável pra um app de finanças pessoais, não segue a
-    metodologia exata de cálculo de CETIP/B3 (dias úteis, base 252 etc.)."""
+    metodologia exata de cálculo de CETIP/B3 (dias úteis, base 252 etc.).
+    `ate` (AAAA-MM-DD) permite calcular quanto valia numa data passada, o que
+    a reconstrução histórica do patrimônio usa."""
     indexador = inv["indexador"]
     taxa = inv["taxa"] or 0
-    hoje = datetime.now().strftime("%Y-%m-%d")
+    data_ref = ate or datetime.now().strftime("%Y-%m-%d")
+    momento_ref = datetime.strptime(data_ref, "%Y-%m-%d")
     total = 0.0
     for op in operacoes:
-        if op["tipo"] in ("provento", "reavaliacao"):
+        if op["tipo"] in ("provento", "reavaliacao") or op["data"] > data_ref:
             continue
         sinal = 1 if op["tipo"] == "aporte" else -1
-        dias = max((datetime.now() - datetime.strptime(op["data"], "%Y-%m-%d")).days, 0)
+        dias = max((momento_ref - datetime.strptime(op["data"], "%Y-%m-%d")).days, 0)
         if indexador == "prefixado":
             fator = (1 + taxa / 100) ** (dias / 365)
         elif indexador in ("cdi", "ipca"):
-            fator_indice = fator_indexador_em(conn, indexador, hoje) / fator_indexador_em(conn, indexador, op["data"])
+            fator_indice = fator_indexador_em(conn, indexador, data_ref) / fator_indexador_em(conn, indexador, op["data"])
             if indexador == "cdi":
                 fator = 1 + (fator_indice - 1) * (taxa / 100)  # taxa = % do CDI, ex: 110
             else:
@@ -3007,6 +3300,12 @@ def criar_operacao_investimento(investimento_id):
         # imposto. O usuário digita o valor bruto anunciado; o que de fato cai
         # na conta (e vira o lançamento) é o líquido.
         valor = round(valor_bruto * 0.85, 2) if tipo_pagamento == "jscp" else round(valor_bruto, 2)
+        # Mesma informação que o provento importado guarda: cotas na data base
+        # e valor por cota, pras colunas de "Meus proventos".
+        if inv["classe"] in CLASSES_COM_TICKER:
+            quantidade = quantidade_em_data(conn, investimento_id, data_com or data_op) or None
+            if quantidade:
+                preco_unitario = round(valor_bruto / quantidade, 6)
     else:
         try:
             valor = float(data.get("valor"))
@@ -3082,6 +3381,11 @@ def deletar_operacao_investimento(item_id):
 def atualizar_cotacoes_agora():
     conn = get_db()
     atualizar_todas_cotacoes(conn)
+    # Ativo recém-cadastrado ainda não tem passado nenhum — sem isso ele
+    # entraria no gráfico de patrimônio só a partir de hoje, como se tivesse
+    # sido comprado agora.
+    atualizar_historico_cotacoes(conn, somente_faltantes=True)
+    atualizar_snapshots_patrimonio(conn)
     conn.close()
     return jsonify({"ok": True})
 
@@ -3156,15 +3460,8 @@ def resumo_investimentos():
         (uid(), mes_12m_atras),
     ).fetchone()["total"]
 
-    rentabilidade_pct_12m = None
-    snapshot_12m = conn.execute(
-        "SELECT valor_atual FROM investimento_snapshot_mensal WHERE usuario_id = ? AND mes = ?",
-        (uid(), mes_12m_atras),
-    ).fetchone()
-    if snapshot_12m and snapshot_12m["valor_atual"] > 0:
-        rentabilidade_pct_12m = round(
-            (patrimonio_atual - snapshot_12m["valor_atual"]) / snapshot_12m["valor_atual"] * 100, 2
-        )
+    _, retorno_por_mes = retornos_mensais(conn, uid(), patrimonio_atual)
+    rentabilidade_pct_12m = compor_retornos(retorno_por_mes, [m for m in retorno_por_mes if m >= mes_12m_atras])
 
     rentabilidade_pct_total = (
         round(ganho_capital / patrimonio_investido * 100, 2) if patrimonio_investido > 0 else None
@@ -3185,6 +3482,136 @@ def resumo_investimentos():
     })
 
 
+def _rentabilidade_cdi_periodo(conn, data_inicio, data_fim):
+    """Quanto o CDI puro rendeu entre duas datas, em % — pra comparar com a
+    rentabilidade da carteira (aba Rentabilidade)."""
+    fator_inicio = fator_indexador_em(conn, "cdi", data_inicio)
+    fator_fim = fator_indexador_em(conn, "cdi", data_fim)
+    if not fator_inicio:
+        return None
+    return round((fator_fim / fator_inicio - 1) * 100, 2)
+
+
+def retornos_mensais(conn, usuario_id, patrimonio_atual):
+    """Quanto a carteira rendeu em cada mês, isoladamente. Descontar o dinheiro
+    que entrou/saiu no mês é o que separa "rendeu" de "aportei mais": sem isso
+    um aporte grande apareceria como rentabilidade altíssima. É a fórmula de
+    Dietz simplificada — assume o fluxo no começo do mês em vez de ponderar
+    por dia, aproximação suficiente pro nível deste app."""
+    snapshots = conn.execute(
+        "SELECT mes, valor_investido, valor_atual FROM investimento_snapshot_mensal "
+        "WHERE usuario_id = ? ORDER BY mes",
+        (usuario_id,),
+    ).fetchall()
+    fluxos = {
+        r["mes"]: r["fluxo"] for r in conn.execute(
+            "SELECT substr(data, 1, 7) as mes, "
+            "SUM(CASE WHEN tipo = 'aporte' THEN valor WHEN tipo = 'resgate' THEN -valor ELSE 0 END) as fluxo "
+            "FROM investimento_operacoes WHERE usuario_id = ? AND tipo IN ('aporte', 'resgate') "
+            "GROUP BY substr(data, 1, 7)",
+            (usuario_id,),
+        ).fetchall()
+    }
+    valores_por_mes = {s["mes"]: s["valor_atual"] for s in snapshots}
+    valores_por_mes[datetime.now().strftime("%Y-%m")] = patrimonio_atual
+
+    retorno_por_mes = {}
+    meses_ordenados = sorted(valores_por_mes.keys())
+    for i, mes in enumerate(meses_ordenados):
+        anterior = valores_por_mes[meses_ordenados[i - 1]] if i > 0 else 0.0
+        base = anterior + fluxos.get(mes, 0.0)
+        if base > 0:
+            retorno_por_mes[mes] = round((valores_por_mes[mes] - base) / base * 100, 2)
+    return snapshots, retorno_por_mes
+
+
+def compor_retornos(retorno_por_mes, meses_janela):
+    """Rentabilidade de um período inteiro a partir dos retornos mês a mês —
+    juros compostos, não soma simples."""
+    fator, achou = 1.0, False
+    for m in meses_janela:
+        if m in retorno_por_mes:
+            fator *= 1 + retorno_por_mes[m] / 100
+            achou = True
+    return round((fator - 1) * 100, 2) if achou else None
+
+
+@app.route("/api/investimentos/rentabilidade", methods=["GET"])
+def rentabilidade_investimentos():
+    conn = get_db()
+    invs = conn.execute("SELECT * FROM investimentos WHERE usuario_id = ?", (uid(),)).fetchall()
+    patrimonio_investido = sum(investimento_computado(conn, i)["valor_investido"] for i in invs)
+    patrimonio_atual = sum(investimento_computado(conn, i)["valor_atual"] for i in invs)
+
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    hoje_mes = hoje[:7]
+
+    primeira_op = conn.execute(
+        "SELECT MIN(data) as data FROM investimento_operacoes WHERE usuario_id = ? AND tipo = 'aporte'",
+        (uid(),),
+    ).fetchone()
+    data_inicio_total = primeira_op["data"] if primeira_op and primeira_op["data"] else hoje
+
+    rentabilidade_total_pct = (
+        round((patrimonio_atual - patrimonio_investido) / patrimonio_investido * 100, 2)
+        if patrimonio_investido > 0 else None
+    )
+    cdi_total_pct = _rentabilidade_cdi_periodo(conn, data_inicio_total, hoje)
+
+    mes_12m_atras = hoje_mes
+    for _ in range(11):
+        mes_12m_atras = mes_anterior(mes_12m_atras)
+    cdi_12m_pct = _rentabilidade_cdi_periodo(conn, f"{mes_12m_atras}-01", hoje)
+    cdi_mes_pct = _rentabilidade_cdi_periodo(conn, f"{hoje_mes}-01", hoje)
+
+    snapshots, retorno_por_mes = retornos_mensais(conn, uid(), patrimonio_atual)
+
+    # Série acumulada mês a mês, pra desenhar junto com o CDI no gráfico —
+    # é a rentabilidade acumulada desde o início até aquele ponto, não o
+    # ganho só daquele mês (mesma leitura do "Rentabilidade Total" do card).
+    serie = [
+        {
+            "mes": s["mes"],
+            "rentabilidade_pct": round((s["valor_atual"] - s["valor_investido"]) / s["valor_investido"] * 100, 2)
+            if s["valor_investido"] > 0 else None,
+            "cdi_pct": _rentabilidade_cdi_periodo(conn, data_inicio_total, f"{s['mes']}-01"),
+        }
+        for s in snapshots
+    ]
+    if not snapshots or snapshots[-1]["mes"] != hoje_mes:
+        serie.append({"mes": hoje_mes, "rentabilidade_pct": rentabilidade_total_pct, "cdi_pct": cdi_total_pct})
+
+    tabela = []
+    acumulado_fator = 1.0
+    for ano in sorted({m[:4] for m in retorno_por_mes}):
+        meses_do_ano = {m[5:7]: r for m, r in retorno_por_mes.items() if m[:4] == ano}
+        fator_ano = 1.0
+        for m in sorted(meses_do_ano):
+            fator_ano *= 1 + meses_do_ano[m] / 100
+        acumulado_fator *= fator_ano
+        tabela.append({
+            "ano": ano, "meses": meses_do_ano,
+            "retorno_anual": round((fator_ano - 1) * 100, 2),
+            "acumulado": round((acumulado_fator - 1) * 100, 2),
+        })
+    tabela.reverse()
+
+    # Os cards de 12 meses e do mês compõem os retornos mensais em vez de
+    # comparar patrimônio com patrimônio: quem aportou no meio do período
+    # veria o próprio aporte contado como rendimento.
+    rentabilidade_12m_pct = compor_retornos(retorno_por_mes, [m for m in retorno_por_mes if m >= mes_12m_atras])
+    rentabilidade_mes_pct = retorno_por_mes.get(hoje_mes)
+
+    conn.close()
+    return jsonify({
+        "rentabilidade_total_pct": rentabilidade_total_pct, "cdi_total_pct": cdi_total_pct,
+        "rentabilidade_12m_pct": rentabilidade_12m_pct, "cdi_12m_pct": cdi_12m_pct,
+        "rentabilidade_mes_pct": rentabilidade_mes_pct, "cdi_mes_pct": cdi_mes_pct,
+        "serie": serie,
+        "tabela": tabela,
+    })
+
+
 @app.route("/api/investimentos/proventos", methods=["GET"])
 def resumo_proventos():
     try:
@@ -3193,20 +3620,26 @@ def resumo_proventos():
         n_meses = 12
     conn = get_db()
     linhas = conn.execute(
-        "SELECT io.*, i.nome as investimento_nome, l.pago as pago, l.mes as lancamento_mes "
+        "SELECT io.*, i.nome as investimento_nome, i.ticker as ticker, i.classe as classe, "
+        "l.pago as pago, l.mes as lancamento_mes "
         "FROM investimento_operacoes io "
         "JOIN investimentos i ON i.id = io.investimento_id "
         "LEFT JOIN lancamentos l ON l.id = io.lancamento_id "
-        "WHERE io.usuario_id = ? AND io.tipo = 'provento' ORDER BY io.data DESC",
+        "WHERE io.usuario_id = ? AND io.tipo = 'provento' ORDER BY io.data DESC, io.id DESC",
         (uid(),),
     ).fetchall()
     conn.close()
 
     hoje = datetime.now().strftime("%Y-%m")
     total_a_receber = sum(r["valor"] for r in linhas if not r["pago"])
+    total_carteira = sum(r["valor"] for r in linhas if r["pago"])
+
+    mes_12m_atras = hoje
+    for _ in range(11):
+        mes_12m_atras = mes_anterior(mes_12m_atras)
 
     evolucao_por_mes = {}
-    por_ativo = {}
+    por_ativo_12m = {}
     for r in linhas:
         mes = (r["lancamento_mes"] or r["data"][:7])
         bucket = evolucao_por_mes.setdefault(mes, {"recebido": 0.0, "a_receber": 0.0})
@@ -3214,7 +3647,12 @@ def resumo_proventos():
             bucket["recebido"] += r["valor"]
         else:
             bucket["a_receber"] += r["valor"]
-        por_ativo[r["investimento_nome"]] = por_ativo.get(r["investimento_nome"], 0.0) + r["valor"]
+        # A rosca "Distribuição de proventos" é da mesma janela de 12 meses do
+        # card de média mensal ao lado dela — misturar tudo desde sempre daria
+        # uma fatia enorme pro ativo mais antigo, não pro que mais paga hoje.
+        if mes >= mes_12m_atras and r["pago"]:
+            chave = r["ticker"] or r["investimento_nome"]
+            por_ativo_12m[chave] = por_ativo_12m.get(chave, 0.0) + r["valor"]
 
     meses = []
     m = hoje
@@ -3228,7 +3666,36 @@ def resumo_proventos():
         for m in meses
     ]
 
+    evolucao_anual_dict = {}
+    for m, v in evolucao_por_mes.items():
+        bucket = evolucao_anual_dict.setdefault(m[:4], {"recebido": 0.0, "a_receber": 0.0})
+        bucket["recebido"] += v["recebido"]
+        bucket["a_receber"] += v["a_receber"]
+    evolucao_anual = [
+        {"ano": ano, "recebido": round(v["recebido"], 2), "a_receber": round(v["a_receber"], 2)}
+        for ano, v in sorted(evolucao_anual_dict.items())
+    ]
+
+    total_12m = round(sum(e["recebido"] for e in evolucao), 2)
+    media_mensal_12m = round(total_12m / 12, 2)
+
     tabela_mes_atual = [dict(r) for r in linhas if (r["lancamento_mes"] or r["data"][:7]) == hoje]
+
+    # Lista completa — é a tabela "Meus proventos": um provento por linha, com
+    # o que a corretora informa (data com, data de pagamento, cotas na data
+    # base, valor por cota) e o status do pagamento.
+    detalhados = [
+        {
+            "id": r["id"], "investimento_id": r["investimento_id"], "ativo": r["investimento_nome"],
+            "ticker": r["ticker"], "classe": r["classe"], "pago": bool(r["pago"]),
+            "tipo_pagamento": r["tipo_pagamento"], "data_com": r["data_com"], "data_pagamento": r["data"],
+            "quantidade": r["quantidade"], "valor_por_cota": r["preco_unitario"],
+            "valor_bruto": r["valor_bruto"] if r["valor_bruto"] is not None else r["valor"],
+            "valor_liquido": r["valor"], "lancamento_id": r["lancamento_id"],
+            "automatico": r["origem"] == "auto_brapi",
+        }
+        for r in linhas
+    ]
 
     # Histórico ano×mês: uma linha por ano, uma coluna por mês (01..12) —
     # varre tudo que já existe (evolucao_por_mes não tem limite de meses,
@@ -3253,9 +3720,14 @@ def resumo_proventos():
 
     return jsonify({
         "total_a_receber": round(total_a_receber, 2),
+        "total_carteira": round(total_carteira, 2),
+        "total_12m": total_12m,
+        "media_mensal_12m": media_mensal_12m,
         "evolucao": evolucao,
-        "por_ativo": [{"nome": k, "valor": round(v, 2)} for k, v in sorted(por_ativo.items(), key=lambda x: -x[1])],
+        "evolucao_anual": evolucao_anual,
+        "por_ativo": [{"nome": k, "valor": round(v, 2)} for k, v in sorted(por_ativo_12m.items(), key=lambda x: -x[1])],
         "tabela_mes_atual": tabela_mes_atual,
+        "detalhados": detalhados,
         "historico_anual": historico_anual,
     })
 
