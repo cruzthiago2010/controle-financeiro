@@ -279,6 +279,73 @@
   .meta-card .meta-acoes input{flex:1;}
   .metas-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:10px;}
 
+  /* Investimentos */
+  .investimento-resumo{display:flex; gap:24px; flex-wrap:wrap; margin-bottom:16px; align-items:flex-start;}
+  .investimento-resumo div{display:flex; flex-direction:column; gap:2px;}
+  .investimento-resumo .label{font-size:0.76rem; color:var(--muted);}
+  .investimento-resumo .valor{font-size:1.3rem; font-weight:700;}
+  .investimento-variacao{font-size:0.78rem; font-weight:700; padding:2px 7px; border-radius:999px;}
+  .investimento-variacao.positivo{background:rgba(0,167,111,0.15);}
+  .investimento-variacao.negativo{background:rgba(255,86,48,0.15);}
+  .investimento-subtitulo{font-size:0.95rem; margin:4px 0 10px;}
+  .investimento-classes-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:10px; margin-bottom:20px;}
+  .investimento-classe-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md);
+    padding:12px 14px; box-shadow:var(--shadow-card);}
+  .investimento-classe-card .classe-nome{font-weight:700; font-size:0.86rem; margin-bottom:6px;}
+  .investimento-classe-card .classe-linha{display:flex; justify-content:space-between; font-size:0.76rem; color:var(--muted); padding:2px 0;}
+  .investimento-classe-card .classe-linha span:last-child{color:var(--text); font-weight:600;}
+  .investimento-subnav{margin:12px 0 18px;}
+  .provento-linha{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0;
+    border-bottom:1px solid var(--border-soft); font-size:0.82rem;}
+  .provento-linha:last-child{border-bottom:none;}
+  .provento-linha .provento-ativo{font-weight:600; flex:1; min-width:0;}
+  .provento-linha .provento-valor{font-weight:700; flex:none;}
+  .provento-status{font-size:0.7rem; font-weight:700; padding:3px 8px; border-radius:999px; flex:none;}
+  .provento-status.pago{background:rgba(0,167,111,0.15); color:var(--green);}
+  .provento-status.a-receber{background:rgba(255,171,0,0.15); color:var(--yellow);}
+  .provento-status button{margin-left:6px; font-size:0.7rem; padding:2px 8px;}
+  .historico-provento-linha{display:flex; justify-content:space-between; padding:7px 0; font-size:0.82rem; border-bottom:1px solid var(--border-soft);}
+  .historico-provento-linha:last-child{border-bottom:none;}
+  .tabela-historico-proventos{border-collapse:collapse; width:100%; font-size:0.78rem; white-space:nowrap;}
+  .tabela-historico-proventos th, .tabela-historico-proventos td{padding:7px 10px; text-align:right; border-bottom:1px solid var(--border-soft);}
+  .tabela-historico-proventos th:first-child, .tabela-historico-proventos td:first-child{text-align:left; font-weight:700;}
+  .tabela-historico-proventos th{color:var(--muted); font-weight:600; font-size:0.72rem;}
+  .alocacao-linha{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border-soft);}
+  .alocacao-linha:last-child{border-bottom:none;}
+  .alocacao-dot{width:12px; height:12px; border-radius:50%; flex:none;}
+  .alocacao-nome{flex:1; min-width:0; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .alocacao-stepper{display:flex; align-items:center; gap:4px; flex:none;}
+  .alocacao-stepper button{width:26px; height:26px; padding:0; flex:none; background:var(--card2); color:var(--text); box-shadow:none; font-weight:700;}
+  .alocacao-stepper button:hover{background:var(--card3);}
+  .alocacao-stepper input{width:44px; text-align:center; padding:5px 2px; flex:none;}
+  .alocacao-stepper span{font-size:0.8rem; color:var(--muted);}
+  .alocacao-remover{flex:none;}
+  .alocacao-adicionar{display:flex; gap:8px; margin:10px 0 16px;}
+  .alocacao-adicionar select{flex:1;}
+  .alocacao-adicionar button{flex:none; white-space:nowrap;}
+  .meta-card .investimento-toggle{background:transparent; color:var(--muted); border:none; box-shadow:none;
+    width:100%; text-align:left; padding:4px 0; font-size:0.8rem; font-weight:600; cursor:pointer;}
+  .meta-card .investimento-toggle:hover{color:var(--text); background:transparent; transform:none; box-shadow:none;}
+  .investimento-detalhe{margin-top:10px; padding-top:10px; border-top:1px solid var(--border-soft);}
+  .investimento-op-linha{display:flex; justify-content:space-between; gap:8px; font-size:0.78rem; padding:4px 0; color:var(--muted);}
+  .investimento-op-linha .op-desc{color:var(--text);}
+  .investimento-op-form{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .investimento-op-form select, .investimento-op-form input{flex:1 1 100px; min-width:90px; font-size:0.82rem; padding:7px 8px;}
+  .investimento-op-form button{flex:1 1 100%; padding:7px;}
+  .cotacao-desatualizada{font-size:0.7rem; color:var(--yellow);}
+  .autocomplete-wrap{position:relative; flex:1 1 170px; min-width:170px;}
+  .autocomplete-wrap input{width:100%;}
+  .autocomplete-lista{
+    position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:20; max-height:220px; overflow-y:auto;
+    background:var(--card); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow-hover); padding:4px;
+  }
+  .autocomplete-item{display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left;
+    background:transparent; border:none; box-shadow:none; color:var(--text); padding:7px 8px; font-size:0.82rem;
+    border-radius:6px; cursor:pointer;}
+  .autocomplete-item:hover{background:var(--card2); transform:none; box-shadow:none;}
+  .autocomplete-item .ticker{font-weight:700;}
+  .autocomplete-item .nome{color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; text-align:right;}
+
   /* Holerite */
   .holerite-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-card);}
   .holerite-card .holerite-topo{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;}
@@ -315,6 +382,11 @@
   body.somente-leitura .conta-acoes,
   body.somente-leitura .orcamento-card .orcamento-acoes,
   body.somente-leitura .meta-card .meta-acoes,
+  body.somente-leitura .investimento-op-form,
+  body.somente-leitura #btnAdicionarAtivo,
+  body.somente-leitura #btnConfigurarAlocacao,
+  body.somente-leitura #btnImportarProventos,
+  body.somente-leitura .marcar-recebido,
   body.somente-leitura .holerite-card .holerite-acoes,
   body.somente-leitura .holerite-card .holerite-excluir,
   body.somente-leitura #btnAbrirTransferencia,
@@ -846,6 +918,12 @@
   .segmented button.ativo{background:var(--accent); color:#fff;}
   .segmented button.ativo.despesa{background:var(--red); color:#fff;}
   .segmented button.ativo.renda{background:var(--green); color:#fff;}
+  .segmented button.ativo.venda{background:var(--red); color:#fff;}
+  .segmented button.ativo.compra{background:var(--green); color:#fff;}
+
+  /* Duas colunas lado a lado dentro de um modal (ex: Data/Quantidade) */
+  .modal-box .campos-2col{display:grid; grid-template-columns:1fr 1fr; gap:0 10px;}
+  .modal-box .campos-2col > div{min-width:0;}
 
   /* Select com bolinha de cor (categoria/conta) */
   .select-com-icone{display:flex; align-items:center; gap:8px;}
@@ -927,6 +1005,7 @@
       <button class="nav-item" data-tab="categorias" title="Categorias"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span><span class="nav-label">Categorias</span></button>
       <button class="nav-item" data-tab="calendario" title="Calendário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendario"/></svg></span><span class="nav-label">Calendário</span></button>
       <button class="nav-item" data-tab="cartoes" title="Cartões"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cartao"/></svg></span><span class="nav-label">Cartões</span></button>
+      <button class="nav-item" data-tab="investimentos" title="Investimentos"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sobe"/></svg></span><span class="nav-label">Investimentos</span></button>
       <button class="nav-item" data-tab="metas" title="Metas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bussola"/></svg></span><span class="nav-label">Metas</span></button>
       <button class="nav-item" data-tab="holerites" title="Holerite"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg></span><span class="nav-label">Holerite</span></button>
       <button class="nav-item" data-tab="consignados" title="Empréstimos" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label">Empréstimos</span></button>
@@ -1238,6 +1317,52 @@
       <select id="cartaoConta"><option value="">Sem conta vinculada</option></select>
       <button type="submit">Adicionar cartão</button>
     </form>
+  </section>
+
+  <!-- ===================== INVESTIMENTOS ===================== -->
+  <section class="painel" id="painel-investimentos">
+    <div class="secao">
+      <h2>Investimentos</h2>
+      <div class="segmented investimento-subnav" id="investimentoSubnav" style="max-width:280px;">
+        <button type="button" class="ativo" data-sub="resumo">Resumo</button>
+        <button type="button" data-sub="proventos">Proventos</button>
+      </div>
+
+      <div id="subInvestimentosResumo">
+        <div class="investimento-resumo">
+          <div><span class="label">Total investido</span><span class="valor" id="investPatrimonioInvestido">R$ 0,00</span></div>
+          <div><span class="label">Valor atual</span><span class="valor" id="investPatrimonioAtual">R$ 0,00</span> <span id="investVariacaoMes"></span></div>
+          <div><span class="label">Lucro total</span><span class="valor" id="investLucroTotal">R$ 0,00</span></div>
+          <div><span class="label">Proventos recebidos (12M)</span><span class="valor" id="investProventos12m">R$ 0,00</span></div>
+          <div><span class="label">Rentabilidade (12M)</span><span class="valor" id="investRentabilidade12m">—</span></div>
+          <div><span class="label">Rentabilidade total</span><span class="valor" id="investRentabilidadeTotal">—</span></div>
+        </div>
+        <div class="investimento-resumo">
+          <button type="button" class="secondary" id="btnAtualizarCotacoes">Atualizar cotações</button>
+          <button type="button" class="secondary" id="btnConfigurarAlocacao">Configurar % Ideal</button>
+          <button type="button" id="btnAdicionarAtivo">+ Adicionar ativo</button>
+        </div>
+        <div class="chart-box" style="max-height:260px; margin-bottom:18px;"><canvas id="chartEvolucaoPatrimonio"></canvas></div>
+        <div class="chart-box" style="max-width:320px; max-height:260px; margin:0 auto 18px;"><canvas id="chartInvestimentosClasse"></canvas></div>
+        <h3 class="investimento-subtitulo">Meus ativos</h3>
+        <div class="investimento-classes-grid" id="listaClassesInvestimento"></div>
+        <div class="metas-grid" id="listaInvestimentos"></div>
+      </div>
+
+      <div id="subInvestimentosProventos" hidden>
+        <div class="investimento-resumo">
+          <div><span class="label">Total a receber</span><span class="valor" id="proventosTotalReceber">R$ 0,00</span></div>
+          <button type="button" class="secondary" id="btnImportarProventos" style="align-self:center;">Importar proventos</button>
+        </div>
+        <div style="font-size:0.72rem; color:var(--muted); margin:-10px 0 14px;">Dividendos/JCP/Rendimentos já declarados pelas empresas (B3) são importados sozinhos 1x por dia — o botão força uma busca agora.</div>
+        <div class="chart-box" style="max-height:240px; margin-bottom:18px;"><canvas id="chartEvolucaoProventos"></canvas></div>
+        <div class="chart-box" style="max-width:320px; max-height:240px; margin:0 auto 18px;"><canvas id="chartProventosPorAtivo"></canvas></div>
+        <h3 class="investimento-subtitulo">Proventos do mês</h3>
+        <div id="tabelaProventosMes"></div>
+        <h3 class="investimento-subtitulo" style="margin-top:22px;">Histórico</h3>
+        <div id="historicoProventos"></div>
+      </div>
+    </div>
   </section>
 
   <!-- ===================== METAS ===================== -->
@@ -1646,6 +1771,142 @@
   </div>
 </div>
 
+<!-- Modal de adicionar ativo (compra/venda) -->
+<div class="modal-overlay" id="modalAdicionarAtivo">
+  <div class="modal-box">
+    <h3>Adicionar ativo</h3>
+    <div class="segmented" id="ativoTipoSegmented">
+      <button type="button" class="ativo compra" data-tipo="aporte">Compra</button>
+      <button type="button" class="venda" data-tipo="resgate">Venda</button>
+    </div>
+
+    <label>Tipo de ativo</label>
+    <select id="ativoClasseInput" required>
+      <option value="">Selecione</option>
+      <option value="acao">Ação</option>
+      <option value="fii">Fundo imobiliário (FII)</option>
+      <option value="etf">ETF</option>
+      <option value="bdr">BDR</option>
+      <option value="cripto">Criptomoeda</option>
+      <option value="stock">Stock (EUA)</option>
+      <option value="reit">Reit (EUA)</option>
+      <option value="etf_internacional">ETF internacional</option>
+      <option value="renda_fixa">Renda fixa</option>
+      <option value="fundo">Fundo de investimento</option>
+      <option value="outro">Outro</option>
+    </select>
+
+    <div id="ativoBuscaWrap" style="display:none;">
+      <label>Ativo</label>
+      <div class="autocomplete-wrap">
+        <input type="text" id="ativoTickerInput" placeholder="Digite pra buscar (ex: petrobras, bitcoin)" autocomplete="off">
+        <div class="autocomplete-lista" id="ativoTickerLista" hidden></div>
+      </div>
+    </div>
+
+    <div id="ativoNomeWrap" style="display:none;">
+      <label>Nome</label>
+      <input type="text" id="ativoNomeInput" placeholder="Ex: Tesouro Selic 2029, Poupança">
+    </div>
+
+    <div id="ativoIndexadorWrap" style="display:none;">
+      <label>Emissor</label>
+      <input type="text" id="ativoEmissorInput" placeholder="Ex: Banco Inter, Tesouro Nacional">
+      <label>Tipo de investimento</label>
+      <select id="ativoTipoInvestimentoInput">
+        <option value="">Selecione</option>
+        <option value="cdb">CDB</option>
+        <option value="lci">LCI</option>
+        <option value="lca">LCA</option>
+        <option value="debenture">Debênture</option>
+        <option value="cri">CRI</option>
+        <option value="cra">CRA</option>
+        <option value="tesouro_selic">Tesouro Selic</option>
+        <option value="tesouro_ipca">Tesouro IPCA+</option>
+        <option value="tesouro_prefixado">Tesouro Prefixado</option>
+        <option value="outro">Outro</option>
+      </select>
+      <label>Indexador</label>
+      <select id="ativoIndexadorInput">
+        <option value="">Indexador</option>
+        <option value="cdi">% do CDI</option>
+        <option value="ipca">IPCA + taxa</option>
+        <option value="prefixado">Prefixado</option>
+      </select>
+      <label>Taxa (ex: 110 ou 6)</label>
+      <input type="number" id="ativoTaxaInput" step="0.01">
+      <label>Data de vencimento (opcional)</label>
+      <input type="date" id="ativoVencimentoInput">
+      <label class="toggle-row">
+        <span>Liquidez diária</span>
+        <span class="toggle-switch"><input type="checkbox" id="ativoLiquidezInput"><span class="toggle-slider"></span></span>
+      </label>
+    </div>
+
+    <label>Conta</label>
+    <select id="ativoContaInput" required></select>
+
+    <div class="campos-2col">
+      <div>
+        <label id="ativoDataLabel">Data de Compra</label>
+        <input type="date" id="ativoDataInput">
+      </div>
+      <div id="ativoQuantidadeWrap">
+        <label>Quantidade</label>
+        <input type="number" id="ativoQuantidadeInput" step="0.00000001" min="0.00000001" placeholder="0">
+      </div>
+    </div>
+
+    <div class="campos-2col" id="ativoPrecoCustosWrap">
+      <div>
+        <label>Preço em R$</label>
+        <input type="number" id="ativoPrecoInput" step="0.01" min="0.01" placeholder="0,00">
+      </div>
+      <div>
+        <label>Outros custos</label>
+        <input type="number" id="ativoCustosInput" step="0.01" min="0" placeholder="0,00">
+      </div>
+    </div>
+
+    <div id="ativoValorWrap" style="display:none;">
+      <label>Valor em R$</label>
+      <input type="number" id="ativoValorInput" step="0.01" min="0.01" placeholder="0,00">
+    </div>
+
+    <div class="formula-box">
+      <div class="linha total"><span>Valor total</span><span id="ativoValorTotalTexto">R$ 0,00</span></div>
+    </div>
+
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="ativoCancelar">Cancelar</button>
+      <button type="button" id="ativoSalvar">Registrar compra</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de % Ideal por classe -->
+<div class="modal-overlay" id="modalAlocacaoIdeal">
+  <div class="modal-box">
+    <h3>Distribuição da carteira</h3>
+    <p style="font-size:0.78rem; color:var(--muted); margin:-8px 0 14px;">
+      Defina a porcentagem ideal pra cada classe de ativo que você quer ter na carteira. Com base nisso, o app mostra se cada uma está acima ou abaixo da meta.
+    </p>
+    <div class="chart-box" style="max-width:200px; max-height:170px; margin:0 auto 16px;"><canvas id="chartAlocacaoIdeal"></canvas></div>
+    <div id="alocacaoIdealCampos"></div>
+    <div class="alocacao-adicionar">
+      <select id="alocacaoNovaClasse"></select>
+      <button type="button" class="secondary" id="alocacaoAdicionarBtn">+ Adicionar tipo de ativo</button>
+    </div>
+    <div class="formula-box">
+      <div class="linha total"><span>Total</span><span id="alocacaoTotalTexto">0%</span></div>
+    </div>
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="alocacaoCancelar">Cancelar</button>
+      <button type="button" id="alocacaoSalvar">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal de transferência entre contas -->
 <div class="modal-overlay" id="modalTransferencia">
   <div class="modal-box">
@@ -1852,7 +2113,7 @@ const ICO = {
 };
 let mesAtual = null;
 let categoriasCache = {receita:[], despesa:[]};
-let chartComparacao = null, chartCategoria = null, chartTendencia = null, chartFluxoCaixa = null, chartHolerites = null;
+let chartComparacao = null, chartCategoria = null, chartTendencia = null, chartFluxoCaixa = null, chartHolerites = null, chartInvestimentosClasse = null, chartEvolucaoPatrimonio = null;
 
 // Balão do gráfico com a mesma cara dos cards, em vez do preto padrão do Chart.js.
 const TOOLTIP_ESTILO = {
@@ -1894,6 +2155,8 @@ let itensPorId = {};
 let diaSelecionadoCalendario = null;
 let lancamentosCache = [];
 let contasCache = [];
+let investimentosCache = [];
+let alocacaoIdealCache = {};
 let dashboardCache = null;
 let usuariosCache = [];
 let usuarioAtual = null;
@@ -2801,6 +3064,14 @@ function popularSelectsConta(){
   selCartaoConta.value = valorAtual3;
 
   document.getElementById("editCartaoConta").innerHTML = opcoesCartaoConta;
+
+  const opcoesSemVazio = contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+  const selInvestimentoConta = document.getElementById("ativoContaInput");
+  if (selInvestimentoConta){
+    const valorAtual4 = selInvestimentoConta.value;
+    selInvestimentoConta.innerHTML = opcoesSemVazio;
+    selInvestimentoConta.value = valorAtual4;
+  }
 }
 
 document.getElementById("contaForm").addEventListener("submit", async (e) => {
@@ -3948,6 +4219,812 @@ document.querySelectorAll(".nav-item").forEach(btn => {
   if (btn.dataset.tab === "consignados") btn.addEventListener("click", carregarConsignados);
 });
 
+// ---------- Investimentos ----------
+const ROTULOS_CLASSE_INVESTIMENTO = {
+  acao: "Ação", fii: "FII", etf: "ETF", bdr: "BDR", cripto: "Criptomoeda",
+  stock: "Stock (EUA)", reit: "Reit (EUA)", etf_internacional: "ETF internacional",
+  renda_fixa: "Renda fixa", fundo: "Fundo de investimento", outro: "Outro",
+};
+const CLASSES_COM_TICKER_INVEST = ["acao", "fii", "etf", "bdr", "cripto", "stock", "reit", "etf_internacional"];
+const ROTULOS_TIPO_INVESTIMENTO = {
+  cdb: "CDB", lci: "LCI", lca: "LCA", debenture: "Debênture", cri: "CRI", cra: "CRA",
+  tesouro_selic: "Tesouro Selic", tesouro_ipca: "Tesouro IPCA+", tesouro_prefixado: "Tesouro Prefixado", outro: "Outro",
+};
+const ROTULOS_TIPO_PAGAMENTO = {dividendo: "Dividendo", jscp: "JSCP", rendimento: "Rendimento"};
+const NOMES_MESES_CURTOS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+async function carregarInvestimentos(){
+  const container = document.getElementById("listaInvestimentos");
+  container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const res = await apiFetch(`${API}/investimentos`, undefined, {erro:"Não foi possível carregar os investimentos"});
+    investimentosCache = await res.json();
+  } catch (e) {
+    container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    return;
+  }
+  try {
+    const resAloc = await apiFetch(`${API}/investimentos/alocacao-ideal`, undefined, {silencioso: true});
+    alocacaoIdealCache = await resAloc.json();
+  } catch (e) { alocacaoIdealCache = {}; }
+  renderizarInvestimentos();
+  renderizarClassesInvestimento();
+  atualizarGraficoInvestimentosClasse();
+  carregarResumoInvestimentos();
+}
+
+function renderizarInvestimentos(){
+  const container = document.getElementById("listaInvestimentos");
+  container.innerHTML = "";
+  if (investimentosCache.length === 0){
+    container.innerHTML = `<div class="empty">Nenhum investimento cadastrado ainda.</div>`;
+    return;
+  }
+  investimentosCache.forEach(inv => container.appendChild(criarInvestimentoCardHTML(inv)));
+}
+
+// "Meus ativos" — um card por classe, agregando os investimentos daquela
+// classe (Valor total, Variação em R$, Rentabilidade %, % na carteira).
+// Calculado aqui no front a partir do que /api/investimentos já devolve —
+// não precisa de rota nova.
+function renderizarClassesInvestimento(){
+  const container = document.getElementById("listaClassesInvestimento");
+  container.innerHTML = "";
+  if (investimentosCache.length === 0) return;
+  const porClasse = {};
+  investimentosCache.forEach(inv => {
+    if (!porClasse[inv.classe]) porClasse[inv.classe] = {investido: 0, atual: 0, quantidade: 0};
+    porClasse[inv.classe].investido += inv.valor_investido || 0;
+    porClasse[inv.classe].atual += inv.valor_atual || 0;
+    porClasse[inv.classe].quantidade += 1;
+  });
+  const patrimonioTotal = Object.values(porClasse).reduce((s, c) => s + c.atual, 0);
+  Object.entries(porClasse).forEach(([classe, c]) => {
+    const variacao = c.atual - c.investido;
+    const rentPct = c.investido > 0 ? (variacao / c.investido) * 100 : null;
+    const pctCarteira = patrimonioTotal > 0 ? (c.atual / patrimonioTotal) * 100 : 0;
+    const pctIdeal = alocacaoIdealCache[classe];
+    const div = document.createElement("div");
+    div.className = "investimento-classe-card";
+    div.innerHTML = `
+      <div class="classe-nome">${ROTULOS_CLASSE_INVESTIMENTO[classe] || classe} (${c.quantidade} ${c.quantidade === 1 ? "ativo" : "ativos"})</div>
+      <div class="classe-linha"><span>Valor total</span><span>${formatMoeda(c.atual)}</span></div>
+      <div class="classe-linha"><span>Variação</span><span class="${variacao >= 0 ? "positivo" : "negativo"}">${variacao >= 0 ? "+" : ""}${formatMoeda(variacao)}</span></div>
+      <div class="classe-linha"><span>Rentabilidade</span><span class="${(rentPct || 0) >= 0 ? "positivo" : "negativo"}">${rentPct !== null ? (rentPct >= 0 ? "+" : "") + rentPct.toFixed(2) + "%" : "—"}</span></div>
+      <div class="classe-linha"><span>% na carteira</span><span>${pctCarteira.toFixed(0)}%</span></div>
+      <div class="classe-linha"><span>% Ideal</span><span>${pctIdeal !== undefined ? pctIdeal.toFixed(0) + "%" : "—"}</span></div>
+      <div class="classe-linha"><span>Comprar?</span><span>${pctIdeal !== undefined ? (pctCarteira < pctIdeal ? "Sim" : "Não") : "—"}</span></div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function carregarResumoInvestimentos(){
+  try {
+    const res = await apiFetch(`${API}/investimentos/resumo`, undefined, {silencioso: true});
+    const resumo = await res.json();
+    document.getElementById("investPatrimonioInvestido").textContent = formatMoeda(resumo.patrimonio_investido);
+    document.getElementById("investPatrimonioAtual").textContent = formatMoeda(resumo.patrimonio_atual);
+    const variacaoEl = document.getElementById("investVariacaoMes");
+    if (resumo.variacao_pct_mes !== null && resumo.variacao_pct_mes !== undefined){
+      const positivo = resumo.variacao_pct_mes >= 0;
+      variacaoEl.innerHTML = `<span class="investimento-variacao ${positivo ? "positivo" : "negativo"}">${positivo ? "+" : ""}${resumo.variacao_pct_mes.toFixed(2)}% no mês</span>`;
+    } else {
+      variacaoEl.innerHTML = "";
+    }
+    document.getElementById("investLucroTotal").textContent = formatMoeda(resumo.lucro_total);
+    document.getElementById("investProventos12m").textContent = formatMoeda(resumo.proventos_recebidos_12m);
+    document.getElementById("investRentabilidade12m").innerHTML = fmtPctResumo(resumo.rentabilidade_pct_12m);
+    document.getElementById("investRentabilidadeTotal").innerHTML = fmtPctResumo(resumo.rentabilidade_pct_total);
+    atualizarGraficoEvolucaoPatrimonio(resumo.evolucao || []);
+  } catch (e) {}
+}
+
+function fmtPctResumo(pct){
+  if (pct === null || pct === undefined) return "—";
+  const positivo = pct >= 0;
+  return `<span class="${positivo ? "positivo" : "negativo"}">${positivo ? "+" : ""}${pct.toFixed(2)}%</span>`;
+}
+
+function atualizarGraficoEvolucaoPatrimonio(evolucao){
+  if (chartEvolucaoPatrimonio) chartEvolucaoPatrimonio.destroy();
+  const ctx = document.getElementById("chartEvolucaoPatrimonio");
+  if (!ctx || evolucao.length === 0) return;
+  const corTexto = document.documentElement.getAttribute("data-tema") === "claro" ? "#6b7694" : "#8b96b3";
+  chartEvolucaoPatrimonio = new Chart(ctx.getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: evolucao.map(e => formatMes(e.mes)),
+      datasets: [
+        {label: "Valor aplicado", data: evolucao.map(e => e.valor_investido), backgroundColor: "rgba(0,167,111,0.85)", borderRadius: 6},
+        // Empilhado sobre o valor aplicado: só o ganho (ou perda, que o Chart.js
+        // desenha abaixo de zero sozinho) — a barra inteira soma o valor atual.
+        {label: "Ganho", data: evolucao.map(e => round2(e.valor_atual - e.valor_investido)), backgroundColor: "rgba(0,184,217,0.85)", borderRadius: 6},
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: {stacked: true, ticks: {color: corTexto}, grid: {display: false}},
+        y: {stacked: true, ticks: {color: corTexto}, grid: {color: "rgba(128,128,128,0.15)"}},
+      },
+      plugins: {
+        legend: {position: "bottom", labels: {usePointStyle: true, color: corTexto}},
+        tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}},
+      },
+    },
+  });
+}
+function round2(v){ return Math.round(v * 100) / 100; }
+
+function atualizarGraficoInvestimentosClasse(){
+  const porClasse = {};
+  investimentosCache.forEach(i => { porClasse[i.classe] = (porClasse[i.classe] || 0) + (i.valor_atual || 0); });
+  const labels = Object.keys(porClasse).map(c => ROTULOS_CLASSE_INVESTIMENTO[c] || c);
+  const valores = Object.values(porClasse);
+  if (chartInvestimentosClasse) chartInvestimentosClasse.destroy();
+  const ctx = document.getElementById("chartInvestimentosClasse");
+  if (!ctx || valores.length === 0) return;
+  const total = valores.reduce((a, b) => a + b, 0);
+  const corTexto = document.documentElement.getAttribute("data-tema") === "claro" ? "#1c2438" : "#e8ecf5";
+  chartInvestimentosClasse = new Chart(ctx.getContext("2d"), {
+    type: "doughnut",
+    // PALETA_CORES é indexada por hash (corPara), não por posição — os dois primeiros
+    // tons são de propósito iguais nesse uso. Aqui o Chart.js pinta por índice
+    // sequencial, então usa a partir do 2º item pra cada fatia sair de uma cor diferente.
+    data: {labels, datasets: [{data: valores, backgroundColor: PALETA_CORES.slice(1), borderWidth: 0}]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            usePointStyle: true, color: corTexto,
+            generateLabels: (chart) => chart.data.labels.map((label, i) => {
+              const valor = chart.data.datasets[0].data[i];
+              const pct = total ? ((valor / total) * 100).toFixed(1) : "0.0";
+              return {
+                text: `${label} (${pct}%)`, fillStyle: chart.data.datasets[0].backgroundColor[i],
+                strokeStyle: chart.data.datasets[0].backgroundColor[i], index: i,
+              };
+            }),
+          },
+        },
+        tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.label}: ${formatMoeda(ctx.parsed)}`}},
+      },
+    },
+  });
+}
+
+function criarInvestimentoCardHTML(inv){
+  const div = document.createElement("div");
+  div.className = "meta-card investimento-card";
+  const positivo = (inv.rentabilidade_valor || 0) >= 0;
+  const temTicker = CLASSES_COM_TICKER_INVEST.includes(inv.classe);
+  div.innerHTML = `
+    <div class="meta-topo">
+      <span class="meta-nome">${escapeHtml(inv.nome)}</span>
+      <button class="icon danger" title="Excluir investimento">${ICO.x}</button>
+    </div>
+    <div class="meta-prazo">${ROTULOS_CLASSE_INVESTIMENTO[inv.classe] || inv.classe}${inv.ticker ? " · " + escapeHtml(inv.ticker) : ""}${inv.classe === "renda_fixa" && inv.tipo_investimento ? " · " + escapeHtml(ROTULOS_TIPO_INVESTIMENTO[inv.tipo_investimento] || inv.tipo_investimento) : ""}${inv.classe === "renda_fixa" && inv.emissor ? " · " + escapeHtml(inv.emissor) : ""}</div>
+    <div class="meta-valores"><span>Investido: ${formatMoeda(inv.valor_investido)}</span><span>Atual: ${formatMoeda(inv.valor_atual)}</span></div>
+    <div class="meta-valores">
+      <span class="${positivo ? "positivo" : "negativo"}">${positivo ? "+" : ""}${formatMoeda(inv.rentabilidade_valor)}${inv.rentabilidade_pct !== null && inv.rentabilidade_pct !== undefined ? ` (${positivo ? "+" : ""}${inv.rentabilidade_pct.toFixed(2)}%)` : ""}</span>
+      ${temTicker ? `<span>${inv.quantidade || 0} un · PM ${formatMoeda(inv.preco_medio)}</span>` : ""}
+    </div>
+    ${temTicker && !inv.cotacao_atual ? `<div class="cotacao-desatualizada">Cotação não configurada — usando o valor investido como aproximação</div>` : ""}
+    <button type="button" class="investimento-toggle">Ver operações ▾</button>
+    <div class="investimento-detalhe" hidden>
+      <div class="investimento-op-lista"></div>
+      <form class="investimento-op-form">
+        <select class="op-tipo">
+          <option value="provento">Provento</option>
+          ${["outro", "fundo"].includes(inv.classe) ? `<option value="reavaliacao">Atualizar valor</option>` : ""}
+        </select>
+        <select class="op-tipo-pagamento">
+          <option value="dividendo">Dividendo</option>
+          <option value="jscp">JSCP (15% de IR)</option>
+          <option value="rendimento">Rendimento</option>
+        </select>
+        <input type="number" class="op-valor" placeholder="Valor bruto (R$)" step="0.01" min="0.01">
+        <input type="date" class="op-data-com" title="Data Com (opcional)">
+        <input type="date" class="op-data" value="${hojeISO()}">
+        <div class="op-liquido-preview" style="flex:1 1 100%; font-size:0.76rem; color:var(--muted);"></div>
+        <label style="display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); flex:1 1 100%;">
+          <input type="checkbox" class="op-pago" checked style="width:auto;"> Já caiu na conta (senão fica "a receber")
+        </label>
+        <button type="submit">Registrar</button>
+      </form>
+    </div>
+  `;
+  div.querySelector(".meta-topo button").addEventListener("click", async () => {
+    if (!confirm(`Excluir "${inv.nome}"? Isso também apaga o histórico de operações e os lançamentos ligados a ele nas contas.`)) return;
+    try {
+      await apiFetch(`${API}/investimentos/${inv.id}`, {method:"DELETE"}, {sucesso:"Investimento excluído", erro:"Não foi possível excluir"});
+      carregarInvestimentos();
+    } catch (e) {}
+  });
+  const detalhe = div.querySelector(".investimento-detalhe");
+  const toggle = div.querySelector(".investimento-toggle");
+  toggle.addEventListener("click", async () => {
+    const abrindo = detalhe.hidden;
+    detalhe.hidden = !abrindo;
+    toggle.textContent = abrindo ? "Ocultar operações ▴" : "Ver operações ▾";
+    if (abrindo) await carregarOperacoesInvestimento(inv, detalhe.querySelector(".investimento-op-lista"));
+  });
+  const opForm = div.querySelector(".investimento-op-form");
+  const opPagoLabel = opForm.querySelector(".op-pago").closest("label");
+  const opTipoPagamento = opForm.querySelector(".op-tipo-pagamento");
+  const opDataCom = opForm.querySelector(".op-data-com");
+  const opValor = opForm.querySelector(".op-valor");
+  const opLiquidoPreview = opForm.querySelector(".op-liquido-preview");
+  function atualizarCamposProvento(){
+    const ehProvento = opForm.querySelector(".op-tipo").value === "provento";
+    opPagoLabel.style.display = ehProvento ? "" : "none";
+    opTipoPagamento.style.display = ehProvento ? "" : "none";
+    opDataCom.style.display = ehProvento ? "" : "none";
+    atualizarLiquidoPreview();
+  }
+  function atualizarLiquidoPreview(){
+    const ehProvento = opForm.querySelector(".op-tipo").value === "provento";
+    if (!ehProvento){ opLiquidoPreview.textContent = ""; return; }
+    const bruto = parseFloat(opValor.value) || 0;
+    const liquido = opTipoPagamento.value === "jscp" ? bruto * 0.85 : bruto;
+    opLiquidoPreview.textContent = bruto > 0 ? `Líquido estimado: ${formatMoeda(liquido)}` : "";
+  }
+  opForm.querySelector(".op-tipo").addEventListener("change", atualizarCamposProvento);
+  opTipoPagamento.addEventListener("change", atualizarLiquidoPreview);
+  opValor.addEventListener("input", atualizarLiquidoPreview);
+  atualizarCamposProvento();
+  opForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const tipoOp = opForm.querySelector(".op-tipo").value;
+    const body = {
+      tipo: tipoOp,
+      valor: opValor.value,
+      data: opForm.querySelector(".op-data").value,
+    };
+    if (tipoOp === "provento"){
+      body.pago = opForm.querySelector(".op-pago").checked;
+      body.tipo_pagamento = opTipoPagamento.value;
+      body.data_com = opDataCom.value || null;
+    }
+    try {
+      await apiFetch(`${API}/investimentos/${inv.id}/operacoes`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+        {sucesso: body.pago === false ? "Provento agendado como a receber" : "Operação registrada", erro:"Não foi possível registrar a operação"});
+      form.reset();
+      form.querySelector(".op-data").value = hojeISO();
+      form.querySelector(".op-pago").checked = true;
+      atualizarCamposProvento();
+      carregarInvestimentos();
+      carregarContas();
+    } catch (err) {}
+  });
+  return div;
+}
+
+async function carregarOperacoesInvestimento(inv, container){
+  container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const res = await apiFetch(`${API}/investimentos/${inv.id}/operacoes`, undefined, {erro:"Não foi possível carregar as operações"});
+    const operacoes = await res.json();
+    if (operacoes.length === 0){
+      container.innerHTML = `<div class="empty" style="padding:4px 0;">Nenhuma operação registrada ainda.</div>`;
+      return;
+    }
+    const ROTULOS_TIPO_OP = {aporte: "Aporte", resgate: "Resgate", provento: "Provento", reavaliacao: "Valor atualizado"};
+    container.innerHTML = operacoes.map(op => `
+      <div class="investimento-op-linha">
+        <span class="op-desc">${ROTULOS_TIPO_OP[op.tipo] || op.tipo} · ${formatData(op.data)}${op.quantidade ? ` · ${op.quantidade} un × ${formatMoeda(op.preco_unitario)}` : ""}</span>
+        <span>${formatMoeda(op.valor)} <button type="button" class="icon danger op-excluir" data-id="${op.id}" title="Excluir operação">${ICO.x}</button></span>
+      </div>
+    `).join("");
+    container.querySelectorAll(".op-excluir").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Excluir esta operação? Isso também apaga o lançamento ligado a ela, se houver.")) return;
+        try {
+          await apiFetch(`${API}/investimentos/operacoes/${btn.dataset.id}`, {method:"DELETE"}, {sucesso:"Operação excluída", erro:"Não foi possível excluir"});
+          carregarInvestimentos();
+          carregarContas();
+          await carregarOperacoesInvestimento(inv, container);
+        } catch (e) {}
+      });
+    });
+  } catch (e) {
+    container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+  }
+}
+
+document.getElementById("btnAtualizarCotacoes").addEventListener("click", async (e) => {
+  const btn = e.target;
+  btn.disabled = true;
+  btn.textContent = "Atualizando...";
+  try {
+    await apiFetch(`${API}/investimentos/atualizar-cotacoes`, {method:"POST"}, {sucesso:"Cotações atualizadas", erro:"Não foi possível atualizar as cotações"});
+    carregarInvestimentos();
+  } catch (err) {}
+  btn.disabled = false;
+  btn.textContent = "Atualizar cotações";
+});
+
+document.getElementById("btnImportarProventos").addEventListener("click", async (e) => {
+  const btn = e.target;
+  btn.disabled = true;
+  btn.textContent = "Importando...";
+  try {
+    await apiFetch(`${API}/investimentos/importar-proventos`, {method:"POST"}, {sucesso:"Proventos importados", erro:"Não foi possível importar"});
+    carregarProventos();
+  } catch (err) {}
+  btn.disabled = false;
+  btn.textContent = "Importar proventos";
+});
+
+// ---------- Modal "Adicionar ativo" (compra/venda) ----------
+// Uma tela só: se o ativo escolhido ainda não existe na carteira, cadastra
+// na hora; se já existe (mesma classe + ticker, ou mesma classe + nome pra
+// quem não tem ticker), só emenda a operação nele — sem passo separado de
+// "criar investimento" antes de comprar/vender.
+function classeTemTicker(classe){ return CLASSES_COM_TICKER_INVEST.includes(classe); }
+
+function encontrarInvestimentoExistente(classe, ticker, nome){
+  return investimentosCache.find(inv => inv.classe === classe && (
+    classeTemTicker(classe)
+      ? inv.ticker === ticker
+      : (inv.nome || "").trim().toLowerCase() === (nome || "").trim().toLowerCase()
+  ));
+}
+
+let ativoNomeSelecionado = "";
+
+function atualizarRotulosTipoAtivo(tipo){
+  const compra = tipo === "aporte";
+  document.getElementById("ativoDataLabel").textContent = compra ? "Data de Compra" : "Data de Venda";
+  document.getElementById("ativoSalvar").textContent = compra ? "Registrar compra" : "Registrar venda";
+}
+
+function abrirModalAdicionarAtivo(){
+  document.getElementById("ativoClasseInput").value = "";
+  document.getElementById("ativoTickerInput").value = "";
+  document.getElementById("ativoNomeInput").value = "";
+  document.getElementById("ativoEmissorInput").value = "";
+  document.getElementById("ativoTipoInvestimentoInput").value = "";
+  document.getElementById("ativoIndexadorInput").value = "";
+  document.getElementById("ativoTaxaInput").value = "";
+  document.getElementById("ativoVencimentoInput").value = "";
+  document.getElementById("ativoLiquidezInput").checked = false;
+  document.getElementById("ativoQuantidadeInput").value = "";
+  document.getElementById("ativoPrecoInput").value = "";
+  document.getElementById("ativoCustosInput").value = "";
+  document.getElementById("ativoValorInput").value = "";
+  document.getElementById("ativoDataInput").value = hojeISO();
+  document.getElementById("ativoTickerLista").hidden = true;
+  document.getElementById("ativoBuscaWrap").style.display = "none";
+  document.getElementById("ativoNomeWrap").style.display = "none";
+  document.getElementById("ativoIndexadorWrap").style.display = "none";
+  document.getElementById("ativoQuantidadeWrap").style.display = "";
+  document.getElementById("ativoPrecoCustosWrap").style.display = "";
+  document.getElementById("ativoValorWrap").style.display = "none";
+  document.getElementById("ativoContaInput").disabled = false;
+  ativoNomeSelecionado = "";
+  document.querySelectorAll("#ativoTipoSegmented button").forEach(b => b.classList.remove("ativo"));
+  document.querySelector('#ativoTipoSegmented button[data-tipo="aporte"]').classList.add("ativo");
+  atualizarRotulosTipoAtivo("aporte");
+  atualizarValorTotalAtivo();
+  document.getElementById("modalAdicionarAtivo").classList.add("ativo");
+}
+document.getElementById("btnAdicionarAtivo").addEventListener("click", abrirModalAdicionarAtivo);
+document.getElementById("ativoCancelar").addEventListener("click", () => {
+  document.getElementById("modalAdicionarAtivo").classList.remove("ativo");
+});
+
+// ---------- Modal "Configurar % Ideal" ----------
+let chartAlocacaoIdeal = null;
+
+function criarLinhaAlocacao(classe, valor){
+  const idx = Object.keys(ROTULOS_CLASSE_INVESTIMENTO).indexOf(classe);
+  const cor = PALETA_CORES.slice(1)[idx % (PALETA_CORES.length - 1)];
+  const div = document.createElement("div");
+  div.className = "alocacao-linha";
+  div.dataset.classe = classe;
+  div.innerHTML = `
+    <span class="alocacao-dot" style="background:${cor};"></span>
+    <span class="alocacao-nome">${ROTULOS_CLASSE_INVESTIMENTO[classe] || classe}</span>
+    <div class="alocacao-stepper">
+      <button type="button" class="alocacao-menos">−</button>
+      <input type="number" class="alocacao-input" data-classe="${classe}" min="0" max="100" step="1" value="${valor}">
+      <span>%</span>
+      <button type="button" class="alocacao-mais">+</button>
+    </div>
+    <button type="button" class="icon danger alocacao-remover" title="Remover">${ICO.x}</button>
+  `;
+  const input = div.querySelector(".alocacao-input");
+  div.querySelector(".alocacao-menos").addEventListener("click", () => {
+    input.value = Math.max(0, (parseFloat(input.value) || 0) - 1);
+    atualizarGraficoAlocacaoIdeal();
+  });
+  div.querySelector(".alocacao-mais").addEventListener("click", () => {
+    input.value = Math.min(100, (parseFloat(input.value) || 0) + 1);
+    atualizarGraficoAlocacaoIdeal();
+  });
+  input.addEventListener("input", atualizarGraficoAlocacaoIdeal);
+  div.querySelector(".alocacao-remover").addEventListener("click", () => {
+    div.remove();
+    atualizarNovaClasseOpcoes();
+    atualizarGraficoAlocacaoIdeal();
+  });
+  return div;
+}
+
+function atualizarNovaClasseOpcoes(){
+  const jaTem = new Set([...document.querySelectorAll(".alocacao-linha")].map(el => el.dataset.classe));
+  const sel = document.getElementById("alocacaoNovaClasse");
+  sel.innerHTML = Object.keys(ROTULOS_CLASSE_INVESTIMENTO)
+    .filter(c => !jaTem.has(c))
+    .map(c => `<option value="${c}">${ROTULOS_CLASSE_INVESTIMENTO[c]}</option>`).join("");
+  document.getElementById("alocacaoAdicionarBtn").disabled = sel.options.length === 0;
+}
+
+function atualizarGraficoAlocacaoIdeal(){
+  const linhas = [...document.querySelectorAll(".alocacao-linha")];
+  const total = linhas.reduce((s, el) => s + (parseFloat(el.querySelector(".alocacao-input").value) || 0), 0);
+  document.getElementById("alocacaoTotalTexto").textContent = `${total.toFixed(0)}%`;
+  if (chartAlocacaoIdeal) chartAlocacaoIdeal.destroy();
+  const ctx = document.getElementById("chartAlocacaoIdeal");
+  if (!ctx || linhas.length === 0) return;
+  chartAlocacaoIdeal = new Chart(ctx.getContext("2d"), {
+    type: "doughnut",
+    data: {
+      labels: linhas.map(el => ROTULOS_CLASSE_INVESTIMENTO[el.dataset.classe] || el.dataset.classe),
+      datasets: [{
+        data: linhas.map(el => parseFloat(el.querySelector(".alocacao-input").value) || 0),
+        backgroundColor: linhas.map(el => el.querySelector(".alocacao-dot").style.background),
+        borderWidth: 0,
+      }],
+    },
+    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}, tooltip: {...TOOLTIP_ESTILO}}},
+  });
+}
+
+document.getElementById("btnConfigurarAlocacao").addEventListener("click", () => {
+  const classesNaCarteira = [...new Set(investimentosCache.map(inv => inv.classe))];
+  const classes = [...new Set([...classesNaCarteira, ...Object.keys(alocacaoIdealCache)])];
+  const campos = document.getElementById("alocacaoIdealCampos");
+  campos.innerHTML = "";
+  if (classes.length === 0){
+    campos.innerHTML = `<div class="empty">Cadastre um investimento primeiro.</div>`;
+  } else {
+    classes.forEach(classe => campos.appendChild(criarLinhaAlocacao(classe, alocacaoIdealCache[classe] || 0)));
+  }
+  atualizarNovaClasseOpcoes();
+  atualizarGraficoAlocacaoIdeal();
+  document.getElementById("modalAlocacaoIdeal").classList.add("ativo");
+});
+document.getElementById("alocacaoAdicionarBtn").addEventListener("click", () => {
+  const classe = document.getElementById("alocacaoNovaClasse").value;
+  if (!classe) return;
+  document.getElementById("alocacaoIdealCampos").appendChild(criarLinhaAlocacao(classe, 0));
+  atualizarNovaClasseOpcoes();
+  atualizarGraficoAlocacaoIdeal();
+});
+document.getElementById("alocacaoCancelar").addEventListener("click", () => {
+  document.getElementById("modalAlocacaoIdeal").classList.remove("ativo");
+});
+document.getElementById("alocacaoSalvar").addEventListener("click", async () => {
+  const body = {};
+  document.querySelectorAll(".alocacao-input").forEach(input => {
+    if (input.value !== "") body[input.dataset.classe] = parseFloat(input.value);
+  });
+  try {
+    await apiFetch(`${API}/investimentos/alocacao-ideal`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Distribuição salva", erro:"Não foi possível salvar"});
+    document.getElementById("modalAlocacaoIdeal").classList.remove("ativo");
+    carregarInvestimentos();
+  } catch (e) {}
+});
+
+document.querySelectorAll("#ativoTipoSegmented button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#ativoTipoSegmented button").forEach(b => b.classList.remove("ativo"));
+    btn.classList.add("ativo");
+    atualizarRotulosTipoAtivo(btn.dataset.tipo);
+    atualizarValorTotalAtivo();
+  });
+});
+
+function aplicarAtivoExistenteOuNao(classe, ticker, nome){
+  const existente = encontrarInvestimentoExistente(classe, ticker, nome);
+  const contaSel = document.getElementById("ativoContaInput");
+  if (existente){
+    contaSel.value = existente.conta_id;
+    contaSel.disabled = true;
+    if (classe === "renda_fixa") document.getElementById("ativoIndexadorWrap").style.display = "none";
+  } else {
+    contaSel.disabled = false;
+    if (classe === "renda_fixa") document.getElementById("ativoIndexadorWrap").style.display = "";
+  }
+}
+
+// Assim que o ativo é escolhido na busca, já traz a cotação em cache (se
+// houver) pro campo Preço — o usuário ainda pode ajustar antes de salvar.
+async function preencherPrecoComCotacaoAtual(classe, ticker){
+  try {
+    const res = await apiFetch(`${API}/investimentos/cotacao?classe=${encodeURIComponent(classe)}&ticker=${encodeURIComponent(ticker)}`,
+      undefined, {silencioso: true});
+    const dados = await res.json();
+    if (dados.preco){
+      document.getElementById("ativoPrecoInput").value = dados.preco;
+      atualizarValorTotalAtivo();
+    }
+  } catch (e) {}
+}
+
+document.getElementById("ativoClasseInput").addEventListener("change", (e) => {
+  const classe = e.target.value;
+  const temTicker = classeTemTicker(classe);
+  document.getElementById("ativoBuscaWrap").style.display = temTicker ? "" : "none";
+  document.getElementById("ativoNomeWrap").style.display = (!temTicker && classe) ? "" : "none";
+  document.getElementById("ativoIndexadorWrap").style.display = classe === "renda_fixa" ? "" : "none";
+  document.getElementById("ativoQuantidadeWrap").style.display = temTicker ? "" : "none";
+  document.getElementById("ativoPrecoCustosWrap").style.display = temTicker ? "" : "none";
+  document.getElementById("ativoValorWrap").style.display = (!temTicker && classe) ? "" : "none";
+  document.getElementById("ativoTickerInput").value = "";
+  document.getElementById("ativoNomeInput").value = "";
+  document.getElementById("ativoTickerLista").hidden = true;
+  document.getElementById("ativoContaInput").disabled = false;
+  ativoNomeSelecionado = "";
+  atualizarValorTotalAtivo();
+});
+
+// Busca com autocompletar dentro do modal — servida do catálogo local em
+// /api/investimentos/buscar-ativos (atualizado 1x por dia), sem bater na
+// B3/CoinGecko a cada letra digitada.
+let temporizadorBuscaAtivo = null;
+const ativoTickerInput = document.getElementById("ativoTickerInput");
+const ativoTickerLista = document.getElementById("ativoTickerLista");
+ativoTickerInput.addEventListener("input", () => {
+  clearTimeout(temporizadorBuscaAtivo);
+  ativoNomeSelecionado = "";
+  const classe = document.getElementById("ativoClasseInput").value;
+  const q = ativoTickerInput.value.trim();
+  if (!classe || q.length < 2){
+    ativoTickerLista.hidden = true;
+    return;
+  }
+  temporizadorBuscaAtivo = setTimeout(async () => {
+    let ativos;
+    try {
+      const res = await apiFetch(`${API}/investimentos/buscar-ativos?classe=${encodeURIComponent(classe)}&q=${encodeURIComponent(q)}`,
+        undefined, {silencioso: true});
+      ativos = await res.json();
+    } catch (e) { return; }
+    if (ativos.length === 0){ ativoTickerLista.hidden = true; return; }
+    ativoTickerLista.innerHTML = ativos.map(a =>
+      `<button type="button" class="autocomplete-item" data-ticker="${escapeHtml(a.ticker)}" data-nome="${escapeHtml(a.nome || "")}">
+        <span class="ticker">${escapeHtml(a.ticker)}</span><span class="nome">${escapeHtml(a.nome || "")}</span>
+      </button>`
+    ).join("");
+    ativoTickerLista.hidden = false;
+    ativoTickerLista.querySelectorAll(".autocomplete-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        ativoTickerInput.value = btn.dataset.ticker;
+        ativoNomeSelecionado = btn.dataset.nome || btn.dataset.ticker;
+        ativoTickerLista.hidden = true;
+        const classeAtual = document.getElementById("ativoClasseInput").value;
+        aplicarAtivoExistenteOuNao(classeAtual, btn.dataset.ticker, ativoNomeSelecionado);
+        preencherPrecoComCotacaoAtual(classeAtual, btn.dataset.ticker);
+      });
+    });
+  }, 300);
+});
+document.addEventListener("click", (e) => {
+  if (!ativoTickerLista.hidden && !e.target.closest("#ativoBuscaWrap")) ativoTickerLista.hidden = true;
+});
+document.getElementById("ativoNomeInput").addEventListener("blur", () => {
+  aplicarAtivoExistenteOuNao(document.getElementById("ativoClasseInput").value, null, document.getElementById("ativoNomeInput").value);
+});
+
+function calcularValorTotalAtivo(){
+  const classe = document.getElementById("ativoClasseInput").value;
+  if (classeTemTicker(classe)){
+    const qtd = parseFloat(document.getElementById("ativoQuantidadeInput").value) || 0;
+    const preco = parseFloat(document.getElementById("ativoPrecoInput").value) || 0;
+    const custos = parseFloat(document.getElementById("ativoCustosInput").value) || 0;
+    const tipo = document.querySelector("#ativoTipoSegmented button.ativo").dataset.tipo;
+    const bruto = qtd * preco;
+    return tipo === "aporte" ? bruto + custos : Math.max(bruto - custos, 0);
+  }
+  return parseFloat(document.getElementById("ativoValorInput").value) || 0;
+}
+function atualizarValorTotalAtivo(){
+  document.getElementById("ativoValorTotalTexto").textContent = formatMoeda(calcularValorTotalAtivo());
+}
+["ativoQuantidadeInput", "ativoPrecoInput", "ativoCustosInput", "ativoValorInput"].forEach(id => {
+  document.getElementById(id).addEventListener("input", atualizarValorTotalAtivo);
+});
+
+document.getElementById("ativoSalvar").addEventListener("click", async () => {
+  const classe = document.getElementById("ativoClasseInput").value;
+  const tipo = document.querySelector("#ativoTipoSegmented button.ativo").dataset.tipo;
+  const data = document.getElementById("ativoDataInput").value || hojeISO();
+  const temTicker = classeTemTicker(classe);
+  const tickerBruto = document.getElementById("ativoTickerInput").value.trim();
+  // A CoinGecko exige o id em minúsculas (ex: "bitcoin") — as outras classes usam maiúsculas.
+  const ticker = temTicker ? (classe === "cripto" ? tickerBruto.toLowerCase() : tickerBruto.toUpperCase()) : null;
+  const nome = temTicker ? (ativoNomeSelecionado || ticker) : document.getElementById("ativoNomeInput").value.trim();
+
+  if (!classe){ showToast("Escolha o tipo de ativo", "erro"); return; }
+  if (temTicker && !ticker){ showToast("Busque e escolha um ativo", "erro"); return; }
+  if (!temTicker && !nome){ showToast("Informe o nome do ativo", "erro"); return; }
+
+  const existente = encontrarInvestimentoExistente(classe, ticker, nome);
+  let investimentoId = existente ? existente.id : null;
+
+  if (!investimentoId){
+    const contaId = document.getElementById("ativoContaInput").value;
+    if (!contaId){ showToast("Escolha a conta", "erro"); return; }
+    const bodyInvestimento = {nome, classe, conta_id: contaId};
+    if (temTicker) bodyInvestimento.ticker = ticker;
+    if (classe === "renda_fixa"){
+      bodyInvestimento.indexador = document.getElementById("ativoIndexadorInput").value;
+      bodyInvestimento.taxa = document.getElementById("ativoTaxaInput").value;
+      bodyInvestimento.emissor = document.getElementById("ativoEmissorInput").value.trim();
+      bodyInvestimento.tipo_investimento = document.getElementById("ativoTipoInvestimentoInput").value;
+      bodyInvestimento.vencimento = document.getElementById("ativoVencimentoInput").value || null;
+      bodyInvestimento.liquidez_diaria = document.getElementById("ativoLiquidezInput").checked;
+      if (!bodyInvestimento.indexador || !bodyInvestimento.taxa){
+        showToast("Indexador e taxa são obrigatórios pra renda fixa", "erro");
+        return;
+      }
+    }
+    try {
+      const res = await apiFetch(`${API}/investimentos`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(bodyInvestimento)},
+        {erro:"Não foi possível cadastrar o ativo"});
+      investimentoId = (await res.json()).id;
+    } catch (e) { return; }
+  }
+
+  const bodyOperacao = {tipo, data};
+  if (temTicker){
+    bodyOperacao.quantidade = document.getElementById("ativoQuantidadeInput").value;
+    bodyOperacao.preco_unitario = document.getElementById("ativoPrecoInput").value;
+    bodyOperacao.custos_extras = document.getElementById("ativoCustosInput").value || 0;
+  } else {
+    bodyOperacao.valor = document.getElementById("ativoValorInput").value;
+  }
+
+  try {
+    await apiFetch(`${API}/investimentos/${investimentoId}/operacoes`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(bodyOperacao)},
+      {sucesso: tipo === "aporte" ? "Compra registrada" : "Venda registrada", erro:"Não foi possível registrar a operação"});
+    document.getElementById("modalAdicionarAtivo").classList.remove("ativo");
+    carregarInvestimentos();
+    carregarContas();
+  } catch (e) {}
+});
+
+// ---------- Sub-abas Resumo / Proventos ----------
+document.querySelectorAll("#investimentoSubnav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#investimentoSubnav button").forEach(b => b.classList.remove("ativo"));
+    btn.classList.add("ativo");
+    const ehResumo = btn.dataset.sub === "resumo";
+    document.getElementById("subInvestimentosResumo").hidden = !ehResumo;
+    document.getElementById("subInvestimentosProventos").hidden = ehResumo;
+    if (!ehResumo) carregarProventos();
+  });
+});
+
+let chartEvolucaoProventos = null, chartProventosPorAtivo = null;
+
+async function carregarProventos(){
+  let resumo;
+  try {
+    const res = await apiFetch(`${API}/investimentos/proventos`, undefined, {erro:"Não foi possível carregar os proventos"});
+    resumo = await res.json();
+  } catch (e) { return; }
+
+  document.getElementById("proventosTotalReceber").textContent = formatMoeda(resumo.total_a_receber);
+
+  const corTexto = document.documentElement.getAttribute("data-tema") === "claro" ? "#6b7694" : "#8b96b3";
+  if (chartEvolucaoProventos) chartEvolucaoProventos.destroy();
+  const ctxEvo = document.getElementById("chartEvolucaoProventos");
+  if (ctxEvo && resumo.evolucao.length){
+    chartEvolucaoProventos = new Chart(ctxEvo.getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: resumo.evolucao.map(e => formatMes(e.mes)),
+        datasets: [
+          {label: "Recebido", data: resumo.evolucao.map(e => e.recebido), backgroundColor: "rgba(0,167,111,0.85)", borderRadius: 6},
+          {label: "A receber", data: resumo.evolucao.map(e => e.a_receber), backgroundColor: "rgba(255,171,0,0.85)", borderRadius: 6},
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {x: {ticks: {color: corTexto}, grid: {display: false}}, y: {ticks: {color: corTexto}, grid: {color: "rgba(128,128,128,0.15)"}}},
+        plugins: {
+          legend: {position: "bottom", labels: {usePointStyle: true, color: corTexto}},
+          tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.dataset.label}: ${formatMoeda(ctx.parsed.y)}`}},
+        },
+      },
+    });
+  }
+
+  if (chartProventosPorAtivo) chartProventosPorAtivo.destroy();
+  const ctxAtivo = document.getElementById("chartProventosPorAtivo");
+  if (ctxAtivo && resumo.por_ativo.length){
+    chartProventosPorAtivo = new Chart(ctxAtivo.getContext("2d"), {
+      type: "doughnut",
+      data: {
+        labels: resumo.por_ativo.map(a => a.nome),
+        datasets: [{data: resumo.por_ativo.map(a => a.valor), backgroundColor: PALETA_CORES.slice(1), borderWidth: 0}],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: {position: "bottom", labels: {usePointStyle: true, color: corTexto}},
+          tooltip: {...TOOLTIP_ESTILO, callbacks: {label: (ctx) => `${ctx.label}: ${formatMoeda(ctx.parsed)}`}},
+        },
+      },
+    });
+  }
+
+  const tabela = document.getElementById("tabelaProventosMes");
+  if (resumo.tabela_mes_atual.length === 0){
+    tabela.innerHTML = `<div class="empty">Nenhum provento neste mês.</div>`;
+  } else {
+    tabela.innerHTML = resumo.tabela_mes_atual.map(op => `
+      <div class="provento-linha">
+        <span class="provento-ativo">${escapeHtml(op.investimento_nome)} · ${formatData(op.data)}${op.tipo_pagamento ? " · " + (ROTULOS_TIPO_PAGAMENTO[op.tipo_pagamento] || op.tipo_pagamento) : ""}${op.origem === "auto_brapi" ? ` <span class="provento-status pago" style="font-weight:400;">Importado</span>` : ""}</span>
+        <span class="provento-valor">
+          ${op.valor_bruto && op.valor_bruto !== op.valor ? `<span style="color:var(--muted); font-weight:400; margin-right:6px;">bruto ${formatMoeda(op.valor_bruto)}</span>` : ""}
+          ${formatMoeda(op.valor)}
+        </span>
+        <span class="provento-status ${op.pago ? "pago" : "a-receber"}">
+          ${op.pago ? "Pago" : "A receber"}
+          ${!op.pago && op.lancamento_id ? `<button type="button" class="secondary marcar-recebido" data-lancamento="${op.lancamento_id}">Marcar recebido</button>` : ""}
+        </span>
+      </div>
+    `).join("");
+    tabela.querySelectorAll(".marcar-recebido").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        try {
+          await apiFetch(`${API}/lancamentos/${btn.dataset.lancamento}/pagamento`, {
+            method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify({pago: true}),
+          }, {sucesso: "Provento marcado como recebido", erro: "Não foi possível marcar como recebido"});
+          carregarProventos();
+        } catch (e) {}
+      });
+    });
+  }
+
+  const historico = document.getElementById("historicoProventos");
+  if (!resumo.historico_anual || resumo.historico_anual.length === 0){
+    historico.innerHTML = `<div class="empty">Sem histórico ainda.</div>`;
+  } else {
+    historico.innerHTML = `
+      <div style="overflow-x:auto;">
+        <table class="tabela-historico-proventos">
+          <thead><tr><th>Ano</th>${NOMES_MESES_CURTOS.map(m => `<th>${m}</th>`).join("")}<th>Média</th><th>Total</th></tr></thead>
+          <tbody>
+            ${resumo.historico_anual.map(linha => `
+              <tr>
+                <td>${linha.ano}</td>
+                ${NOMES_MESES_CURTOS.map((_, i) => {
+                  const numeroMes = String(i + 1).padStart(2, "0");
+                  const valor = linha.meses[numeroMes];
+                  return `<td>${valor ? formatMoeda(valor) : "—"}</td>`;
+                }).join("")}
+                <td><strong>${formatMoeda(linha.media)}</strong></td>
+                <td><strong>${formatMoeda(linha.total)}</strong></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+}
+
 // ---------- Holerite ----------
 function renderizarChartHolerites(holerites){
   // Meses atípicos (ex: férias) podem ter mais de um holerite na mesma referência —
@@ -4322,6 +5399,9 @@ document.querySelectorAll(".nav-item").forEach(btn => {
   }
   if (btn.dataset.tab === "metas"){
     btn.addEventListener("click", carregarMetas);
+  }
+  if (btn.dataset.tab === "investimentos"){
+    btn.addEventListener("click", carregarInvestimentos);
   }
   if (btn.dataset.tab === "holerites"){
     btn.addEventListener("click", carregarHolerites);

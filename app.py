@@ -13,6 +13,7 @@ import sqlite3
 import tempfile
 import threading
 import unicodedata
+import requests
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -31,6 +32,7 @@ FOTOS_DIR = os.environ.get("FOTOS_DIR", "/data/fotos")
 BACKUPS_DIR = os.environ.get("BACKUPS_DIR", "/data/backups")
 HOLERITES_DIR = os.environ.get("HOLERITES_DIR", "/data/holerites")
 DEMO_DB_PATH = os.environ.get("DEMO_DB_PATH", "/data/orcamento-demo.db")
+BRAPI_TOKEN = os.environ.get("BRAPI_TOKEN", "")
 
 EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 TAMANHO_MAX_UPLOAD = 8 * 1024 * 1024  # 8 MB
@@ -1662,6 +1664,10 @@ def deletar_lancamento(item_id):
             "DELETE FROM lancamentos WHERE grupo_transferencia = ? AND id != ?",
             (row["grupo_transferencia"], item_id),
         )
+    # Aporte/resgate/provento de investimento tem uma operação espelhando esse
+    # lançamento — apagar um dos dois lados sem o outro deixaria a carteira
+    # de investimentos com um movimento fantasma.
+    conn.execute("DELETE FROM investimento_operacoes WHERE lancamento_id = ?", (item_id,))
     conn.commit()
     conn.close()
     return jsonify({"ok": True, "escopo": "este"})
@@ -2266,6 +2272,1120 @@ def deletar_consignado(item_id):
     return jsonify({"ok": True})
 
 
+# ---------------- Investimentos ----------------
+
+CLASSES_COM_TICKER = {"acao", "fii", "etf", "bdr", "cripto", "stock", "reit", "etf_internacional"}
+CLASSES_VALIDAS = CLASSES_COM_TICKER | {"renda_fixa", "fundo", "outro"}
+CLASSES_YAHOO = {"stock", "reit", "etf_internacional"}  # tickers americanos, cotados em USD
+TIPOS_OPERACAO_INVESTIMENTO = {"aporte", "resgate", "provento", "reavaliacao"}
+DATA_BASE_INDEXADOR = "2015-01-01"
+
+
+def normalizar_ticker(classe, valor):
+    """CoinGecko exige o id em minúsculas (ex: "bitcoin") — as outras classes
+    com ticker usam maiúsculas. Usado sempre que um ticker é salvo, pra não
+    gravar cripto de um jeito que a cotação nunca mais vai encontrar."""
+    valor = (valor or "").strip()
+    if not valor:
+        return None
+    return valor.lower() if classe == "cripto" else valor.upper()
+
+
+def _bcb_serie(codigo, data_inicial, data_final):
+    """Busca a série do Banco Central (SGS) num intervalo — API pública, sem
+    chave. Cada item vem como {"data": "dd/mm/aaaa", "valor": "0.123"}.
+    A própria API recusa (406) uma janela de mais de 10 anos numa série
+    diária, então quem chama precisa garantir um intervalo dentro desse limite."""
+    resp = requests.get(
+        f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados",
+        params={
+            "dataInicial": data_inicial.strftime("%d/%m/%Y"),
+            "dataFinal": data_final.strftime("%d/%m/%Y"),
+            "formato": "json",
+        },
+        # janelas maiores (série diária de vários anos) demoram bem mais que os
+        # 15s usados nas outras chamadas dessa seção — o BCB é lento pra montar
+        # uma resposta grande, não é sinal de que o serviço esteja fora do ar.
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def atualizar_indexador(conn, indexador, codigo_bcb):
+    """Busca só os dias/meses novos desde a última linha cacheada em
+    indexador_serie e completa o fator acumulado incrementalmente — evita
+    reprocessar a série inteira (que pode ter milhares de pontos) a cada ciclo.
+    Busca em janelas de até 10 anos, porque é o máximo que a API do Banco
+    Central aceita numa série diária (ela recusa o resto com HTTP 406)."""
+    ultima = conn.execute(
+        "SELECT data, fator_acumulado FROM indexador_serie WHERE indexador = ? "
+        "ORDER BY data DESC LIMIT 1",
+        (indexador,),
+    ).fetchone()
+    fator = ultima["fator_acumulado"] if ultima else 1.0
+    inicio = (
+        datetime.strptime(ultima["data"], "%Y-%m-%d") + timedelta(days=1)
+        if ultima else datetime.strptime(DATA_BASE_INDEXADOR, "%Y-%m-%d")
+    )
+    hoje = datetime.now()
+    while inicio.date() <= hoje.date():
+        # janelas de 5 anos (não os 10 que a API permite): fica mais rápido por
+        # chamada e, se uma janela falhar no meio de uma carga inicial grande,
+        # as janelas já processadas (gravadas abaixo a cada volta) não se perdem.
+        fim_janela = min(inicio + timedelta(days=1825), hoje)
+        linhas = []
+        for item in _bcb_serie(codigo_bcb, inicio, fim_janela):
+            data_iso = datetime.strptime(item["data"], "%d/%m/%Y").strftime("%Y-%m-%d")
+            taxa = float(str(item["valor"]).replace(",", "."))
+            fator *= (1 + taxa / 100)
+            linhas.append((indexador, data_iso, fator))
+        if linhas:
+            conn.executemany(
+                "INSERT INTO indexador_serie (indexador, data, fator_acumulado) VALUES (?, ?, ?) "
+                "ON CONFLICT(indexador, data) DO UPDATE SET fator_acumulado = excluded.fator_acumulado",
+                linhas,
+            )
+            conn.commit()
+        inicio = fim_janela + timedelta(days=1)
+
+
+def fator_indexador_em(conn, indexador, data_iso):
+    row = conn.execute(
+        "SELECT fator_acumulado FROM indexador_serie WHERE indexador = ? AND data <= ? "
+        "ORDER BY data DESC LIMIT 1",
+        (indexador, data_iso),
+    ).fetchone()
+    return row["fator_acumulado"] if row else 1.0
+
+
+def buscar_cotacoes_brapi(tickers):
+    """Cotação de ações/FIIs/ETFs da B3 via brapi.dev. Sem BRAPI_TOKEN configurado
+    só funciona pros tickers de teste gratuitos da própria brapi — o resto fica
+    sem atualizar (o card mostra "cotação não configurada")."""
+    if not tickers:
+        return {}
+    params = {"token": BRAPI_TOKEN} if BRAPI_TOKEN else {}
+    resp = requests.get(
+        f"https://brapi.dev/api/quote/{','.join(tickers)}", params=params, timeout=15,
+    )
+    resp.raise_for_status()
+    resultado = {}
+    for item in resp.json().get("results", []):
+        preco = item.get("regularMarketPrice")
+        if preco is not None:
+            resultado[item["symbol"]] = preco
+    return resultado
+
+
+def buscar_cotacoes_cripto(tickers):
+    """Cotação de cripto via CoinGecko — gratuita, sem chave. `tickers` são ids
+    da CoinGecko (ex: bitcoin, ethereum), não o símbolo curto (BTC, ETH)."""
+    if not tickers:
+        return {}
+    resp = requests.get(
+        "https://api.coingecko.com/api/v3/simple/price",
+        params={"ids": ",".join(tickers), "vs_currencies": "brl"}, timeout=15,
+    )
+    resp.raise_for_status()
+    dados = resp.json()
+    return {t: dados[t]["brl"] for t in tickers if t in dados and "brl" in dados[t]}
+
+
+def buscar_cotacoes_yahoo(tickers):
+    """Cotação de stocks/REITs/ETFs internacionais via Yahoo Finance (endpoint
+    não-oficial, sem chave, só precisa de um User-Agent). Uma chamada por
+    ticker — carteira pessoal tem poucos ativos americanos, não compensa a
+    complicação de tentar buscar em lote."""
+    resultado = {}
+    for ticker in tickers:
+        try:
+            resp = requests.get(
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+                headers={"User-Agent": "Mozilla/5.0"}, timeout=15,
+            )
+            resp.raise_for_status()
+            preco = resp.json()["chart"]["result"][0]["meta"].get("regularMarketPrice")
+            if preco is not None:
+                resultado[ticker] = preco
+        except Exception as e:
+            print(f"[investimentos] falha ao buscar cotação Yahoo de {ticker}: {e}", flush=True)
+    return resultado
+
+
+def buscar_cambio_usd_brl():
+    """Dólar comercial (venda) via Banco Central — série 1 do SGS, mesma API
+    pública já usada pro CDI/IPCA."""
+    linhas = _bcb_serie(1, datetime.now() - timedelta(days=7), datetime.now())
+    return float(str(linhas[-1]["valor"]).replace(",", ".")) if linhas else None
+
+
+def buscar_e_cachear_yahoo(conn, classe, q):
+    """Busca de stock/REIT/ETF internacional: sem uma API de "listar tudo"
+    gratuita pros EUA, essa classe funciona por cache sob demanda — só chama
+    o Yahoo Search na primeira vez que alguém procura por esse termo (em
+    qualquer casa), guarda o resultado em ativo_catalogo, e as buscas
+    seguintes pelo mesmo termo já saem do banco local."""
+    linhas = conn.execute(
+        "SELECT ticker, nome FROM ativo_catalogo WHERE classe = ? AND (ticker LIKE ? OR nome LIKE ?) LIMIT 8",
+        (classe, f"{q}%", f"%{q}%"),
+    ).fetchall()
+    if len(linhas) >= 5:
+        return [dict(r) for r in linhas]
+    try:
+        resp = requests.get(
+            "https://query1.finance.yahoo.com/v1/finance/search",
+            params={"q": q, "quotesCount": 8, "newsCount": 0},
+            headers={"User-Agent": "Mozilla/5.0"}, timeout=10,
+        )
+        resp.raise_for_status()
+        novos = [
+            (classe, item["symbol"], item.get("shortname") or item.get("longname") or item["symbol"])
+            for item in resp.json().get("quotes", [])
+            if item.get("quoteType") in ("EQUITY", "ETF") and item.get("symbol")
+        ]
+        if novos:
+            conn.executemany(
+                "INSERT INTO ativo_catalogo (classe, ticker, nome) VALUES (?, ?, ?) "
+                "ON CONFLICT(classe, ticker) DO UPDATE SET nome = excluded.nome",
+                novos,
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"[investimentos] falha na busca Yahoo de '{q}': {e}", flush=True)
+    linhas = conn.execute(
+        "SELECT ticker, nome FROM ativo_catalogo WHERE classe = ? AND (ticker LIKE ? OR nome LIKE ?) "
+        "ORDER BY (ticker LIKE ?) DESC, ticker LIMIT 8",
+        (classe, f"{q}%", f"%{q}%", f"{q}%"),
+    ).fetchall()
+    return [dict(r) for r in linhas]
+
+
+def atualizar_todas_cotacoes(conn):
+    tickers_b3 = [r["ticker"] for r in conn.execute(
+        "SELECT DISTINCT ticker FROM investimentos WHERE ticker IS NOT NULL "
+        "AND classe IN ('acao','fii','etf','bdr')"
+    ).fetchall()]
+    tickers_cripto = [r["ticker"] for r in conn.execute(
+        "SELECT DISTINCT ticker FROM investimentos WHERE ticker IS NOT NULL AND classe = 'cripto'"
+    ).fetchall()]
+    tickers_yahoo = [r["ticker"] for r in conn.execute(
+        "SELECT DISTINCT ticker FROM investimentos WHERE ticker IS NOT NULL "
+        "AND classe IN ('stock','reit','etf_internacional')"
+    ).fetchall()]
+    agora = datetime.now().isoformat()
+
+    def gravar(chave, valor):
+        conn.execute(
+            "INSERT INTO investimento_cotacoes (chave, valor, atualizado_em) VALUES (?, ?, ?) "
+            "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, atualizado_em = excluded.atualizado_em",
+            (chave, valor, agora),
+        )
+
+    try:
+        for ticker, preco in buscar_cotacoes_brapi(tickers_b3).items():
+            gravar(ticker, preco)
+    except Exception as e:
+        print(f"[investimentos] falha ao buscar cotação B3: {e}", flush=True)
+    try:
+        for ticker, preco in buscar_cotacoes_cripto(tickers_cripto).items():
+            gravar(ticker, preco)
+    except Exception as e:
+        print(f"[investimentos] falha ao buscar cotação cripto: {e}", flush=True)
+    try:
+        for ticker, preco in buscar_cotacoes_yahoo(tickers_yahoo).items():
+            gravar(ticker, preco)
+    except Exception as e:
+        print(f"[investimentos] falha ao buscar cotação Yahoo: {e}", flush=True)
+    try:
+        cambio = buscar_cambio_usd_brl()
+        if cambio:
+            gravar("USD_BRL", cambio)
+    except Exception as e:
+        print(f"[investimentos] falha ao buscar câmbio USD/BRL: {e}", flush=True)
+    try:
+        atualizar_indexador(conn, "cdi", 12)
+    except Exception as e:
+        print(f"[investimentos] falha ao atualizar CDI: {e}", flush=True)
+    try:
+        atualizar_indexador(conn, "ipca", 433)
+    except Exception as e:
+        print(f"[investimentos] falha ao atualizar IPCA: {e}", flush=True)
+    conn.commit()
+
+
+def atualizar_snapshots_patrimonio(conn):
+    """Um retrato por usuário do patrimônio investido no mês atual — não é
+    histórico de verdade (só existe a partir de quando isso entrou no ar),
+    mas é a única forma honesta de desenhar a evolução sem inventar dado do
+    passado. Roda junto do ciclo de cotação: o mês atual vai se atualizando
+    o dia inteiro, os meses passados nunca mais são tocados."""
+    mes = datetime.now().strftime("%Y-%m")
+    agora = datetime.now().isoformat()
+    usuarios = conn.execute("SELECT DISTINCT usuario_id FROM investimentos").fetchall()
+    for u in usuarios:
+        usuario_id = u["usuario_id"]
+        invs = conn.execute("SELECT * FROM investimentos WHERE usuario_id = ?", (usuario_id,)).fetchall()
+        investido = sum(investimento_computado(conn, i)["valor_investido"] for i in invs)
+        atual = sum(investimento_computado(conn, i)["valor_atual"] for i in invs)
+        conn.execute(
+            "INSERT INTO investimento_snapshot_mensal (usuario_id, mes, valor_investido, valor_atual, atualizado_em) "
+            "VALUES (?, ?, ?, ?, ?) ON CONFLICT(usuario_id, mes) DO UPDATE SET "
+            "valor_investido = excluded.valor_investido, valor_atual = excluded.valor_atual, "
+            "atualizado_em = excluded.atualizado_em",
+            (usuario_id, mes, investido, atual, agora),
+        )
+    conn.commit()
+
+
+def _loop_atualizar_cotacoes():
+    """Roda em segundo plano, mesmo padrão do backup automático — carteira
+    pessoal não precisa de cotação em tempo real, então o ciclo é de 1h."""
+    while True:
+        try:
+            conn = get_db()
+            atualizar_todas_cotacoes(conn)
+            atualizar_snapshots_patrimonio(conn)
+            conn.close()
+        except Exception as e:
+            print(f"[investimentos] falha no ciclo de cotações: {e}", flush=True)
+        time.sleep(3600)
+
+
+def iniciar_agendador_cotacoes():
+    t = threading.Thread(target=_loop_atualizar_cotacoes, daemon=True)
+    t.start()
+
+
+def atualizar_catalogo_ativos(conn):
+    """Catálogo local de tickers pra busca com autocompletar ao cadastrar um
+    investimento — sem isso, cada letra digitada bateria na API externa."""
+    try:
+        if BRAPI_TOKEN:
+            resp = requests.get(
+                "https://brapi.dev/api/quote/list", params={"token": BRAPI_TOKEN}, timeout=30,
+            )
+            resp.raise_for_status()
+            linhas = []
+            for item in resp.json().get("stocks", []):
+                sub = item.get("subType")
+                if sub == "fii":
+                    classe = "fii"
+                elif sub == "etf":
+                    classe = "etf"
+                elif item.get("type") == "bdr" or sub == "bdr":
+                    classe = "bdr"
+                elif item.get("type") == "stock" or sub in ("stock", "unit"):
+                    classe = "acao"
+                else:
+                    continue  # fi-infra, fi-agro, fip, fidc etc. não têm classe correspondente aqui
+                linhas.append((classe, item["stock"], item.get("name") or item["stock"]))
+            conn.execute("DELETE FROM ativo_catalogo WHERE classe IN ('acao','fii','etf','bdr')")
+            conn.executemany(
+                "INSERT INTO ativo_catalogo (classe, ticker, nome) VALUES (?, ?, ?) "
+                "ON CONFLICT(classe, ticker) DO UPDATE SET nome = excluded.nome",
+                linhas,
+            )
+            conn.commit()
+    except Exception as e:
+        print(f"[investimentos] falha ao atualizar catálogo B3: {e}", flush=True)
+
+    try:
+        # As 250 maiores por valor de mercado bastam pra uma carteira pessoal —
+        # a lista completa da CoinGecko tem mais de 10 mil moedas, quase todas
+        # obscuras demais pra valer a pena cachear.
+        resp = requests.get(
+            "https://api.coingecko.com/api/v3/coins/markets",
+            params={"vs_currency": "brl", "order": "market_cap_desc", "per_page": 250, "page": 1},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        linhas = [(item["id"], f'{item["name"]} ({item["symbol"].upper()})') for item in resp.json()]
+        conn.execute("DELETE FROM ativo_catalogo WHERE classe = 'cripto'")
+        conn.executemany(
+            "INSERT INTO ativo_catalogo (classe, ticker, nome) VALUES ('cripto', ?, ?) "
+            "ON CONFLICT(classe, ticker) DO UPDATE SET nome = excluded.nome",
+            linhas,
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"[investimentos] falha ao atualizar catálogo cripto: {e}", flush=True)
+
+
+CLASSES_COM_DIVIDENDO_B3 = {"acao", "fii", "bdr", "etf"}
+LABEL_DIVIDENDO_PARA_TIPO_PAGAMENTO = {"DIVIDENDO": "dividendo", "JCP": "jscp", "RENDIMENTO": "rendimento"}
+
+
+def buscar_dividendos_brapi(ticker):
+    """Histórico de proventos já declarados de um ticker B3 — mesma API da
+    cotação, só pedindo o módulo de dividendos a mais. Só funciona com
+    BRAPI_TOKEN configurado (o teste gratuito sem token não libera esse módulo)."""
+    if not BRAPI_TOKEN:
+        return []
+    resp = requests.get(
+        f"https://brapi.dev/api/quote/{ticker}",
+        params={"token": BRAPI_TOKEN, "dividends": "true"}, timeout=20,
+    )
+    resp.raise_for_status()
+    resultados = resp.json().get("results", [])
+    if not resultados:
+        return []
+    return resultados[0].get("dividendsData", {}).get("cashDividends") or []
+
+
+def quantidade_em_data(conn, investimento_id, data_limite):
+    """Quantas cotas/ações o investimento tinha numa data específica — soma
+    os aportes e subtrai os resgates até aquela data, pra saber quem tinha
+    direito a um provento declarado na "data base" dele."""
+    ops = conn.execute(
+        "SELECT tipo, quantidade FROM investimento_operacoes WHERE investimento_id = ? AND data <= ? "
+        "AND tipo IN ('aporte', 'resgate') ORDER BY data, id",
+        (investimento_id, data_limite),
+    ).fetchall()
+    quantidade = 0.0
+    for o in ops:
+        quantidade += (o["quantidade"] or 0) if o["tipo"] == "aporte" else -(o["quantidade"] or 0)
+    return quantidade
+
+
+def _registrar_provento_importado(conn, inv, data_pagamento, data_com, tipo_pagamento, valor_bruto, valor_liquido, pago):
+    _, conta_nome = resolver_conta(conn, inv["conta_id"])
+    mes = data_pagamento[:7]
+    agora = datetime.now().isoformat()
+    if pago:
+        pago_val, data_pagamento_val, vencimento_val = 1, data_pagamento, ""
+    else:
+        pago_val, data_pagamento_val, vencimento_val = 0, "", data_pagamento
+    cur = conn.execute(
+        "INSERT INTO lancamentos (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, "
+        "pago, data_pagamento, observacao, eh_transferencia, criado_em, usuario_id) "
+        "VALUES (?, 'renda', ?, ?, ?, 'Proventos', ?, ?, ?, ?, ?, 0, ?, ?)",
+        (mes, f"Provento — {inv['nome']}", valor_liquido, vencimento_val, conta_nome, inv["conta_id"],
+         pago_val, data_pagamento_val, "Importado automaticamente (brapi.dev)", agora, inv["usuario_id"]),
+    )
+    lancamento_id = cur.lastrowid
+    conn.execute(
+        "INSERT INTO investimento_operacoes (investimento_id, usuario_id, tipo, valor, data, lancamento_id, "
+        "observacao, criado_em, tipo_pagamento, data_com, valor_bruto, origem) "
+        "VALUES (?, ?, 'provento', ?, ?, ?, ?, ?, ?, ?, ?, 'auto_brapi')",
+        (inv["id"], inv["usuario_id"], valor_liquido, data_pagamento, lancamento_id,
+         "Importado automaticamente", agora, tipo_pagamento, data_com, valor_bruto),
+    )
+
+
+def importar_proventos_automaticos(conn):
+    """Busca o histórico de dividendos já declarados (brapi.dev) dos ativos
+    com ticker que alguém já tem cadastrado, e cria a operação de provento
+    sozinho — sem repetir o que já foi importado antes. Só ação/FII/ETF/BDR
+    têm esse dado na B3; cripto e os ativos americanos (Yahoo) não entram
+    aqui. Data de pagamento no passado nasce "Pago" (é fato já ocorrido,
+    oficial da B3, não depende de confirmação); no futuro nasce "A receber"."""
+    if not BRAPI_TOKEN:
+        return
+    invs = conn.execute(
+        "SELECT * FROM investimentos WHERE classe IN ({}) AND ticker IS NOT NULL".format(
+            ",".join("?" * len(CLASSES_COM_DIVIDENDO_B3))
+        ),
+        tuple(CLASSES_COM_DIVIDENDO_B3),
+    ).fetchall()
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    for inv in invs:
+        try:
+            dividendos = buscar_dividendos_brapi(inv["ticker"])
+        except Exception as e:
+            print(f"[investimentos] falha ao buscar proventos de {inv['ticker']}: {e}", flush=True)
+            continue
+        for d in dividendos:
+            payment_date = (d.get("paymentDate") or "")[:10]
+            data_com = (d.get("lastDatePrior") or "")[:10] or None
+            rate = d.get("rate")
+            if not payment_date or not rate:
+                continue
+            tipo_pagamento = LABEL_DIVIDENDO_PARA_TIPO_PAGAMENTO.get((d.get("label") or "").upper(), "rendimento")
+            quantidade = quantidade_em_data(conn, inv["id"], data_com or payment_date)
+            if quantidade <= 0:
+                continue  # não tinha o ativo na data base, não faz jus a esse provento
+            valor_bruto = round(quantidade * rate, 2)
+            ja_existe = conn.execute(
+                "SELECT 1 FROM investimento_operacoes WHERE investimento_id = ? AND tipo = 'provento' "
+                "AND data = ? AND tipo_pagamento = ? AND ABS(COALESCE(valor_bruto, 0) - ?) < 0.01",
+                (inv["id"], payment_date, tipo_pagamento, valor_bruto),
+            ).fetchone()
+            if ja_existe:
+                continue
+            valor_liquido = round(valor_bruto * 0.85, 2) if tipo_pagamento == "jscp" else valor_bruto
+            try:
+                _registrar_provento_importado(
+                    conn, inv, payment_date, data_com, tipo_pagamento, valor_bruto, valor_liquido,
+                    pago=payment_date <= hoje,
+                )
+                conn.commit()
+            except Exception as e:
+                print(f"[investimentos] falha ao importar provento de {inv['ticker']}: {e}", flush=True)
+
+
+def _loop_atualizar_catalogo():
+    """A lista de tickers muda bem menos que a cotação — 1x por dia basta.
+    O histórico de dividendos também: uma empresa não declara provento novo
+    a cada hora, então importar proventos entra nesse mesmo ciclo diário."""
+    while True:
+        try:
+            conn = get_db()
+            atualizar_catalogo_ativos(conn)
+            importar_proventos_automaticos(conn)
+            conn.close()
+        except Exception as e:
+            print(f"[investimentos] falha no ciclo do catálogo: {e}", flush=True)
+        time.sleep(86400)
+
+
+def iniciar_agendador_catalogo():
+    t = threading.Thread(target=_loop_atualizar_catalogo, daemon=True)
+    t.start()
+
+
+def valor_atual_renda_fixa(conn, inv, operacoes):
+    """Cada aporte rende de forma independente a partir da própria data —
+    aproximação razoável pra um app de finanças pessoais, não segue a
+    metodologia exata de cálculo de CETIP/B3 (dias úteis, base 252 etc.)."""
+    indexador = inv["indexador"]
+    taxa = inv["taxa"] or 0
+    hoje = datetime.now().strftime("%Y-%m-%d")
+    total = 0.0
+    for op in operacoes:
+        if op["tipo"] in ("provento", "reavaliacao"):
+            continue
+        sinal = 1 if op["tipo"] == "aporte" else -1
+        dias = max((datetime.now() - datetime.strptime(op["data"], "%Y-%m-%d")).days, 0)
+        if indexador == "prefixado":
+            fator = (1 + taxa / 100) ** (dias / 365)
+        elif indexador in ("cdi", "ipca"):
+            fator_indice = fator_indexador_em(conn, indexador, hoje) / fator_indexador_em(conn, indexador, op["data"])
+            if indexador == "cdi":
+                fator = 1 + (fator_indice - 1) * (taxa / 100)  # taxa = % do CDI, ex: 110
+            else:
+                fator = fator_indice * (1 + taxa / 100) ** (dias / 365)  # taxa = adicional fixo a.a. sobre o IPCA
+        else:
+            fator = 1.0
+        total += sinal * op["valor"] * fator
+    return round(total, 2)
+
+
+def investimento_computado(conn, inv):
+    operacoes = conn.execute(
+        "SELECT * FROM investimento_operacoes WHERE investimento_id = ? ORDER BY data, id",
+        (inv["id"],),
+    ).fetchall()
+    d = dict(inv)
+    aportes = sum(o["valor"] for o in operacoes if o["tipo"] == "aporte")
+    resgates = sum(o["valor"] for o in operacoes if o["tipo"] == "resgate")
+    d["valor_investido"] = round(aportes - resgates, 2)
+
+    if inv["classe"] in CLASSES_COM_TICKER:
+        quantidade, custo = 0.0, 0.0
+        for o in operacoes:
+            if o["tipo"] == "aporte":
+                quantidade += o["quantidade"] or 0
+                custo += o["valor"]
+            elif o["tipo"] == "resgate":
+                qtd = o["quantidade"] or 0
+                preco_medio_atual = (custo / quantidade) if quantidade else 0
+                custo -= preco_medio_atual * qtd
+                quantidade -= qtd
+        cot = conn.execute(
+            "SELECT valor, atualizado_em FROM investimento_cotacoes WHERE chave = ?", (inv["ticker"],)
+        ).fetchone()
+        fator_cambio = 1.0
+        if inv["classe"] in CLASSES_YAHOO:
+            cambio = conn.execute(
+                "SELECT valor FROM investimento_cotacoes WHERE chave = 'USD_BRL'"
+            ).fetchone()
+            fator_cambio = cambio["valor"] if cambio else 1.0
+        d["quantidade"] = round(quantidade, 8)
+        d["preco_medio"] = round(custo / quantidade, 4) if quantidade else 0
+        d["cotacao_atual"] = round(cot["valor"] * fator_cambio, 4) if cot else None
+        d["cotacao_atualizada_em"] = cot["atualizado_em"] if cot else None
+        if cot and quantidade:
+            d["valor_atual"] = round(quantidade * cot["valor"] * fator_cambio, 2)
+        else:
+            # sem cotação em cache ainda (token não configurado ou 1º ciclo não rodou):
+            # usa o custo em carteira como aproximação, em vez de deixar em branco.
+            d["valor_atual"] = round(custo, 2)
+    elif inv["classe"] == "renda_fixa":
+        d["valor_atual"] = valor_atual_renda_fixa(conn, inv, operacoes)
+    else:  # fundo | outro — sem ticker nem indexador, valor atualizado à mão
+        reavaliacoes = [o for o in operacoes if o["tipo"] == "reavaliacao"]
+        d["valor_atual"] = reavaliacoes[-1]["valor"] if reavaliacoes else d["valor_investido"]
+
+    base = d["valor_investido"]
+    d["rentabilidade_valor"] = round(d["valor_atual"] - base, 2)
+    d["rentabilidade_pct"] = round((d["rentabilidade_valor"] / base) * 100, 2) if base > 0 else None
+    return d
+
+
+@app.route("/api/investimentos", methods=["GET"])
+def listar_investimentos():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM investimentos WHERE usuario_id = ? ORDER BY criado_em", (uid(),)
+    ).fetchall()
+    resultado = [investimento_computado(conn, r) for r in rows]
+    conn.close()
+    return jsonify(resultado)
+
+
+@app.route("/api/investimentos", methods=["POST"])
+def criar_investimento():
+    data = request.get_json(force=True)
+    nome = (data.get("nome") or "").strip()
+    classe = data.get("classe")
+    if not nome or classe not in CLASSES_VALIDAS:
+        return jsonify({"erro": "nome e classe são obrigatórios"}), 400
+    conn = get_db()
+    conta_id, _ = resolver_conta(conn, data.get("conta_id"))
+    if not conta_id:
+        conn.close()
+        return jsonify({"erro": "conta é obrigatória"}), 400
+    ticker = normalizar_ticker(classe, data.get("ticker")) if classe in CLASSES_COM_TICKER else None
+    if classe in CLASSES_COM_TICKER and not ticker:
+        conn.close()
+        return jsonify({"erro": "ticker é obrigatório pra essa classe"}), 400
+    indexador = (data.get("indexador") or None) if classe == "renda_fixa" else None
+    taxa = data.get("taxa") if classe == "renda_fixa" else None
+    if classe == "renda_fixa" and (not indexador or taxa in (None, "")):
+        conn.close()
+        return jsonify({"erro": "indexador e taxa são obrigatórios pra renda fixa"}), 400
+    cur = conn.execute(
+        "INSERT INTO investimentos (usuario_id, nome, classe, ticker, conta_id, indexador, taxa, "
+        "vencimento, criado_em, emissor, tipo_investimento, liquidez_diaria) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (uid(), nome, classe, ticker, conta_id, indexador,
+         float(taxa) if taxa not in (None, "") else None,
+         data.get("vencimento") or None, datetime.now().isoformat(),
+         (data.get("emissor") or "").strip() or None if classe == "renda_fixa" else None,
+         (data.get("tipo_investimento") or "").strip() or None if classe == "renda_fixa" else None,
+         1 if (classe == "renda_fixa" and data.get("liquidez_diaria")) else 0),
+    )
+    conn.commit()
+    novo_id = cur.lastrowid
+    conn.close()
+    return jsonify({"ok": True, "id": novo_id}), 201
+
+
+@app.route("/api/investimentos/<int:item_id>", methods=["PUT"])
+def editar_investimento(item_id):
+    data = request.get_json(force=True)
+    conn = get_db()
+    row_atual = conn.execute("SELECT classe FROM investimentos WHERE id = ? AND usuario_id = ?", (item_id, uid())).fetchone()
+    if not row_atual:
+        conn.close()
+        return jsonify({"erro": "investimento não encontrado"}), 404
+    campos, valores = [], []
+    if "nome" in data:
+        campos.append("nome = ?")
+        valores.append((data.get("nome") or "").strip())
+    if "ticker" in data:
+        campos.append("ticker = ?")
+        valores.append(normalizar_ticker(row_atual["classe"], data.get("ticker")))
+    if "conta_id" in data:
+        conta_id, _ = resolver_conta(conn, data.get("conta_id"))
+        if not conta_id:
+            conn.close()
+            return jsonify({"erro": "conta inválida"}), 400
+        campos.append("conta_id = ?")
+        valores.append(conta_id)
+    if "indexador" in data:
+        campos.append("indexador = ?")
+        valores.append(data.get("indexador") or None)
+    if "taxa" in data:
+        campos.append("taxa = ?")
+        valores.append(float(data["taxa"]) if data.get("taxa") not in (None, "") else None)
+    if "vencimento" in data:
+        campos.append("vencimento = ?")
+        valores.append(data.get("vencimento") or None)
+    if "emissor" in data:
+        campos.append("emissor = ?")
+        valores.append((data.get("emissor") or "").strip() or None)
+    if "tipo_investimento" in data:
+        campos.append("tipo_investimento = ?")
+        valores.append((data.get("tipo_investimento") or "").strip() or None)
+    if "liquidez_diaria" in data:
+        campos.append("liquidez_diaria = ?")
+        valores.append(1 if data.get("liquidez_diaria") else 0)
+    if campos:
+        valores.append(item_id)
+        conn.execute(f"UPDATE investimentos SET {', '.join(campos)} WHERE id = ?", valores)
+        conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/investimentos/<int:item_id>", methods=["DELETE"])
+def deletar_investimento(item_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "investimentos", item_id):
+        conn.close()
+        return jsonify({"erro": "investimento não encontrado"}), 404
+    lancamentos_vinculados = [
+        r["lancamento_id"] for r in conn.execute(
+            "SELECT lancamento_id FROM investimento_operacoes "
+            "WHERE investimento_id = ? AND lancamento_id IS NOT NULL",
+            (item_id,),
+        ).fetchall()
+    ]
+    for lid in lancamentos_vinculados:
+        conn.execute("DELETE FROM lancamentos WHERE id = ?", (lid,))
+    conn.execute("DELETE FROM investimento_operacoes WHERE investimento_id = ?", (item_id,))
+    conn.execute("DELETE FROM investimentos WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/investimentos/<int:investimento_id>/operacoes", methods=["GET"])
+def listar_operacoes_investimento(investimento_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "investimentos", investimento_id):
+        conn.close()
+        return jsonify({"erro": "investimento não encontrado"}), 404
+    rows = conn.execute(
+        "SELECT * FROM investimento_operacoes WHERE investimento_id = ? ORDER BY data DESC, id DESC",
+        (investimento_id,),
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/investimentos/<int:investimento_id>/operacoes", methods=["POST"])
+def criar_operacao_investimento(investimento_id):
+    data = request.get_json(force=True)
+    tipo = data.get("tipo")
+    if tipo not in TIPOS_OPERACAO_INVESTIMENTO:
+        return jsonify({"erro": "tipo de operação inválido"}), 400
+    conn = get_db()
+    inv = conn.execute(
+        "SELECT * FROM investimentos WHERE id = ? AND usuario_id = ?", (investimento_id, uid())
+    ).fetchone()
+    if not inv:
+        conn.close()
+        return jsonify({"erro": "investimento não encontrado"}), 404
+    if tipo == "reavaliacao" and inv["classe"] != "outro":
+        conn.close()
+        return jsonify({"erro": "reavaliação manual só vale pra classe 'outro'"}), 400
+
+    data_op = data.get("data") or datetime.now().strftime("%Y-%m-%d")
+    quantidade = preco_unitario = None
+    custos_extras = 0.0
+    tipo_pagamento = data_com = valor_bruto = None
+    if inv["classe"] in CLASSES_COM_TICKER and tipo in ("aporte", "resgate"):
+        try:
+            quantidade = float(data.get("quantidade"))
+            preco_unitario = float(data.get("preco_unitario"))
+            custos_extras = float(data.get("custos_extras") or 0)
+        except (TypeError, ValueError):
+            conn.close()
+            return jsonify({"erro": "quantidade e preço unitário são obrigatórios"}), 400
+        if quantidade <= 0 or preco_unitario <= 0 or custos_extras < 0:
+            conn.close()
+            return jsonify({"erro": "quantidade e preço devem ser maiores que zero"}), 400
+        bruto = quantidade * preco_unitario
+        # Compra: o custo extra soma ao que sai da conta. Venda: desconta do
+        # que entra (corretagem reduz o valor líquido recebido na venda).
+        valor = round(bruto + custos_extras, 2) if tipo == "aporte" else round(max(bruto - custos_extras, 0), 2)
+    elif tipo == "provento":
+        try:
+            valor_bruto = float(data.get("valor"))
+        except (TypeError, ValueError):
+            conn.close()
+            return jsonify({"erro": "valor é obrigatório"}), 400
+        if valor_bruto <= 0:
+            conn.close()
+            return jsonify({"erro": "valor deve ser maior que zero"}), 400
+        tipo_pagamento = data.get("tipo_pagamento") or None
+        data_com = data.get("data_com") or None
+        # JSCP tem 15% de IR retido na fonte — Dividendo e Rendimento não têm
+        # imposto. O usuário digita o valor bruto anunciado; o que de fato cai
+        # na conta (e vira o lançamento) é o líquido.
+        valor = round(valor_bruto * 0.85, 2) if tipo_pagamento == "jscp" else round(valor_bruto, 2)
+    else:
+        try:
+            valor = float(data.get("valor"))
+        except (TypeError, ValueError):
+            conn.close()
+            return jsonify({"erro": "valor é obrigatório"}), 400
+        if valor <= 0:
+            conn.close()
+            return jsonify({"erro": "valor deve ser maior que zero"}), 400
+
+    agora = datetime.now().isoformat()
+    observacao = (data.get("observacao") or "").strip()
+    lancamento_id = None
+    if tipo != "reavaliacao":
+        _, conta_nome = resolver_conta(conn, inv["conta_id"])
+        mes = data_op[:7]
+        if tipo == "aporte":
+            tipo_lanc, eh_transf, categoria = "despesa", 1, "Investimentos"
+            descricao = f"Aporte — {inv['nome']}"
+        elif tipo == "resgate":
+            tipo_lanc, eh_transf, categoria = "renda", 1, "Investimentos"
+            descricao = f"Resgate — {inv['nome']}"
+        else:  # provento
+            tipo_lanc, eh_transf, categoria = "renda", 0, "Proventos"
+            descricao = f"Provento — {inv['nome']}"
+        # Só provento pode nascer "a receber" (data futura, ainda sem cair na
+        # conta) — aporte/resgate são sempre uma ação já feita, não dá pra
+        # "agendar" uma compra que ainda não aconteceu.
+        pago_operacao = bool(data.get("pago", True)) if tipo == "provento" else True
+        if pago_operacao:
+            pago_val, data_pagamento_val, vencimento_val = 1, data_op, ""
+        else:
+            pago_val, data_pagamento_val, vencimento_val = 0, "", data_op
+        cur = conn.execute(
+            "INSERT INTO lancamentos (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, "
+            "pago, data_pagamento, observacao, eh_transferencia, criado_em, usuario_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (mes, tipo_lanc, descricao, valor, vencimento_val, categoria, conta_nome, inv["conta_id"],
+             pago_val, data_pagamento_val, observacao, eh_transf, agora, uid()),
+        )
+        lancamento_id = cur.lastrowid
+
+    conn.execute(
+        "INSERT INTO investimento_operacoes (investimento_id, usuario_id, tipo, quantidade, preco_unitario, "
+        "valor, data, lancamento_id, observacao, criado_em, custos_extras, tipo_pagamento, data_com, valor_bruto) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (investimento_id, uid(), tipo, quantidade, preco_unitario, valor, data_op, lancamento_id,
+         observacao, agora, custos_extras, tipo_pagamento, data_com, valor_bruto),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/investimentos/operacoes/<int:item_id>", methods=["DELETE"])
+def deletar_operacao_investimento(item_id):
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "investimento_operacoes", item_id):
+        conn.close()
+        return jsonify({"erro": "operação não encontrada"}), 404
+    row = conn.execute(
+        "SELECT lancamento_id FROM investimento_operacoes WHERE id = ?", (item_id,)
+    ).fetchone()
+    if row and row["lancamento_id"]:
+        conn.execute("DELETE FROM lancamentos WHERE id = ?", (row["lancamento_id"],))
+    conn.execute("DELETE FROM investimento_operacoes WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/investimentos/atualizar-cotacoes", methods=["POST"])
+def atualizar_cotacoes_agora():
+    conn = get_db()
+    atualizar_todas_cotacoes(conn)
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/investimentos/importar-proventos", methods=["POST"])
+def importar_proventos_agora():
+    conn = get_db()
+    importar_proventos_automaticos(conn)
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/investimentos/resumo", methods=["GET"])
+def resumo_investimentos():
+    conn = get_db()
+    invs = conn.execute("SELECT * FROM investimentos WHERE usuario_id = ?", (uid(),)).fetchall()
+    patrimonio_investido = sum(investimento_computado(conn, i)["valor_investido"] for i in invs)
+    patrimonio_atual = sum(investimento_computado(conn, i)["valor_atual"] for i in invs)
+
+    try:
+        n_meses = max(2, min(24, int(request.args.get("meses", 12))))
+    except (TypeError, ValueError):
+        n_meses = 12
+    meses = []
+    m = datetime.now().strftime("%Y-%m")
+    for _ in range(n_meses):
+        meses.append(m)
+        m = mes_anterior(m)
+    meses.reverse()
+    snapshots = {
+        r["mes"]: r for r in conn.execute(
+            "SELECT * FROM investimento_snapshot_mensal WHERE usuario_id = ? AND mes IN ({})".format(
+                ",".join("?" * len(meses))
+            ),
+            [uid(), *meses],
+        ).fetchall()
+    }
+    hoje = datetime.now().strftime("%Y-%m")
+    evolucao = []
+    for m in meses:
+        if m == hoje:
+            evolucao.append({"mes": m, "valor_investido": patrimonio_investido, "valor_atual": patrimonio_atual})
+        elif m in snapshots:
+            evolucao.append({
+                "mes": m, "valor_investido": snapshots[m]["valor_investido"], "valor_atual": snapshots[m]["valor_atual"],
+            })
+
+    variacao_pct_mes = None
+    mes_ant = mes_anterior(hoje)
+    if mes_ant in snapshots and snapshots[mes_ant]["valor_atual"] > 0:
+        variacao_pct_mes = round(
+            (patrimonio_atual - snapshots[mes_ant]["valor_atual"]) / snapshots[mes_ant]["valor_atual"] * 100, 2
+        )
+
+    # Lucro total = ganho de capital (valorização) + dividendos já recebidos —
+    # os dois juntos, igual o card "Lucro total" do print.
+    ganho_capital = patrimonio_atual - patrimonio_investido
+    dividendos_recebidos_total = conn.execute(
+        "SELECT COALESCE(SUM(io.valor), 0) as total FROM investimento_operacoes io "
+        "JOIN lancamentos l ON l.id = io.lancamento_id "
+        "WHERE io.usuario_id = ? AND io.tipo = 'provento' AND l.pago = 1",
+        (uid(),),
+    ).fetchone()["total"]
+
+    mes_12m_atras = hoje
+    for _ in range(11):
+        mes_12m_atras = mes_anterior(mes_12m_atras)
+    proventos_recebidos_12m = conn.execute(
+        "SELECT COALESCE(SUM(io.valor), 0) as total FROM investimento_operacoes io "
+        "JOIN lancamentos l ON l.id = io.lancamento_id "
+        "WHERE io.usuario_id = ? AND io.tipo = 'provento' AND l.pago = 1 AND l.mes >= ?",
+        (uid(), mes_12m_atras),
+    ).fetchone()["total"]
+
+    rentabilidade_pct_12m = None
+    snapshot_12m = conn.execute(
+        "SELECT valor_atual FROM investimento_snapshot_mensal WHERE usuario_id = ? AND mes = ?",
+        (uid(), mes_12m_atras),
+    ).fetchone()
+    if snapshot_12m and snapshot_12m["valor_atual"] > 0:
+        rentabilidade_pct_12m = round(
+            (patrimonio_atual - snapshot_12m["valor_atual"]) / snapshot_12m["valor_atual"] * 100, 2
+        )
+
+    rentabilidade_pct_total = (
+        round(ganho_capital / patrimonio_investido * 100, 2) if patrimonio_investido > 0 else None
+    )
+
+    conn.close()
+    return jsonify({
+        "patrimonio_investido": round(patrimonio_investido, 2),
+        "patrimonio_atual": round(patrimonio_atual, 2),
+        "variacao_pct_mes": variacao_pct_mes,
+        "evolucao": evolucao,
+        "ganho_capital": round(ganho_capital, 2),
+        "dividendos_recebidos_total": round(dividendos_recebidos_total, 2),
+        "lucro_total": round(ganho_capital + dividendos_recebidos_total, 2),
+        "proventos_recebidos_12m": round(proventos_recebidos_12m, 2),
+        "rentabilidade_pct_12m": rentabilidade_pct_12m,
+        "rentabilidade_pct_total": rentabilidade_pct_total,
+    })
+
+
+@app.route("/api/investimentos/proventos", methods=["GET"])
+def resumo_proventos():
+    try:
+        n_meses = max(2, min(24, int(request.args.get("meses", 12))))
+    except (TypeError, ValueError):
+        n_meses = 12
+    conn = get_db()
+    linhas = conn.execute(
+        "SELECT io.*, i.nome as investimento_nome, l.pago as pago, l.mes as lancamento_mes "
+        "FROM investimento_operacoes io "
+        "JOIN investimentos i ON i.id = io.investimento_id "
+        "LEFT JOIN lancamentos l ON l.id = io.lancamento_id "
+        "WHERE io.usuario_id = ? AND io.tipo = 'provento' ORDER BY io.data DESC",
+        (uid(),),
+    ).fetchall()
+    conn.close()
+
+    hoje = datetime.now().strftime("%Y-%m")
+    total_a_receber = sum(r["valor"] for r in linhas if not r["pago"])
+
+    evolucao_por_mes = {}
+    por_ativo = {}
+    for r in linhas:
+        mes = (r["lancamento_mes"] or r["data"][:7])
+        bucket = evolucao_por_mes.setdefault(mes, {"recebido": 0.0, "a_receber": 0.0})
+        if r["pago"]:
+            bucket["recebido"] += r["valor"]
+        else:
+            bucket["a_receber"] += r["valor"]
+        por_ativo[r["investimento_nome"]] = por_ativo.get(r["investimento_nome"], 0.0) + r["valor"]
+
+    meses = []
+    m = hoje
+    for _ in range(n_meses):
+        meses.append(m)
+        m = mes_anterior(m)
+    meses.reverse()
+    evolucao = [
+        {"mes": m, "recebido": round(evolucao_por_mes.get(m, {}).get("recebido", 0), 2),
+         "a_receber": round(evolucao_por_mes.get(m, {}).get("a_receber", 0), 2)}
+        for m in meses
+    ]
+
+    tabela_mes_atual = [dict(r) for r in linhas if (r["lancamento_mes"] or r["data"][:7]) == hoje]
+
+    # Histórico ano×mês: uma linha por ano, uma coluna por mês (01..12) —
+    # varre tudo que já existe (evolucao_por_mes não tem limite de meses,
+    # diferente de `evolucao` acima), não só a janela de n_meses.
+    mes_atual_num = int(hoje[5:7])
+    ano_atual = hoje[:4]
+    por_ano = {}
+    for m, v in evolucao_por_mes.items():
+        if v["recebido"] <= 0:
+            continue
+        ano, mes_num = m.split("-")
+        por_ano.setdefault(ano, {})[mes_num] = round(v["recebido"], 2)
+    historico_anual = []
+    for ano in sorted(por_ano.keys(), reverse=True):
+        meses_do_ano = por_ano[ano]
+        total_ano = round(sum(meses_do_ano.values()), 2)
+        divisor = mes_atual_num if ano == ano_atual else 12
+        historico_anual.append({
+            "ano": ano, "meses": meses_do_ano, "total": total_ano,
+            "media": round(total_ano / divisor, 2) if divisor else 0,
+        })
+
+    return jsonify({
+        "total_a_receber": round(total_a_receber, 2),
+        "evolucao": evolucao,
+        "por_ativo": [{"nome": k, "valor": round(v, 2)} for k, v in sorted(por_ativo.items(), key=lambda x: -x[1])],
+        "tabela_mes_atual": tabela_mes_atual,
+        "historico_anual": historico_anual,
+    })
+
+
+@app.route("/api/investimentos/alocacao-ideal", methods=["GET"])
+def obter_alocacao_ideal():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT classe, percentual FROM investimento_alocacao_ideal WHERE usuario_id = ?", (uid(),)
+    ).fetchall()
+    conn.close()
+    return jsonify({r["classe"]: r["percentual"] for r in rows})
+
+
+@app.route("/api/investimentos/alocacao-ideal", methods=["PUT"])
+def definir_alocacao_ideal():
+    data = request.get_json(force=True) or {}
+    conn = get_db()
+    conn.execute("DELETE FROM investimento_alocacao_ideal WHERE usuario_id = ?", (uid(),))
+    linhas = []
+    for classe, percentual in data.items():
+        if classe not in CLASSES_VALIDAS:
+            continue
+        try:
+            percentual = float(percentual)
+        except (TypeError, ValueError):
+            continue
+        if percentual > 0:
+            linhas.append((uid(), classe, percentual))
+    if linhas:
+        conn.executemany(
+            "INSERT INTO investimento_alocacao_ideal (usuario_id, classe, percentual) VALUES (?, ?, ?)", linhas
+        )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/investimentos/buscar-ativos", methods=["GET"])
+def buscar_ativos_catalogo():
+    """Autocompletar por classe, servido do catálogo local (ativo_catalogo) —
+    não bate na B3/CoinGecko a cada letra digitada, só no ciclo diário."""
+    classe = request.args.get("classe", "")
+    q = (request.args.get("q") or "").strip()
+    if classe not in CLASSES_COM_TICKER or len(q) < 2:
+        return jsonify([])
+    conn = get_db()
+    if classe in CLASSES_YAHOO:
+        resultado = buscar_e_cachear_yahoo(conn, classe, q)
+    else:
+        rows = conn.execute(
+            "SELECT ticker, nome FROM ativo_catalogo WHERE classe = ? AND (ticker LIKE ? OR nome LIKE ?) "
+            "ORDER BY (ticker LIKE ?) DESC, ticker LIMIT 8",
+            (classe, f"{q}%", f"%{q}%", f"{q}%"),
+        ).fetchall()
+        resultado = [dict(r) for r in rows]
+    conn.close()
+    return jsonify(resultado)
+
+
+@app.route("/api/investimentos/cotacao", methods=["GET"])
+def cotacao_ativo_avulsa():
+    """Cotação atual de um ticker específico, já convertida pra R$ — usada pra
+    pré-preencher o preço no modal assim que o usuário escolhe o ativo. Se
+    ainda não tiver em cache (ex: primeira vez que alguém compra esse ticker —
+    o ciclo de 1h só atualiza quem já é um investimento existente, e esse
+    ainda não é), busca ao vivo agora em vez de deixar o campo em branco."""
+    classe = request.args.get("classe", "")
+    ticker_bruto = (request.args.get("ticker") or "").strip()
+    if classe not in CLASSES_COM_TICKER or not ticker_bruto:
+        return jsonify({"preco": None})
+    # CoinGecko exige o id em minúsculas (ex: "bitcoin") — as outras classes
+    # usam o ticker em maiúsculas, convenção já seguida no resto do módulo.
+    ticker = ticker_bruto.lower() if classe == "cripto" else ticker_bruto.upper()
+
+    conn = get_db()
+
+    def preco_cache(chave):
+        row = conn.execute(
+            "SELECT valor, atualizado_em FROM investimento_cotacoes WHERE chave = ?", (chave,)
+        ).fetchone()
+        return (row["valor"], row["atualizado_em"]) if row else (None, None)
+
+    def gravar(chave, valor):
+        agora = datetime.now().isoformat()
+        conn.execute(
+            "INSERT INTO investimento_cotacoes (chave, valor, atualizado_em) VALUES (?, ?, ?) "
+            "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, atualizado_em = excluded.atualizado_em",
+            (chave, valor, agora),
+        )
+        conn.commit()
+        return agora
+
+    valor, atualizado_em = preco_cache(ticker)
+    if valor is None:
+        try:
+            if classe in CLASSES_YAHOO:
+                valor = buscar_cotacoes_yahoo([ticker]).get(ticker)
+            elif classe == "cripto":
+                valor = buscar_cotacoes_cripto([ticker]).get(ticker)
+            else:
+                valor = buscar_cotacoes_brapi([ticker]).get(ticker)
+        except Exception as e:
+            print(f"[investimentos] falha ao buscar cotação avulsa de {ticker}: {e}", flush=True)
+            valor = None
+        if valor is not None:
+            atualizado_em = gravar(ticker, valor)
+
+    if valor is None:
+        conn.close()
+        return jsonify({"preco": None})
+
+    fator_cambio = 1.0
+    if classe in CLASSES_YAHOO:
+        fator_cambio, _ = preco_cache("USD_BRL")
+        if fator_cambio is None:
+            try:
+                fator_cambio = buscar_cambio_usd_brl()
+            except Exception as e:
+                print(f"[investimentos] falha ao buscar câmbio avulso: {e}", flush=True)
+                fator_cambio = None
+            if fator_cambio:
+                gravar("USD_BRL", fator_cambio)
+            else:
+                fator_cambio = 1.0
+
+    conn.close()
+    return jsonify({"preco": round(valor * fator_cambio, 4), "atualizado_em": atualizado_em})
+
+
 # ---------------- Holerites ----------------
 
 @app.route("/api/holerites", methods=["GET"])
@@ -2557,6 +3677,11 @@ def dashboard():
     # senão esse número sempre bate exatamente com "disponivel" e vira um card duplicado.
     previsao_fim_mes = saldo_total_contas + receita_pendente - despesa_pendente
 
+    investimentos = conn.execute(
+        "SELECT * FROM investimentos WHERE usuario_id = ?", (uid(),)
+    ).fetchall()
+    patrimonio_investido = sum(investimento_computado(conn, i)["valor_atual"] for i in investimentos)
+
     conn.close()
 
     return jsonify({
@@ -2577,6 +3702,8 @@ def dashboard():
         "cartoes": [dict(r) for r in cartoes],
         "contas": contas,
         "saldo_total_contas": saldo_total_contas,
+        "patrimonio_investido": round(patrimonio_investido, 2),
+        "patrimonio_total": round(saldo_total_contas + patrimonio_investido, 2),
         "mes_anterior": {"receita": anterior["receita_total"], "despesa": anterior["despesa_total"]},
         "mes_atual_grafico": {"receita": receita_total, "despesa": despesa_total},
     })
@@ -2682,6 +3809,22 @@ def resumo():
 
 # ---------------- Modo demonstração ----------------
 
+def _copiar_catalogo_para_demo(conn_demo):
+    """O catálogo de ativos (ativo_catalogo) não é dado pessoal — é só a lista
+    de tickers pra busca. Copia do banco real pro demo, recém-recriado do
+    zero, pra busca de ativo funcionar lá também sem gastar outra chamada de
+    API (o ciclo diário só atualiza o banco real, nunca o demo)."""
+    if not os.path.exists(DB_PATH):
+        return
+    conn_real = sqlite3.connect(DB_PATH)
+    linhas = conn_real.execute("SELECT classe, ticker, nome FROM ativo_catalogo").fetchall()
+    conn_real.close()
+    if linhas:
+        conn_demo.executemany(
+            "INSERT OR REPLACE INTO ativo_catalogo (classe, ticker, nome) VALUES (?, ?, ?)", linhas
+        )
+
+
 def _semear_demo():
     """Preenche o banco de demonstração com uma vida financeira fictícia:
     salário, dois aluguéis recebidos, contas de casa, cartões e parcelamentos."""
@@ -2691,6 +3834,7 @@ def _semear_demo():
 
     conn = sqlite3.connect(DEMO_DB_PATH)
     conn.row_factory = sqlite3.Row
+    _copiar_catalogo_para_demo(conn)
     conn.execute("DELETE FROM usuarios")
     cur = conn.execute(
         "INSERT INTO casas (nome, criado_em) VALUES (?, ?)",
@@ -3190,5 +4334,14 @@ def restaurar_backup():
 
 if __name__ == "__main__":
     init_db()
+    # O banco demo só é recriado do zero quando alguém liga o modo demonstração
+    # (_semear_demo) — sem isso, uma migration nova feita depois da última vez
+    # que isso aconteceu nunca chegaria nele, e qualquer ação ali quebraria com
+    # "no such column". Migrar (não recriar) toda subida resolve sem mexer nos
+    # dados fictícios que já estavam lá.
+    if os.path.exists(DEMO_DB_PATH):
+        init_db(DEMO_DB_PATH, criar_usuario_inicial=False)
     iniciar_agendador_backup()
+    iniciar_agendador_cotacoes()
+    iniciar_agendador_catalogo()
     app.run(host="0.0.0.0", port=5000)
