@@ -3236,6 +3236,14 @@ def criar_investimento():
     )
     conn.commit()
     novo_id = cur.lastrowid
+    # Busca a logo já aqui: são ~100ms uma vez só, e assim ela está pronta
+    # quando a carteira for desenhada logo em seguida — em vez de o ativo
+    # aparecer com as iniciais e trocar de cara um instante depois.
+    if ticker:
+        try:
+            buscar_e_cachear_logo(conn, classe, ticker)
+        except Exception as e:
+            print(f"[investimentos] falha ao buscar logo de {ticker}: {e}", flush=True)
     conn.close()
     return jsonify({"ok": True, "id": novo_id}), 201
 
@@ -3874,13 +3882,17 @@ def logo_ativo(chave):
     conn = get_db()
     row = conn.execute("SELECT conteudo, tipo FROM ativo_logo WHERE chave = ?", (chave,)).fetchone()
     if row is None:
-        # Primeira vez que alguém pede esse ativo: busca agora em vez de
-        # esperar o ciclo diário. A classe sai do próprio investimento.
-        inv = conn.execute(
+        # Primeira vez que alguém pede esse ativo: busca agora, em vez de
+        # esperar o ciclo diário. A classe sai do investimento, e se ele ainda
+        # não existe (é o autocompletar mostrando a marca antes de o usuário
+        # escolher), sai do catálogo — que é público, não é dado de ninguém.
+        origem = conn.execute(
             "SELECT classe FROM investimentos WHERE ticker = ? AND usuario_id = ? LIMIT 1", (chave, uid())
+        ).fetchone() or conn.execute(
+            "SELECT classe FROM ativo_catalogo WHERE ticker = ? LIMIT 1", (chave,)
         ).fetchone()
-        if inv:
-            buscar_e_cachear_logo(conn, inv["classe"], chave)
+        if origem:
+            buscar_e_cachear_logo(conn, origem["classe"], chave)
             row = conn.execute("SELECT conteudo, tipo FROM ativo_logo WHERE chave = ?", (chave,)).fetchone()
     conn.close()
     if not row or not row["conteudo"]:

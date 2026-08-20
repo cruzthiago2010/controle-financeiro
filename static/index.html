@@ -330,6 +330,7 @@
   .alocacao-stepper input[type=number]{appearance:textfield; -moz-appearance:textfield;}
   .alocacao-stepper .simbolo{font-size:0.8rem; color:var(--muted);}
   .alocacao-remover{flex:none;}
+  .alocacao-aviso{font-size:0.78rem; color:var(--red); margin:0 0 10px;}
   .alocacao-adicionar{display:flex; gap:8px; margin:10px 0 16px;}
   .alocacao-adicionar select{flex:1;}
   .alocacao-adicionar button{flex:none; white-space:nowrap;}
@@ -357,10 +358,12 @@
   /* Marca do ativo: sem chamada externa nenhuma, as iniciais do ticker num
      círculo colorido pelo próprio ticker — a logo oficial só existe em API
      paga e o app não depende de nenhuma pra desenhar a carteira. */
-  .ativo-marca{width:26px; height:26px; border-radius:50%; flex:none; display:flex; align-items:center;
+  /* Quadrado de cantos arredondados, não círculo: logo de empresa é desenhada
+     dentro de um quadrado, e o recorte redondo comia os cantos dela. */
+  .ativo-marca{width:26px; height:26px; border-radius:7px; flex:none; display:flex; align-items:center;
     justify-content:center; font-size:0.62rem; font-weight:800; color:#fff; letter-spacing:-0.3px;
     position:relative; overflow:hidden;}
-  /* A logo cobre o círculo inteiro; as iniciais ficam embaixo como reserva.
+  /* A logo cobre a marca inteira; as iniciais ficam embaixo como reserva.
      Fundo branco porque quase toda logo de empresa é feita pra fundo claro e
      sumiria no tema escuro. */
   .ativo-marca img{position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
@@ -436,6 +439,8 @@
     background:transparent; border:none; box-shadow:none; color:var(--text); padding:7px 8px; font-size:0.82rem;
     border-radius:6px; cursor:pointer;}
   .autocomplete-item:hover{background:var(--card2); transform:none; box-shadow:none;}
+  .autocomplete-item{align-items:center;}
+  .autocomplete-item .ativo-marca{width:22px; height:22px; border-radius:6px; font-size:0.55rem;}
   .autocomplete-item .ticker{font-weight:700;}
   .autocomplete-item .nome{color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; text-align:right;}
 
@@ -2107,6 +2112,7 @@
       <select id="alocacaoNovaClasse"></select>
       <button type="button" class="secondary" id="alocacaoAdicionarBtn">+ Adicionar tipo de ativo</button>
     </div>
+    <div class="alocacao-aviso" id="alocacaoAviso" hidden>Reorganize a distribuição dos ativos para alcançar 100%.</div>
     <div class="formula-box">
       <div class="linha total"><span>Total</span><span id="alocacaoTotalTexto">0%</span></div>
     </div>
@@ -5172,9 +5178,16 @@ function atualizarGraficoAlocacaoIdeal(){
   const total = linhas.reduce((s, el) => s + (parseFloat(el.querySelector(".alocacao-input").value) || 0), 0);
   const alvoTotal = document.getElementById("alocacaoTotalTexto");
   alvoTotal.textContent = `${total.toFixed(0)}%`;
-  // Verde só quando fecha em 100%: a soma é a meta da carteira inteira, e
-  // fechar em 80% ou 120% faria o "Comprar?" de cada ativo mentir.
-  alvoTotal.className = linhas.length === 0 ? "" : (Math.round(total) === 100 ? "positivo" : "negativo");
+  // A soma é a meta da carteira inteira: fechar em 88% ou 120% faria o
+  // "Comprar?" de cada ativo mentir, então fora de 100% o modal avisa e não
+  // deixa salvar — mesma regra do Investidor10.
+  const fechou = Math.round(total) === 100;
+  const vazio = linhas.length === 0;
+  alvoTotal.className = vazio ? "" : (fechou ? "positivo" : "negativo");
+  document.getElementById("alocacaoAviso").hidden = vazio || fechou;
+  const btnSalvar = document.getElementById("alocacaoSalvar");
+  btnSalvar.disabled = !vazio && !fechou;
+  btnSalvar.title = btnSalvar.disabled ? "A soma precisa dar 100%" : "";
   if (chartAlocacaoIdeal) chartAlocacaoIdeal.destroy();
   const ctx = document.getElementById("chartAlocacaoIdeal");
   if (!ctx || linhas.length === 0) return;
@@ -5221,9 +5234,20 @@ document.getElementById("alocacaoCancelar").addEventListener("click", () => {
 });
 document.getElementById("alocacaoSalvar").addEventListener("click", async () => {
   const body = {};
+  let total = 0;
   document.querySelectorAll(".alocacao-input").forEach(input => {
-    if (input.value !== "") body[input.dataset.classe] = parseFloat(input.value);
+    if (input.value !== ""){
+      body[input.dataset.classe] = parseFloat(input.value);
+      total += parseFloat(input.value) || 0;
+    }
   });
+  // O botão já fica desabilitado fora de 100%, mas a checagem fica aqui
+  // também: quem chega por outro caminho (teclado, script) não deve gravar
+  // uma meta que não fecha.
+  if (Object.keys(body).length && Math.round(total) !== 100){
+    showToast("A soma precisa dar 100% — hoje está em " + Math.round(total) + "%", "erro");
+    return;
+  }
   try {
     await apiFetch(`${API}/investimentos/alocacao-ideal`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
       {sucesso:"Distribuição salva", erro:"Não foi possível salvar"});
@@ -5308,8 +5332,12 @@ ativoTickerInput.addEventListener("input", () => {
       ativos = await res.json();
     } catch (e) { return; }
     if (ativos.length === 0){ ativoTickerLista.hidden = true; return; }
+    // A marca já aparece aqui, antes de escolher — e o próprio pedido da
+    // imagem deixa a logo em cache, então ela não precisa ser buscada de novo
+    // quando o ativo entrar na carteira.
     ativoTickerLista.innerHTML = ativos.map(a =>
       `<button type="button" class="autocomplete-item" data-ticker="${escapeHtml(a.ticker)}" data-nome="${escapeHtml(a.nome || "")}">
+        ${marcaAtivo(a.ticker, a.ticker)}
         <span class="ticker">${escapeHtml(a.ticker)}</span><span class="nome">${escapeHtml(a.nome || "")}</span>
       </button>`
     ).join("");
