@@ -745,6 +745,8 @@
   .badge{display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px;}
   .badge.paga{background:rgba(0,167,111,0.15); color:var(--green);}
   .badge.aberta{background:rgba(0,167,111,0.15); color:var(--accent);}
+  .badge.neutro{background:var(--card2); color:var(--muted);}
+  .badge.leitura{background:rgba(255,171,0,0.15); color:var(--yellow);}
 
   /* Grids de cartões e contas */
   .cartoes-grid, .contas-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px;}
@@ -897,6 +899,8 @@
     <g id="i-repetir"><path d="M17 2l4 4-4 4"/><path d="M3 12v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 12v1a4 4 0 0 1-4 4H3"/></g>
     <g id="i-sair"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></g>
     <g id="i-usuario-mais"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M18 8v6M15 11h6"/></g>
+    <g id="i-casa"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5a1 1 0 0 0 1 1H9.5v-6h5v6H17.5a1 1 0 0 0 1-1V10"/></g>
+    <g id="i-chave"><circle cx="8" cy="15" r="4"/><path d="M11 12 20 3M17 6l2.5 2.5M14 9l2 2"/></g>
     <g id="i-baixar"><path d="M12 3v12M8 11l4 4 4-4M4 20h16"/></g>
     <g id="i-enviar"><path d="M12 20V8M8 12l4-4 4 4M4 4h16"/></g>
     <g id="i-restaurar"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></g>
@@ -925,6 +929,7 @@
       <button class="nav-item" data-tab="holerites" title="Holerite"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg></span><span class="nav-label">Holerite</span></button>
       <button class="nav-item" data-tab="consignados" title="Empréstimos" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label">Empréstimos</span></button>
       <button class="nav-item" data-tab="notificacoes" title="Notificações"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sino"/></svg></span><span class="nav-label">Notificações</span></button>
+      <button class="nav-item" data-tab="casa" title="Casa"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-casa"/></svg></span><span class="nav-label">Casa</span></button>
       <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
     </nav>
     <!-- O usuário agora fica no menu da barra superior. Estes controles seguem
@@ -1346,6 +1351,35 @@
     </div>
   </section>
 
+  <!-- ===================== CASA ===================== -->
+  <section class="painel" id="painel-casa">
+    <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-casa"/></svg> <span id="casaNomeTitulo">Casa</span></h2>
+      <div class="simple-card">
+        <div style="min-width:0;">
+          <div class="nome">Administrador</div>
+          <div class="sub" id="casaAdminNome">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="secao">
+      <h2>Quem faz parte</h2>
+      <div id="listaMembrosCasa"><div class="loading-msg">Carregando...</div></div>
+    </div>
+
+    <div class="secao" id="secaoConvidarCasa" style="display:none;">
+      <div class="card">
+        <p style="font-size:0.82rem; color:var(--muted); margin:0 0 10px;">
+          Convide outra pessoa da família para entrar nessa casa com o próprio login.
+        </p>
+        <button type="button" id="btnConvidarUsuarioCasa" style="width:100%;">
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg> Convidar usuário
+        </button>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== BACKUP ===================== -->
   <section class="painel" id="painel-backup">
     <div class="secao">
@@ -1723,6 +1757,35 @@
   </div>
 </div>
 
+<!-- Modal do administrador redefinindo a senha de outro membro da casa -->
+<div class="modal-overlay" id="modalSenhaMembro">
+  <div class="modal-box">
+    <h3>Trocar senha de <span id="senhaMembroNome"></span></h3>
+    <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px;">
+      Não é preciso saber a senha atual — só o administrador acessa esta tela.
+    </p>
+    <label>Nova senha</label>
+    <input type="password" id="senhaMembroNova" placeholder="mínimo 4 caracteres">
+    <label>Confirmar nova senha</label>
+    <input type="password" id="senhaMembroConfirmar" placeholder="repita a nova senha">
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="senhaMembroCancelar">Cancelar</button>
+      <button type="button" id="senhaMembroSalvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal do administrador vendo as contas de outro membro da casa -->
+<div class="modal-overlay" id="modalContasMembro">
+  <div class="modal-box">
+    <h3>Contas de <span id="contasMembroNome"></span></h3>
+    <div id="listaContasMembro"></div>
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="contasMembroFechar">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal de trocar senha -->
 <div class="modal-overlay" id="modalTrocarSenha">
   <div class="modal-box">
@@ -1783,6 +1846,7 @@ const ICO = {
   recibo: svgIco("recibo", "ico sm"), checkCirculo: svgIco("check-circulo", "ico sm"),
   bussola: svgIco("bussola", "ico sm"), banco: svgIco("banco", "ico lg"),
   relogio: svgIco("relogio", "ico sm"), calendario: svgIco("calendario", "ico sm"),
+  chave: svgIco("chave", "ico sm"), casaIco: svgIco("casa", "ico sm"),
 };
 let mesAtual = null;
 let categoriasCache = {receita:[], despesa:[]};
@@ -4235,6 +4299,9 @@ document.querySelectorAll(".nav-item").forEach(btn => {
   if (btn.dataset.tab === "holerites"){
     btn.addEventListener("click", carregarHolerites);
   }
+  if (btn.dataset.tab === "casa"){
+    btn.addEventListener("click", carregarCasa);
+  }
 });
 
 // ---------- Sessão / usuários ----------
@@ -4720,6 +4787,146 @@ document.getElementById("novoUsuarioSalvar").addEventListener("click", async () 
       {sucesso:"Usuário adicionado", erro:"Não foi possível adicionar o usuário"});
     document.getElementById("modalNovoUsuario").classList.remove("ativo");
     await carregarUsuarios();
+    await carregarCasa();
+  } catch (e) {}
+});
+
+// ---------- Casa: quem faz parte, administrador, e a gestão que só ele vê ----------
+let casaCache = null;
+let membroSenhaAlvo = null;
+
+document.getElementById("btnConvidarUsuarioCasa").addEventListener("click", () => {
+  // Reaproveita o mesmo modal/rota do botão "Adicionar usuário" da barra lateral —
+  // convidar é criar o login da pessoa direto, não existe envio de e-mail aqui.
+  document.getElementById("btnAdicionarUsuario").click();
+});
+
+async function carregarCasa(){
+  const lista = document.getElementById("listaMembrosCasa");
+  lista.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  try {
+    const res = await apiFetch(`${API}/casa`, undefined, {erro:"Não foi possível carregar a casa"});
+    casaCache = await res.json();
+  } catch (e) {
+    lista.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    return;
+  }
+  document.getElementById("casaNomeTitulo").textContent = casaCache.nome;
+  const admin = casaCache.membros.find(m => m.eh_administrador);
+  document.getElementById("casaAdminNome").textContent = admin
+    ? (admin.eh_voce ? `${admin.nome} (você)` : admin.nome) : "—";
+  document.getElementById("secaoConvidarCasa").style.display =
+    (usuarioAtual && usuarioAtual.eh_administrador) ? "" : "none";
+
+  lista.innerHTML = "";
+  casaCache.membros.forEach(m => lista.appendChild(criarMembroCasaHTML(m)));
+}
+
+function criarMembroCasaHTML(m){
+  const div = document.createElement("div");
+  div.className = "simple-card";
+  const badges = [];
+  if (m.eh_administrador) badges.push(`<span class="badge paga">Administrador</span>`);
+  if (m.eh_voce) badges.push(`<span class="badge neutro">Você</span>`);
+  if (m.somente_leitura) badges.push(`<span class="badge leitura">Somente leitura</span>`);
+
+  let acoes = "";
+  // Um membro nunca gerencia a própria conta por aqui — pra isso já existe
+  // "Meu perfil"; as ações desta lista são só o administrador sobre os outros.
+  if (usuarioAtual && usuarioAtual.eh_administrador && !m.eh_voce){
+    acoes = `
+      <div style="display:flex; gap:8px; flex:none; align-items:center;">
+        <label class="toggle-switch" title="Somente leitura">
+          <input type="checkbox" ${m.somente_leitura ? "checked" : ""} data-membro-id="${m.id}" class="toggleLeituraMembro">
+          <span class="toggle-slider"></span>
+        </label>
+        <button type="button" class="icon" title="Ver contas" data-acao="contas" data-membro-id="${m.id}" data-membro-nome="${escapeHtml(m.nome)}">${ICO.carteira}</button>
+        <button type="button" class="icon" title="Trocar senha" data-acao="senha" data-membro-id="${m.id}" data-membro-nome="${escapeHtml(m.nome)}">${ICO.chave}</button>
+      </div>`;
+  }
+  div.innerHTML = `
+    <div style="min-width:0;">
+      <div class="nome">${escapeHtml(m.nome)} ${badges.join(" ")}</div>
+      <div class="sub">@${escapeHtml(m.username)}</div>
+    </div>
+    ${acoes}
+  `;
+  return div;
+}
+
+document.getElementById("listaMembrosCasa").addEventListener("change", async (e) => {
+  const chk = e.target.closest(".toggleLeituraMembro");
+  if (!chk) return;
+  const id = chk.dataset.membroId;
+  const valor = chk.checked;
+  try {
+    await apiFetch(`${API}/usuarios/${id}/somente-leitura`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({somente_leitura: valor})},
+      {sucesso: valor ? "Usuário limitado a somente leitura" : "Usuário liberado para editar", erro:"Não foi possível alterar"});
+    await carregarCasa();
+  } catch (e) { await carregarCasa(); }
+});
+
+document.getElementById("listaMembrosCasa").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-acao]");
+  if (!btn) return;
+  const id = btn.dataset.membroId;
+  const nome = btn.dataset.membroNome;
+  if (btn.dataset.acao === "contas") abrirContasMembro(id, nome);
+  if (btn.dataset.acao === "senha") abrirSenhaMembro(id, nome);
+});
+
+async function abrirContasMembro(id, nome){
+  document.getElementById("contasMembroNome").textContent = nome;
+  const lista = document.getElementById("listaContasMembro");
+  lista.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  document.getElementById("modalContasMembro").classList.add("ativo");
+  try {
+    const res = await apiFetch(`${API}/casa/usuarios/${id}/contas?mes=${mesAtual}`, undefined, {erro:"Não foi possível carregar as contas"});
+    const contas = await res.json();
+    lista.innerHTML = "";
+    if (contas.length === 0){
+      lista.innerHTML = `<div class="empty">Esse usuário ainda não tem contas.</div>`;
+      return;
+    }
+    contas.forEach(c => {
+      const div = document.createElement("div");
+      div.className = "simple-card";
+      div.innerHTML = `
+        <div style="min-width:0;">
+          <div class="nome">${escapeHtml(c.nome)}</div>
+          <div class="sub">Saldo inicial: ${formatMoeda(c.saldo_inicial)}</div>
+        </div>
+        <div class="valor">${formatMoeda(c.saldo_atual)}</div>
+      `;
+      lista.appendChild(div);
+    });
+  } catch (e) {
+    lista.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+  }
+}
+document.getElementById("contasMembroFechar").addEventListener("click", () => {
+  document.getElementById("modalContasMembro").classList.remove("ativo");
+});
+
+function abrirSenhaMembro(id, nome){
+  membroSenhaAlvo = id;
+  document.getElementById("senhaMembroNome").textContent = nome;
+  document.getElementById("senhaMembroNova").value = "";
+  document.getElementById("senhaMembroConfirmar").value = "";
+  document.getElementById("modalSenhaMembro").classList.add("ativo");
+}
+document.getElementById("senhaMembroCancelar").addEventListener("click", () => {
+  document.getElementById("modalSenhaMembro").classList.remove("ativo");
+});
+document.getElementById("senhaMembroSalvar").addEventListener("click", async () => {
+  const nova = document.getElementById("senhaMembroNova").value;
+  const confirmar = document.getElementById("senhaMembroConfirmar").value;
+  if (nova.length < 4){ showToast("A nova senha precisa ter pelo menos 4 caracteres", "erro"); return; }
+  if (nova !== confirmar){ showToast("As senhas digitadas não coincidem", "erro"); return; }
+  try {
+    await apiFetch(`${API}/usuarios/${membroSenhaAlvo}/senha-admin`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({nova_senha: nova})},
+      {sucesso:"Senha atualizada", erro:"Não foi possível trocar a senha"});
+    document.getElementById("modalSenhaMembro").classList.remove("ativo");
   } catch (e) {}
 });
 

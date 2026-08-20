@@ -1081,6 +1081,82 @@ def trocar_senha(item_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/usuarios/<int:item_id>/senha-admin", methods=["PUT"])
+def trocar_senha_como_admin(item_id):
+    """O administrador redefine a senha de outro membro da casa — diferente de
+    /senha, não pede a senha atual porque quem está trocando não é o dono dela
+    (ex: esqueceu a senha e pediu pro administrador resetar)."""
+    data = request.get_json(force=True)
+    nova_senha = data.get("nova_senha") or ""
+    if len(nova_senha) < 4:
+        return jsonify({"erro": "a nova senha precisa ter pelo menos 4 caracteres"}), 400
+    conn = get_db()
+    if not eh_administrador(conn):
+        conn.close()
+        return jsonify({"erro": "só o administrador pode redefinir a senha de outro usuário"}), 403
+    if not pertence_a_minha_casa(conn, "usuarios", item_id):
+        conn.close()
+        return jsonify({"erro": "usuário não encontrado"}), 404
+    conn.execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (generate_password_hash(nova_senha), item_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/casa", methods=["GET"])
+def minha_casa():
+    """Dados da aba Casa: nome da casa e quem são os membros — visível a
+    qualquer usuário da casa, não só ao administrador. As ações de gestão
+    (trocar senha alheia, ver contas de outro membro, convidar) é que ficam
+    restritas ao administrador, cada uma na própria rota."""
+    conn = get_db()
+    casa_id = minha_casa_id(conn)
+    casa = conn.execute("SELECT id, nome FROM casas WHERE id = ?", (casa_id,)).fetchone()
+    membros = conn.execute(
+        "SELECT id, nome, username, foto, somente_leitura FROM usuarios "
+        "WHERE casa_id = ? ORDER BY id",
+        (casa_id,),
+    ).fetchall()
+    conn.close()
+    if not membros:
+        return jsonify({"erro": "casa não encontrada"}), 404
+    admin_id = membros[0]["id"]
+    resultado = {
+        "id": casa["id"],
+        "nome": casa["nome"],
+        "membros": [
+            {
+                "id": m["id"],
+                "nome": m["nome"],
+                "username": m["username"],
+                "foto": m["foto"],
+                "somente_leitura": bool(m["somente_leitura"]),
+                "eh_administrador": m["id"] == admin_id,
+                "eh_voce": m["id"] == uid(),
+            }
+            for m in membros
+        ],
+    }
+    return jsonify(resultado)
+
+
+@app.route("/api/casa/usuarios/<int:item_id>/contas", methods=["GET"])
+def contas_de_membro_da_casa(item_id):
+    """O administrador confere as contas de qualquer membro da própria casa —
+    mesmo resumo de saldo que a aba Contas mostra pro dono, sem lançamentos."""
+    conn = get_db()
+    if not eh_administrador(conn):
+        conn.close()
+        return jsonify({"erro": "só o administrador pode ver as contas de outro usuário"}), 403
+    if not pertence_a_minha_casa(conn, "usuarios", item_id):
+        conn.close()
+        return jsonify({"erro": "usuário não encontrado"}), 404
+    mes = request.args.get("mes", datetime.now().strftime("%Y-%m"))
+    resultado = contas_com_saldo(conn, mes, usuario_id=item_id)
+    conn.close()
+    return jsonify(resultado)
+
+
 def remover_foto_do_disco(nome_arquivo):
     if not nome_arquivo:
         return
@@ -1673,12 +1749,12 @@ def baixar_comprovante(nome_arquivo):
 
 # ---------------- Contas ----------------
 
-def contas_com_saldo(conn, mes):
+def contas_com_saldo(conn, mes, usuario_id=None):
     contas = conn.execute(
         "SELECT contas.*, usuarios.nome as usuario_nome FROM contas "
         "LEFT JOIN usuarios ON usuarios.id = contas.usuario_id "
         "WHERE contas.usuario_id = ? ORDER BY contas.nome",
-        (uid(),),
+        (usuario_id or uid(),),
     ).fetchall()
     resultado = []
     for c in contas:
