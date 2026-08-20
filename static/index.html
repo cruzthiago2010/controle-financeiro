@@ -99,6 +99,8 @@
      barra logo abaixo mostrando a fatia de cada uma no total do mês. */
   .rank-linha{padding:9px 0;}
   .rank-linha + .rank-linha{border-top:1px solid var(--border-soft);}
+  .rank-linha.clicavel{cursor:pointer; margin:0 -8px; padding:9px 8px; border-radius:8px; transition:background .15s;}
+  .rank-linha.clicavel:hover{background:var(--card2);}
   .rank-topo{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:6px;}
   .rank-nome{display:flex; align-items:center; gap:7px; font-size:0.86rem; min-width:0;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -3377,7 +3379,7 @@ async function carregarDashboard(){
     catEl.innerHTML = cats.map(c => {
       const pct = (c.total / totalCat) * 100;
       const cor = corPara(c.categoria) || "#00a76f";
-      return `<div class="rank-linha">
+      return `<div class="rank-linha clicavel" onclick="abrirDetalheCategoria('${escapeHtml(c.categoria).replace(/'/g, "\\'")}')">
         <div class="rank-topo">
           <span class="rank-nome"><i class="rank-ponto" style="background:${cor}"></i>${escapeHtml(c.categoria)}</span>
           <span class="rank-valor">${formatMoeda(c.total)} <span class="rank-pct">${pct.toFixed(1).replace('.', ',')}%</span></span>
@@ -3568,6 +3570,31 @@ function abrirExplicacao(chave){
 document.getElementById("explicacaoFechar").addEventListener("click", () => {
   document.getElementById("modalExplicacao").classList.remove("ativo");
 });
+
+// Reaproveita o modal de explicação dos cards pra mostrar os lançamentos que
+// somam o valor de uma categoria no ranking "Gastos por categoria".
+function abrirDetalheCategoria(categoria){
+  const tituloEl = document.getElementById("explicacaoTitulo");
+  const formulaEl = document.getElementById("explicacaoFormula");
+  const listasEl = document.getElementById("explicacaoListas");
+  listasEl.innerHTML = "";
+
+  // Mesmo critério do /api/dashboard: despesas do mês, sem transferência,
+  // categoria vazia cai em "Sem categoria".
+  const itens = lancamentosCache.filter(l =>
+    l.tipo === "despesa" && !l.eh_transferencia &&
+    (l.categoria || "Sem categoria") === categoria
+  );
+
+  tituloEl.textContent = `Despesas em "${categoria}"`;
+  formulaEl.innerHTML = formulaLinha(`Total em ${categoria}`, somaValor(itens), "total");
+  adicionarGrupoExplicacao(listasEl, "Lançamentos", itens);
+
+  if (listasEl.children.length === 0){
+    listasEl.innerHTML = `<div class="empty">Nenhum lançamento encontrado.</div>`;
+  }
+  document.getElementById("modalExplicacao").classList.add("ativo");
+}
 
 // ---------- Cartões ----------
 let cartoesCache = [];
