@@ -358,7 +358,13 @@
      círculo colorido pelo próprio ticker — a logo oficial só existe em API
      paga e o app não depende de nenhuma pra desenhar a carteira. */
   .ativo-marca{width:26px; height:26px; border-radius:50%; flex:none; display:flex; align-items:center;
-    justify-content:center; font-size:0.62rem; font-weight:800; color:#fff; letter-spacing:-0.3px;}
+    justify-content:center; font-size:0.62rem; font-weight:800; color:#fff; letter-spacing:-0.3px;
+    position:relative; overflow:hidden;}
+  /* A logo cobre o círculo inteiro; as iniciais ficam embaixo como reserva.
+     Fundo branco porque quase toda logo de empresa é feita pra fundo claro e
+     sumiria no tema escuro. */
+  .ativo-marca img{position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
+    background:#fff; padding:2px;}
   .classe-ponto{width:10px; height:10px; border-radius:3px; flex:none;}
   .posicao-rodape{display:flex; justify-content:flex-end; gap:8px; padding:10px 14px; border-top:1px solid var(--border-soft);}
   .posicao-rodape button{font-size:0.78rem; padding:7px 12px;}
@@ -4478,9 +4484,17 @@ const COLUNAS_POSICAO = {
 // innerHTML que redesenha a tabela a cada clique.
 const ordenacaoPosicao = {};
 
-function marcaAtivo(texto){
+// A logo real fica por cima das iniciais, não no lugar delas: se a imagem não
+// existir (a maioria dos FIIs não tem logo em fonte nenhuma) ou demorar, o
+// círculo colorido já está desenhado embaixo e a tabela nunca fica com um
+// buraco. O `onerror` só apaga o <img>, e o que sobra é o fundo.
+function marcaAtivo(texto, ticker){
   const sigla = (texto || "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase() || "?";
-  return `<span class="ativo-marca" style="background:${corPara(texto || "")}">${sigla}</span>`;
+  const chave = ticker || texto;
+  const img = chave && /^[A-Za-z0-9._-]{1,32}$/.test(chave)
+    ? `<img src="${API}/investimentos/logo/${encodeURIComponent(chave)}" alt="" loading="lazy" onerror="this.remove()">`
+    : "";
+  return `<span class="ativo-marca" style="background:${corPara(texto || "")}">${sigla}${img}</span>`;
 }
 
 function pctFormatado(pct, comSinal){
@@ -4553,7 +4567,7 @@ function criarBlocoClasse(classe, ativos, patrimonioTotal, containerId){
             const pctAtivo = patrimonioTotal > 0 ? ((a.valor_atual || 0) / patrimonioTotal) * 100 : 0;
             const comprar = pctIdealAtivo !== undefined ? pctAtivo < pctIdealAtivo : null;
             return `<tr data-id="${a.id}">
-              <td><span class="posicao-ativo-nome">${marcaAtivo(a.ticker || a.nome)}${escapeHtml(a.ticker || a.nome)}</span></td>
+              <td><span class="posicao-ativo-nome">${marcaAtivo(a.ticker || a.nome, a.ticker)}${escapeHtml(a.ticker || a.nome)}</span></td>
               ${temTicker ? `<td>${formatQuantidade(a.quantidade)}</td><td>${formatMoeda(a.preco_medio)}</td><td>${a.cotacao_atual ? formatMoeda(a.cotacao_atual) : "—"}</td>` : ""}
               <td class="${varAtivo >= 0 ? "positivo" : "negativo"}">${varAtivo >= 0 ? "+" : ""}${formatMoeda(varAtivo)}</td>
               <td class="${(a.rentabilidade_pct || 0) >= 0 ? "positivo" : "negativo"}">${pctFormatado(a.rentabilidade_pct, true)}</td>
@@ -5532,7 +5546,7 @@ function renderizarTabelaProventos(todos){
         <tbody>
           ${visiveis.map(p => `
             <tr>
-              <td><span class="posicao-ativo-nome">${marcaAtivo(p.ticker || p.ativo)}${escapeHtml(p.ticker || p.ativo)}</span></td>
+              <td><span class="posicao-ativo-nome">${marcaAtivo(p.ticker || p.ativo, p.ticker)}${escapeHtml(p.ticker || p.ativo)}</span></td>
               <td>${ROTULOS_CLASSE_INVESTIMENTO[p.classe] || p.classe}</td>
               <td><span class="provento-status ${p.pago ? "pago" : "a-receber"}">${p.pago ? "Pago" : "A receber"}</span></td>
               <td>${ROTULOS_TIPO_PAGAMENTO[p.tipo_pagamento] || "—"}</td>

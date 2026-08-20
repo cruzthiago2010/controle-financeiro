@@ -2312,14 +2312,16 @@ def _bcb_serie(codigo, data_inicial, data_final):
         # uma resposta grande, não é sinal de que o serviço esteja fora do ar.
         timeout=60,
     )
-    # O SGS responde 404 quando não existe nenhum ponto no intervalo pedido —
-    # o que acontece todo dia, já que o CDI de hoje só é publicado à noite.
-    # Isso é "ainda não tem dado", não falha: devolver vazio deixa o ciclo
-    # seguir em silêncio em vez de encher o log de erro.
+    # "Não existe ponto nesse intervalo" acontece todo dia, já que o CDI de
+    # hoje só é publicado à noite. O SGS sinaliza isso com 404 e um corpo
+    # {"erro": {...}} — mas nem sempre com 404: o mesmo corpo já veio com 200.
+    # Por isso quem decide é o formato da resposta, não o status: só uma lista
+    # é série de verdade. Devolver vazio deixa o ciclo seguir em silêncio.
     if resp.status_code == 404:
         return []
     resp.raise_for_status()
-    return resp.json()
+    dados = resp.json()
+    return dados if isinstance(dados, list) else []
 
 
 def atualizar_indexador(conn, indexador, codigo_bcb):
@@ -2834,18 +2836,90 @@ def atualizar_catalogo_ativos(conn):
         )
         resp.raise_for_status()
         linhas = [
-            (item["id"], f'{item["name"]} ({item["symbol"].upper()})', item["symbol"].upper())
+            (item["id"], f'{item["name"]} ({item["symbol"].upper()})', item["symbol"].upper(), item.get("image"))
             for item in resp.json()
         ]
         conn.execute("DELETE FROM ativo_catalogo WHERE classe = 'cripto'")
         conn.executemany(
-            "INSERT INTO ativo_catalogo (classe, ticker, nome, simbolo) VALUES ('cripto', ?, ?, ?) "
-            "ON CONFLICT(classe, ticker) DO UPDATE SET nome = excluded.nome, simbolo = excluded.simbolo",
+            "INSERT INTO ativo_catalogo (classe, ticker, nome, simbolo, logo_url) VALUES ('cripto', ?, ?, ?, ?) "
+            "ON CONFLICT(classe, ticker) DO UPDATE SET nome = excluded.nome, simbolo = excluded.simbolo, "
+            "logo_url = excluded.logo_url",
             linhas,
         )
         conn.commit()
     except Exception as e:
         print(f"[investimentos] falha ao atualizar catálogo cripto: {e}", flush=True)
+
+
+# ------------------- Logo dos ativos -------------------
+# Guardada localmente (tabela ativo_logo) e servida pelo próprio app: a página
+# nunca aponta pra um CDN de terceiro, então nada vaza sobre a carteira de
+# quem abre o app, e a carteira continua desenhando igual se a fonte sair do ar.
+# Quem não tem logo cai nas iniciais coloridas que a tela já sabe desenhar —
+# é o caso da maioria dos FIIs, que não têm logo em fonte nenhuma (o próprio
+# Investidor10 mostra um ícone genérico de prédio pra eles).
+
+LOGO_TAMANHO_MAXIMO = 512 * 1024
+# Ticker vem da URL: só letras e números, pra não montar requisição externa
+# nem caminho de arquivo com o que o cliente mandar.
+RE_CHAVE_LOGO = re.compile(r"^[A-Za-z0-9._-]{1,32}$")
+
+
+def _baixar_logo(url):
+    resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+    resp.raise_for_status()
+    tipo = (resp.headers.get("Content-Type") or "").split(";")[0].strip()
+    # O CDN responde a ticker inexistente com uma página HTML de erro em vez
+    # de 404, então o content-type é o que separa logo de "não existe".
+    if not tipo.startswith("image/") or len(resp.content) > LOGO_TAMANHO_MAXIMO:
+        return None, None
+    return resp.content, tipo
+
+
+def buscar_e_cachear_logo(conn, classe, ticker):
+    """Baixa a logo de um ativo e guarda no banco. Devolve (conteudo, tipo) ou
+    (None, None). Ações, BDRs, ETFs e stocks vêm do CDN de ícones da brapi.dev
+    (aberto, não precisa do token); cripto vem da própria CoinGecko, que já
+    entrega a URL da imagem junto do catálogo."""
+    url = None
+    if classe == "cripto":
+        row = conn.execute(
+            "SELECT logo_url FROM ativo_catalogo WHERE classe = 'cripto' AND ticker = ?", (ticker,)
+        ).fetchone()
+        url = row["logo_url"] if row else None
+    elif classe in CLASSES_COM_TICKER:
+        url = f"https://icons.brapi.dev/icons/{ticker.upper()}.svg"
+
+    conteudo = tipo = None
+    if url:
+        try:
+            conteudo, tipo = _baixar_logo(url)
+        except Exception as e:
+            print(f"[investimentos] falha ao baixar logo de {ticker}: {e}", flush=True)
+
+    # Grava mesmo quando falha: é o registro de "já tentei, não tem" que evita
+    # martelar a fonte externa a cada vez que a carteira é aberta.
+    agora = datetime.now().isoformat()
+    conn.execute(
+        "INSERT INTO ativo_logo (chave, conteudo, tipo, atualizado_em, tentado_em) VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(chave) DO UPDATE SET conteudo = excluded.conteudo, tipo = excluded.tipo, "
+        "atualizado_em = excluded.atualizado_em, tentado_em = excluded.tentado_em",
+        (ticker, conteudo, tipo, agora if conteudo else None, agora),
+    )
+    conn.commit()
+    return conteudo, tipo
+
+
+def atualizar_logos(conn):
+    """Busca a logo do que está na carteira e ainda não foi tentado. Roda no
+    ciclo diário, então quando alguém abre a aba a imagem já está no banco."""
+    alvos = conn.execute(
+        "SELECT DISTINCT i.ticker, i.classe FROM investimentos i "
+        "LEFT JOIN ativo_logo l ON l.chave = i.ticker "
+        "WHERE i.ticker IS NOT NULL AND l.chave IS NULL"
+    ).fetchall()
+    for alvo in alvos:
+        buscar_e_cachear_logo(conn, alvo["classe"], alvo["ticker"])
 
 
 CLASSES_COM_DIVIDENDO_B3 = {"acao", "fii", "bdr", "etf"}
@@ -3020,6 +3094,7 @@ def _loop_atualizar_catalogo():
         try:
             conn = get_db()
             atualizar_catalogo_ativos(conn)
+            atualizar_logos(conn)
             atualizar_historico_cotacoes(conn)
             importar_proventos_automaticos(conn)
             atualizar_snapshots_patrimonio(conn)
@@ -3385,6 +3460,7 @@ def atualizar_cotacoes_agora():
     # entraria no gráfico de patrimônio só a partir de hoje, como se tivesse
     # sido comprado agora.
     atualizar_historico_cotacoes(conn, somente_faltantes=True)
+    atualizar_logos(conn)
     atualizar_snapshots_patrimonio(conn)
     conn.close()
     return jsonify({"ok": True})
@@ -3786,6 +3862,32 @@ def buscar_ativos_catalogo():
         resultado = [dict(r) for r in rows]
     conn.close()
     return jsonify(resultado)
+
+
+@app.route("/api/investimentos/logo/<chave>", methods=["GET"])
+def logo_ativo(chave):
+    """Serve a logo do cache local. Nunca redireciona pro CDN de origem — a
+    página não pode apontar pra fora, senão a lista de ativos de quem abre o
+    app vazaria pro dono do CDN em forma de requisições."""
+    if not RE_CHAVE_LOGO.match(chave):
+        return "", 404
+    conn = get_db()
+    row = conn.execute("SELECT conteudo, tipo FROM ativo_logo WHERE chave = ?", (chave,)).fetchone()
+    if row is None:
+        # Primeira vez que alguém pede esse ativo: busca agora em vez de
+        # esperar o ciclo diário. A classe sai do próprio investimento.
+        inv = conn.execute(
+            "SELECT classe FROM investimentos WHERE ticker = ? AND usuario_id = ? LIMIT 1", (chave, uid())
+        ).fetchone()
+        if inv:
+            buscar_e_cachear_logo(conn, inv["classe"], chave)
+            row = conn.execute("SELECT conteudo, tipo FROM ativo_logo WHERE chave = ?", (chave,)).fetchone()
+    conn.close()
+    if not row or not row["conteudo"]:
+        return "", 404  # a tela desenha as iniciais coloridas no lugar
+    resp = app.response_class(bytes(row["conteudo"]), mimetype=row["tipo"] or "image/svg+xml")
+    resp.headers["Cache-Control"] = "public, max-age=604800"  # logo não muda de semana pra semana
+    return resp
 
 
 @app.route("/api/investimentos/cotacao", methods=["GET"])
