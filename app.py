@@ -4396,18 +4396,38 @@ def resumo():
 # ---------------- Modo demonstração ----------------
 
 def _copiar_catalogo_para_demo(conn_demo):
-    """O catálogo de ativos (ativo_catalogo) não é dado pessoal — é só a lista
-    de tickers pra busca. Copia do banco real pro demo, recém-recriado do
-    zero, pra busca de ativo funcionar lá também sem gastar outra chamada de
-    API (o ciclo diário só atualiza o banco real, nunca o demo)."""
+    """Leva pro banco de demonstração o que é informação pública e não dado de
+    ninguém: a lista de tickers, as logos já baixadas e a série do CDI/IPCA.
+    Sem isso o modo demo teria que ir à rede pra funcionar — e o ciclo
+    automático só atualiza o banco real, nunca o demo.
+
+    Cada uma resolve um buraco visível: sem o catálogo a busca de ativo não
+    acha nada; sem as logos a carteira aparece só com iniciais; sem a série do
+    indexador a aba Rentabilidade mostra "CDI no período: 0,00%", como se o
+    CDI não tivesse rendido nada."""
     if not os.path.exists(DB_PATH):
         return
     conn_real = sqlite3.connect(DB_PATH)
-    linhas = conn_real.execute("SELECT classe, ticker, nome FROM ativo_catalogo").fetchall()
+    linhas = conn_real.execute(
+        "SELECT classe, ticker, nome, simbolo, logo_url FROM ativo_catalogo"
+    ).fetchall()
+    logos = conn_real.execute("SELECT chave, conteudo, tipo, atualizado_em, tentado_em FROM ativo_logo").fetchall()
+    indexadores = conn_real.execute("SELECT indexador, data, fator_acumulado FROM indexador_serie").fetchall()
     conn_real.close()
     if linhas:
         conn_demo.executemany(
-            "INSERT OR REPLACE INTO ativo_catalogo (classe, ticker, nome) VALUES (?, ?, ?)", linhas
+            "INSERT OR REPLACE INTO ativo_catalogo (classe, ticker, nome, simbolo, logo_url) "
+            "VALUES (?, ?, ?, ?, ?)", linhas
+        )
+    if logos:
+        conn_demo.executemany(
+            "INSERT OR REPLACE INTO ativo_logo (chave, conteudo, tipo, atualizado_em, tentado_em) "
+            "VALUES (?, ?, ?, ?, ?)", logos
+        )
+    if indexadores:
+        conn_demo.executemany(
+            "INSERT OR REPLACE INTO indexador_serie (indexador, data, fator_acumulado) VALUES (?, ?, ?)",
+            indexadores,
         )
 
 
@@ -4557,8 +4577,133 @@ def _semear_demo():
     for nome, cor in cores.items():
         conn.execute("UPDATE categorias SET cor = ? WHERE nome = ?", (cor, nome))
 
+    _semear_investimentos_demo(conn, ids_conta["Itaú"])
+
     conn.commit()
     conn.close()
+
+
+def _semear_investimentos_demo(conn, conta_id):
+    """Carteira fictícia pra aba de Investimentos não ficar vazia na
+    demonstração — é a maior função do app e é ela que os prints do README
+    mostram.
+
+    Tudo é escrito à mão, sem tocar em API nenhuma: ligar o modo demo não pode
+    depender de rede nem gastar requisição, e o ciclo automático só atualiza o
+    banco real. Por isso a cotação, o histórico de preço e os proventos entram
+    já calculados, com preços plausíveis mas inventados."""
+    agora = datetime.now().isoformat()
+    hoje = datetime.now()
+    mes_atual = hoje.strftime("%Y-%m")
+
+    # (nome, classe, ticker, quantidade, preço de compra, preço "de hoje", meses atrás)
+    carteira = [
+        ("Petrobras PN", "acao", "PETR4", 400, 29.50, 44.30, 30),
+        ("Itaú Unibanco PN", "acao", "ITUB4", 300, 31.50, 37.50, 22),
+        ("Vale ON", "acao", "VALE3", 150, 62.00, 74.00, 18),
+        ("Maxi Renda", "fii", "MXRF11", 500, 9.80, 9.22, 14),
+        ("iShares Ibovespa", "etf", "BOVA11", 40, 112.50, 165.00, 12),
+        ("Bitcoin", "cripto", "bitcoin", 0.05, 280000.00, 377000.00, 24),
+    ]
+
+    def mes_atras(n):
+        m = mes_atual
+        for _ in range(n):
+            m = mes_anterior(m)
+        return m
+
+    for nome, classe, ticker, qtd, preco_compra, preco_hoje, meses_atras in carteira:
+        cur = conn.execute(
+            "INSERT INTO investimentos (usuario_id, nome, classe, ticker, conta_id, criado_em) "
+            "VALUES (1, ?, ?, ?, ?, ?)",
+            (nome, classe, ticker, conta_id, agora),
+        )
+        inv_id = cur.lastrowid
+        data_compra = f"{mes_atras(meses_atras)}-08"
+        valor = round(qtd * preco_compra, 2)
+
+        lanc = conn.execute(
+            "INSERT INTO lancamentos (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, "
+            "pago, data_pagamento, observacao, eh_transferencia, criado_em, usuario_id) "
+            "VALUES (?, 'despesa', ?, ?, '', 'Investimentos', 'Itaú', ?, 1, ?, '', 1, ?, 1)",
+            (data_compra[:7], f"Aporte — {nome}", valor, conta_id, data_compra, agora),
+        )
+        conn.execute(
+            "INSERT INTO investimento_operacoes (investimento_id, usuario_id, tipo, quantidade, "
+            "preco_unitario, valor, data, lancamento_id, criado_em, custos_extras) "
+            "VALUES (?, 1, 'aporte', ?, ?, ?, ?, ?, ?, 0)",
+            (inv_id, qtd, preco_compra, valor, data_compra, lanc.lastrowid, agora),
+        )
+
+        conn.execute(
+            "INSERT OR REPLACE INTO investimento_cotacoes (chave, valor, atualizado_em) VALUES (?, ?, ?)",
+            (ticker, preco_hoje, agora),
+        )
+        # Histórico de preço em linha reta do preço de compra até o de hoje —
+        # o bastante pro gráfico de patrimônio ter forma, sem fingir uma
+        # volatilidade que não existiria em dado inventado.
+        for i in range(meses_atras + 1):
+            m = mes_atras(meses_atras - i)
+            fracao = i / meses_atras if meses_atras else 1
+            conn.execute(
+                "INSERT OR REPLACE INTO investimento_cotacao_historico (chave, mes, valor, atualizado_em) "
+                "VALUES (?, ?, ?, ?)",
+                (ticker, m, round(preco_compra + (preco_hoje - preco_compra) * fracao, 4), agora),
+            )
+
+        # Proventos trimestrais nos ativos que pagam, sempre no passado.
+        if classe in ("acao", "fii"):
+            por_cota = 0.10 if classe == "fii" else 0.55
+            passo = 1 if classe == "fii" else 3
+            for i in range(passo, meses_atras, passo):
+                m = mes_atras(i)
+                bruto = round(qtd * por_cota, 2)
+                lanc_p = conn.execute(
+                    "INSERT INTO lancamentos (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, "
+                    "pago, data_pagamento, observacao, eh_transferencia, criado_em, usuario_id) "
+                    "VALUES (?, 'renda', ?, ?, '', 'Proventos', 'Itaú', ?, 1, ?, '', 0, ?, 1)",
+                    (m, f"Provento — {nome}", bruto, conta_id, f"{m}-15", agora),
+                )
+                conn.execute(
+                    "INSERT INTO investimento_operacoes (investimento_id, usuario_id, tipo, valor, data, "
+                    "lancamento_id, criado_em, tipo_pagamento, data_com, valor_bruto, quantidade, "
+                    "preco_unitario, origem) VALUES (?, 1, 'provento', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'demo')",
+                    (inv_id, bruto, f"{m}-15", lanc_p.lastrowid, agora,
+                     "rendimento" if classe == "fii" else "dividendo",
+                     f"{m}-01", bruto, qtd, por_cota),
+                )
+
+    # Um provento ainda a receber, pra demonstração mostrar também esse estado
+    # (data de pagamento no futuro, lançamento não pago) — é o que o app faz
+    # de diferente e ficaria invisível se tudo estivesse quitado.
+    futuro = (hoje + timedelta(days=21)).strftime("%Y-%m-%d")
+    inv_petr = conn.execute(
+        "SELECT id, nome FROM investimentos WHERE ticker = 'PETR4' AND usuario_id = 1"
+    ).fetchone()
+    if inv_petr:
+        lanc_f = conn.execute(
+            "INSERT INTO lancamentos (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, "
+            "pago, data_pagamento, observacao, eh_transferencia, criado_em, usuario_id) "
+            "VALUES (?, 'renda', ?, 187.00, ?, 'Proventos', 'Itaú', ?, 0, '', '', 0, ?, 1)",
+            (futuro[:7], f"Provento — {inv_petr['nome']}", futuro, conta_id, agora),
+        )
+        conn.execute(
+            "INSERT INTO investimento_operacoes (investimento_id, usuario_id, tipo, valor, data, "
+            "lancamento_id, criado_em, tipo_pagamento, data_com, valor_bruto, quantidade, "
+            "preco_unitario, origem) VALUES (?, 1, 'provento', 187.00, ?, ?, ?, 'jscp', ?, 220.0, 400, 0.55, 'demo')",
+            (inv_petr["id"], futuro, lanc_f.lastrowid, agora, hoje.strftime("%Y-%m-%d")),
+        )
+
+    # Distribuição ideal preenchida, pra coluna "Comprar?" ter o que comparar.
+    conn.executemany(
+        "INSERT INTO investimento_alocacao_ideal (usuario_id, classe, percentual) VALUES (1, ?, ?)",
+        [("acao", 45), ("fii", 20), ("etf", 15), ("cripto", 20)],
+    )
+    conn.commit()
+
+    # O snapshot mensal sai do histórico acima, então o gráfico de patrimônio
+    # e a rentabilidade contra o CDI já nascem com anos de história.
+    atualizar_snapshots_patrimonio(conn)
 
 
 @app.route("/api/demo", methods=["GET"])

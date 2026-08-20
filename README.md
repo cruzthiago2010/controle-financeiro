@@ -25,6 +25,19 @@ Docker). Todos os dados ficam salvos localmente em SQLite, dentro da pasta
   automaticamente (OCR), sempre com uma tela de revisão antes de lançar a
   despesa. Tem também um botão só de "Importar comprovante", que já abre o
   formulário de despesa com o arquivo anexado.
+- **Investimentos** — carteira completa: ações, FIIs, ETFs, BDRs,
+  criptomoedas, ativos americanos (stocks, REITs e ETFs), renda fixa
+  (CDB/LCI/LCA/debênture/Tesouro, com emissor e liquidez) e fundos. Você
+  busca o ativo pelo ticker, o preço atual já vem preenchido, e a **cotação
+  se atualiza sozinha** de hora em hora. Os **proventos são importados
+  automaticamente**: o app sabe quantas cotas você tinha na data-base de cada
+  dividendo, JCP ou rendimento e lança o valor certo na conta, já descontando
+  o imposto do JCP. Em cinco abas — Resumo, Posições, Proventos, Patrimônio e
+  Rentabilidade — dá pra ver o patrimônio crescendo mês a mês desde a
+  primeira compra, quanto rendeu contra o CDI, tudo que já caiu de provento e
+  o que ainda vai cair. Definindo a distribuição ideal da sua carteira (ex:
+  40% em ações, 25% em FIIs), cada ativo ganha uma coluna **Comprar?**
+  dizendo se está abaixo ou acima da meta.
 - **Orçamento por categoria** — defina um limite mensal para cada categoria
   de despesa e acompanhe numa barra de progresso o quanto já foi gasto.
 - **Metas de economia** — crie metas com valor alvo e prazo opcional, e vá
@@ -82,6 +95,9 @@ _Capturas feitas com o **modo demonstração** ligado — dados fictícios._
 | **Criar casa** | ![Criar casa](docs/screenshots/registro.png) |
 | **Dashboard** | ![Dashboard](docs/screenshots/dashboard.png) |
 | **Receitas & Despesas** | ![Receitas & Despesas](docs/screenshots/lancamentos.png) |
+| **Investimentos** | ![Investimentos](docs/screenshots/investimentos.png) |
+| **Proventos recebidos e a receber** | ![Proventos](docs/screenshots/investimentos-proventos.png) |
+| **Rentabilidade contra o CDI** | ![Rentabilidade](docs/screenshots/investimentos-rentabilidade.png) |
 | **Calendário** | ![Calendário](docs/screenshots/calendario.png) |
 | **Cartões de crédito** | ![Cartões](docs/screenshots/cartoes.png) |
 | **Backup automático** | ![Backup](docs/screenshots/backup.png) |
