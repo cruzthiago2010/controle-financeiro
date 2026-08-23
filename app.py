@@ -5338,6 +5338,232 @@ def pluggy_connect_token():
         conn.close()
 
 
+# ---- Fase 2: registrar a conexão (Item) e vincular as contas ----
+#
+# No caminho gratuito (Meu Pluggy) quem conecta o banco é o portal da Pluggy, e
+# não existe endpoint para listar itens — testado: /items, /v2/items e
+# /applications devolvem 401/403. Por isso o Item ID é colado pela pessoa, e não
+# descoberto pelo app.
+
+
+def _pluggy_sincronizar_contas(conn, casa_id, usuario_id, item_id):
+    """Traz as contas do Item e guarda em pluggy_contas, preservando o vínculo
+    já escolhido. Devolve quantas viu."""
+    dados = pluggy_pedir(conn, casa_id, "GET", f"/accounts?itemId={item_id}")
+    vistas = 0
+    for c in dados.get("results", []):
+        credito = c.get("creditData") or {}
+        conn.execute(
+            """INSERT INTO pluggy_contas
+                   (account_id, item_id, casa_id, usuario_id, tipo, subtipo, nome,
+                    numero, saldo, moeda, criado_em)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(account_id) DO UPDATE SET
+                   tipo = excluded.tipo,
+                   subtipo = excluded.subtipo,
+                   nome = excluded.nome,
+                   numero = excluded.numero,
+                   saldo = excluded.saldo,
+                   moeda = excluded.moeda""",
+            (c.get("id"), item_id, casa_id, usuario_id, c.get("type"), c.get("subtype"),
+             c.get("name"), c.get("number"), c.get("balance"), c.get("currencyCode"),
+             datetime.now().isoformat()),
+        )
+        vistas += 1
+        # Guardado só para a tela mostrar limite e vencimento do cartão; o
+        # vínculo com `cartoes` continua sendo escolhido à mão.
+        if credito:
+            conn.execute(
+                "UPDATE pluggy_contas SET subtipo = COALESCE(subtipo, ?) WHERE account_id = ?",
+                (credito.get("brand"), c.get("id")),
+            )
+    conn.commit()
+    return vistas
+
+
+@app.route("/api/pluggy/itens", methods=["POST"])
+def pluggy_registrar_item():
+    """Registra uma conexão a partir do Item ID que a pessoa colou."""
+    if em_demo():
+        return jsonify({"erro": "o modo demonstração não conecta em banco de verdade"}), 400
+    dados = request.get_json(silent=True) or {}
+    item_id = (dados.get("item_id") or "").strip()
+    if not item_id:
+        return jsonify({"erro": "informe o Item ID da conexão"}), 400
+
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+
+        # Um Item já registrado por outra casa não pode ser sequestrado: o
+        # dono é quem registrou primeiro.
+        dono = conn.execute(
+            "SELECT casa_id FROM pluggy_itens WHERE item_id = ?", (item_id,)
+        ).fetchone()
+        if dono and dono["casa_id"] != casa_id:
+            return jsonify({"erro": "esse Item já está registrado em outra casa"}), 409
+
+        try:
+            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{item_id}")
+        except PluggyErro as e:
+            return jsonify({"erro": str(e)}), 400
+        if not item.get("id"):
+            return jsonify({"erro": "a Pluggy não encontrou esse Item ID"}), 404
+
+        conector = item.get("connector") or {}
+        conn.execute(
+            """INSERT INTO pluggy_itens
+                   (item_id, casa_id, usuario_id, conector_id, conector_nome,
+                    conector_logo, status, status_detalhe, ultimo_sync, criado_em)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(item_id) DO UPDATE SET
+                   conector_nome = excluded.conector_nome,
+                   conector_logo = excluded.conector_logo,
+                   status = excluded.status,
+                   status_detalhe = excluded.status_detalhe,
+                   ultimo_sync = excluded.ultimo_sync""",
+            (item_id, casa_id, uid(), conector.get("id"), conector.get("name"),
+             conector.get("imageUrl"), item.get("status"),
+             json.dumps(item.get("statusDetail")) if item.get("statusDetail") else None,
+             item.get("lastUpdatedAt"), datetime.now().isoformat()),
+        )
+        conn.commit()
+
+        try:
+            vistas = _pluggy_sincronizar_contas(conn, casa_id, uid(), item_id)
+        except PluggyErro as e:
+            return jsonify({"ok": True, "aviso": f"conexão salva, mas as contas não vieram: {e}"})
+
+        return jsonify({"ok": True, "banco": conector.get("name"), "contas": vistas})
+    finally:
+        conn.close()
+
+
+@app.route("/api/pluggy/itens", methods=["GET"])
+def pluggy_listar_itens():
+    """Conexões da casa, com as contas de cada uma e o vínculo atual."""
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        itens = []
+        for it in conn.execute(
+            "SELECT * FROM pluggy_itens WHERE casa_id = ? ORDER BY id", (casa_id,)
+        ).fetchall():
+            d = dict(it)
+            contas = []
+            for c in conn.execute(
+                """SELECT pc.*, ct.nome AS conta_nome, ca.nome AS cartao_nome
+                   FROM pluggy_contas pc
+                   LEFT JOIN contas ct ON ct.id = pc.conta_id
+                   LEFT JOIN cartoes ca ON ca.id = pc.cartao_id
+                   WHERE pc.item_id = ? ORDER BY pc.id""",
+                (it["item_id"],),
+            ).fetchall():
+                cd = dict(c)
+                cd["ignorada"] = bool(cd["ignorada"])
+                contas.append(cd)
+            d["contas"] = contas
+            itens.append(d)
+        return jsonify(itens)
+    finally:
+        conn.close()
+
+
+@app.route("/api/pluggy/itens/<item_id>/sincronizar", methods=["POST"])
+def pluggy_sincronizar_item(item_id):
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        dono = conn.execute(
+            "SELECT casa_id FROM pluggy_itens WHERE item_id = ?", (item_id,)
+        ).fetchone()
+        if not dono or dono["casa_id"] != casa_id:
+            return jsonify({"erro": "conexão não encontrada nesta casa"}), 404
+        try:
+            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{item_id}")
+            conn.execute(
+                "UPDATE pluggy_itens SET status = ?, ultimo_sync = ? WHERE item_id = ?",
+                (item.get("status"), item.get("lastUpdatedAt"), item_id),
+            )
+            conn.commit()
+            vistas = _pluggy_sincronizar_contas(conn, casa_id, uid(), item_id)
+        except PluggyErro as e:
+            return jsonify({"erro": str(e)}), 400
+        return jsonify({"ok": True, "status": item.get("status"), "contas": vistas})
+    finally:
+        conn.close()
+
+
+@app.route("/api/pluggy/itens/<item_id>", methods=["DELETE"])
+def pluggy_remover_item(item_id):
+    """Tira a conexão do FinanCerto. NÃO revoga o consentimento no banco —
+    isso se faz no app da instituição, e a tela precisa dizer isso."""
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        dono = conn.execute(
+            "SELECT casa_id FROM pluggy_itens WHERE item_id = ?", (item_id,)
+        ).fetchone()
+        if not dono or dono["casa_id"] != casa_id:
+            return jsonify({"erro": "conexão não encontrada nesta casa"}), 404
+        conn.execute("DELETE FROM pluggy_transacoes WHERE account_id IN "
+                     "(SELECT account_id FROM pluggy_contas WHERE item_id = ?)", (item_id,))
+        conn.execute("DELETE FROM pluggy_contas WHERE item_id = ?", (item_id,))
+        conn.execute("DELETE FROM pluggy_itens WHERE item_id = ?", (item_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/pluggy/contas/<int:item_id>/vinculo", methods=["PUT"])
+def pluggy_vincular_conta(item_id):
+    """Liga uma conta da Pluggy a uma conta ou cartão do FinanCerto — ou marca
+    para ignorar. Enquanto não houver vínculo, nada daquela conta é importado."""
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        linha = conn.execute(
+            "SELECT casa_id FROM pluggy_contas WHERE id = ?", (item_id,)
+        ).fetchone()
+        if not linha or linha["casa_id"] != casa_id:
+            return jsonify({"erro": "conta não encontrada nesta casa"}), 404
+
+        dados = request.get_json(silent=True) or {}
+        conta_id = dados.get("conta_id")
+        cartao_id = dados.get("cartao_id")
+        ignorar = bool(dados.get("ignorada"))
+
+        if conta_id and cartao_id:
+            return jsonify({"erro": "escolha uma conta ou um cartão, não os dois"}), 400
+
+        # O alvo tem que ser da mesma casa, senão o extrato de um cairia no
+        # financeiro de outro.
+        if conta_id:
+            ok = conn.execute(
+                "SELECT 1 FROM contas ct JOIN usuarios u ON u.id = ct.usuario_id "
+                "WHERE ct.id = ? AND u.casa_id = ?", (conta_id, casa_id)
+            ).fetchone()
+            if not ok:
+                return jsonify({"erro": "essa conta não é desta casa"}), 400
+        if cartao_id:
+            ok = conn.execute(
+                "SELECT 1 FROM cartoes ca JOIN usuarios u ON u.id = ca.usuario_id "
+                "WHERE ca.id = ? AND u.casa_id = ?", (cartao_id, casa_id)
+            ).fetchone()
+            if not ok:
+                return jsonify({"erro": "esse cartão não é desta casa"}), 400
+
+        conn.execute(
+            "UPDATE pluggy_contas SET conta_id = ?, cartao_id = ?, ignorada = ? WHERE id = ?",
+            (conta_id, cartao_id, int(ignorar), item_id),
+        )
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     init_db()
     # O banco demo só é recriado do zero quando alguém liga o modo demonstração
