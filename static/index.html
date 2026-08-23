@@ -229,6 +229,10 @@
   form.add-form{display:flex; flex-wrap:wrap; gap:8px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; margin-top:18px; box-shadow:var(--shadow-card);}
   /* min-width maior: com 110px cabiam 3 campos por linha no celular e o texto
      dentro deles ficava cortado ("Nome do car", "Fatura atual ("). */
+  /* display:flex acima vence o atributo hidden do HTML. Sem esta linha o
+     formulario de conectar banco continuava aparecendo para quem nao pode
+     configurar o Open Finance. Mesma armadilha do selo do sino e do rodape. */
+  form.add-form[hidden]{display:none;}
   form.add-form select, form.add-form input, form.add-form textarea{flex:1 1 170px; min-width:170px;}
   @media (max-width: 420px){
     form.add-form select, form.add-form input, form.add-form textarea{flex-basis:100%; min-width:0;}
