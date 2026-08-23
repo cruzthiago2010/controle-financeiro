@@ -246,6 +246,23 @@
     form.add-form button{width:auto; min-width:200px; padding:11px 24px; align-self:flex-start;}
   }
   .empty{color:var(--muted-soft); font-size:0.88rem; padding:22px 10px; text-align:center;}
+  /* ---- Open Finance ---- */
+  .of-ajuda{color:var(--muted); font-size:0.84rem; line-height:1.5; margin:0 0 14px;}
+  .of-cartao{border:1px solid var(--border-soft); border-radius:var(--radius-sm);
+    padding:12px 14px; margin-bottom:10px; background:var(--card2);}
+  .of-cartao-topo{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .of-banco{font-weight:600;}
+  .of-selo{font-size:0.72rem; padding:2px 8px; border-radius:999px; font-weight:600;}
+  .of-selo.ok{background:rgba(0,167,111,0.15); color:var(--green);}
+  .of-selo.atencao{background:rgba(255,171,0,0.15); color:var(--yellow);}
+  .of-cartao-acoes{margin-left:auto; display:flex; gap:6px;}
+  .of-conta{display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:9px 0; border-top:1px dashed var(--border);}
+  .of-conta-nome{font-size:0.85rem; min-width:150px;}
+  .of-conta-sub{color:var(--muted); font-size:0.76rem;}
+  /* select de vínculo: sem isto o `input` global de 100% estica e quebra a linha */
+  .of-conta select{max-width:220px; flex:0 1 220px;}
+  .of-aviso{color:var(--muted); font-size:0.78rem; margin-top:10px; line-height:1.5;}
   .footer-actions{display:flex; gap:8px; margin-top:16px;}
   .footer-actions button{flex:1;}
 
@@ -1347,6 +1364,23 @@
       <input type="number" id="contaSaldoInicial" placeholder="Saldo inicial (R$)" step="0.01">
       <button type="submit">Adicionar conta</button>
     </form>
+
+    <!-- ===== Open Finance ===== -->
+    <div class="secao" id="secaoOpenFinance">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> Open Finance</h2>
+      <p class="of-ajuda">
+        Puxa o extrato do banco automaticamente, pela Pluggy. Nada vira lançamento
+        sozinho: o que chega fica esperando você conferir.
+      </p>
+
+      <div id="ofCredencial"></div>
+      <div id="ofConexoes"></div>
+
+      <form class="add-form" id="ofItemForm" hidden>
+        <input type="text" id="ofItemId" placeholder="Item ID do banco (UUID do painel da Pluggy)" required>
+        <button type="submit">Conectar banco</button>
+      </form>
+    </div>
   </section>
 
   <!-- ===================== LANÇAMENTOS ===================== -->
@@ -3243,6 +3277,208 @@ async function carregarTudo(){
 }
 
 // ---------- Contas ----------
+// ---------- Open Finance (Pluggy) ----------
+let ofCredCache = null;
+let ofItensCache = [];
+
+async function carregarOpenFinance(){
+  try {
+    const r1 = await apiFetch(`${API}/pluggy/credenciais`, undefined, {silencioso:true});
+    ofCredCache = await r1.json();
+  } catch (e) { ofCredCache = null; }
+  if (ofCredCache && ofCredCache.configurado){
+    try {
+      const r2 = await apiFetch(`${API}/pluggy/itens`, undefined, {silencioso:true});
+      ofItensCache = await r2.json();
+    } catch (e) { ofItensCache = []; }
+  } else {
+    ofItensCache = [];
+  }
+  renderizarOpenFinance();
+}
+
+function renderizarOpenFinance(){
+  const elCred = document.getElementById("ofCredencial");
+  const elCon = document.getElementById("ofConexoes");
+  const form = document.getElementById("ofItemForm");
+  if (!elCred) return;
+
+  if (!ofCredCache){
+    elCred.innerHTML = `<div class="empty">Não foi possível carregar o Open Finance.</div>`;
+    elCon.innerHTML = ""; form.hidden = true; return;
+  }
+
+  if (!ofCredCache.configurado){
+    // Sem credencial não há o que conectar. Quem não é administrador nem
+    // recebe o formulário — e o servidor recusa de qualquer forma.
+    elCred.innerHTML = ofCredCache.pode_configurar
+      ? `<div class="of-cartao">
+           <div class="of-ajuda" style="margin-bottom:10px;">
+             Cada casa usa a própria conta do <b>Meu Pluggy</b> (gratuita, em
+             meu.pluggy.ai). Cole aqui o Client ID e o Client Secret do painel.
+           </div>
+           <form class="add-form" id="ofCredForm" style="margin:0;">
+             <input type="text" id="ofClientId" placeholder="Client ID" required>
+             <input type="password" id="ofClientSecret" placeholder="Client Secret" required>
+             <button type="submit">Salvar credenciais</button>
+           </form>
+         </div>`
+      : `<div class="empty">O Open Finance ainda não foi configurado nesta casa.
+           Só o administrador pode fazer isso.</div>`;
+    elCon.innerHTML = ""; form.hidden = true;
+    const f = document.getElementById("ofCredForm");
+    if (f) f.addEventListener("submit", salvarCredencialOF);
+    return;
+  }
+
+  elCred.innerHTML = `<div class="of-cartao">
+      <div class="of-cartao-topo">
+        <span class="of-banco">Conta Pluggy conectada</span>
+        <span class="of-selo ok">ativa</span>
+        <span class="of-conta-sub">${escapeHtml(ofCredCache.client_id || "")}</span>
+        ${ofCredCache.pode_configurar
+          ? `<div class="of-cartao-acoes">
+               <button class="icon danger" type="button" onclick="removerCredencialOF()"
+                       title="Remover credenciais">${ICO.x}</button>
+             </div>` : ""}
+      </div>
+    </div>`;
+
+  form.hidden = false;
+
+  if (!ofItensCache.length){
+    elCon.innerHTML = `<div class="empty">Nenhum banco conectado ainda.
+      Conecte no meu.pluggy.ai e cole o Item ID abaixo.</div>`;
+    return;
+  }
+
+  const opcoesConta = contasCache.map(c =>
+    `<option value="conta:${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+  const opcoesCartao = cartoesCache.map(c =>
+    `<option value="cartao:${c.id}">${escapeHtml(c.nome)} (cartão)</option>`).join("");
+
+  elCon.innerHTML = ofItensCache.map(it => {
+    const problema = it.status && it.status !== "UPDATED";
+    const contas = (it.contas || []).map(c => {
+      const atual = c.conta_id ? `conta:${c.conta_id}`
+                  : c.cartao_id ? `cartao:${c.cartao_id}`
+                  : c.ignorada ? "ignorar" : "";
+      return `<div class="of-conta">
+          <div>
+            <div class="of-conta-nome">${escapeHtml(c.nome || "conta")}</div>
+            <div class="of-conta-sub">${escapeHtml(c.subtipo || c.tipo || "")}
+              · ${escapeHtml(c.numero || "")} · ${formatMoeda(c.saldo)}</div>
+          </div>
+          <select onchange="vincularContaOF(${c.id}, this.value)">
+            <option value=""${atual===""?" selected":""}>— não usar ainda —</option>
+            ${opcoesConta}${opcoesCartao}
+            <option value="ignorar"${atual==="ignorar"?" selected":""}>Ignorar esta conta</option>
+          </select>
+        </div>`;
+    }).join("");
+
+    return `<div class="of-cartao">
+        <div class="of-cartao-topo">
+          <span class="of-banco">${escapeHtml(it.conector_nome || "Banco")}</span>
+          <span class="of-selo ${problema ? "atencao" : "ok"}">${escapeHtml(it.status || "—")}</span>
+          <div class="of-cartao-acoes">
+            <button class="icon" type="button" onclick="sincronizarItemOF('${it.item_id}')"
+                    title="Sincronizar">${ICO.restaurar || ICO.repetir || "↻"}</button>
+            <button class="icon danger" type="button" onclick="removerItemOF('${it.item_id}')"
+                    title="Remover conexão">${ICO.x}</button>
+          </div>
+        </div>
+        ${contas || `<div class="of-conta-sub" style="padding-top:8px;">Sem contas nesta conexão.</div>`}
+      </div>`;
+  }).join("") + `<div class="of-aviso">
+      Remover a conexão apaga só o vínculo aqui. Para <b>revogar de verdade</b> o
+      compartilhamento, use o aplicativo do seu banco — é lá que o consentimento vive.
+    </div>`;
+
+  // Marca a opção certa em cada select depois de montar (o selected inline não
+  // cobre as opções geradas em lote).
+  ofItensCache.forEach(it => (it.contas || []).forEach(c => {
+    const valor = c.conta_id ? `conta:${c.conta_id}`
+                : c.cartao_id ? `cartao:${c.cartao_id}`
+                : c.ignorada ? "ignorar" : "";
+    const sel = elCon.querySelector(`select[onchange*="vincularContaOF(${c.id},"]`);
+    if (sel) sel.value = valor;
+  }));
+}
+
+async function salvarCredencialOF(ev){
+  ev.preventDefault();
+  const client_id = document.getElementById("ofClientId").value.trim();
+  const client_secret = document.getElementById("ofClientSecret").value.trim();
+  try {
+    const res = await apiFetch(`${API}/pluggy/credenciais`, {
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({client_id, client_secret}),
+    }, {erro:"Não foi possível salvar as credenciais"});
+    const j = await res.json();
+    // A rota salva mesmo quando a Pluggy recusa, e devolve o motivo em "aviso":
+    // guardar e avisar é melhor que perder o que a pessoa digitou.
+    showToast(j.aviso || "Credenciais salvas", j.aviso ? "erro" : "ok");
+    await carregarOpenFinance();
+  } catch (e) {}
+}
+
+async function removerCredencialOF(){
+  if (!confirm("Remover as credenciais do Open Finance desta casa?")) return;
+  try {
+    await apiFetch(`${API}/pluggy/credenciais`, {method:"DELETE"},
+                   {sucesso:"Credenciais removidas"});
+    await carregarOpenFinance();
+  } catch (e) {}
+}
+
+async function conectarItemOF(ev){
+  ev.preventDefault();
+  const item_id = document.getElementById("ofItemId").value.trim();
+  try {
+    const res = await apiFetch(`${API}/pluggy/itens`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({item_id}),
+    }, {erro:"Não foi possível conectar esse banco"});
+    const j = await res.json();
+    showToast(j.aviso || `${j.banco || "Banco"} conectado — ${j.contas || 0} conta(s)`,
+              j.aviso ? "erro" : "ok");
+    document.getElementById("ofItemId").value = "";
+    await carregarOpenFinance();
+  } catch (e) {}
+}
+
+async function sincronizarItemOF(itemId){
+  try {
+    await apiFetch(`${API}/pluggy/itens/${itemId}/sincronizar`, {method:"POST"},
+                   {sucesso:"Conexão sincronizada"});
+    await carregarOpenFinance();
+  } catch (e) {}
+}
+
+async function removerItemOF(itemId){
+  if (!confirm("Remover esta conexão do FinanCerto? O consentimento no banco continua ativo.")) return;
+  try {
+    await apiFetch(`${API}/pluggy/itens/${itemId}`, {method:"DELETE"},
+                   {sucesso:"Conexão removida"});
+    await carregarOpenFinance();
+  } catch (e) {}
+}
+
+async function vincularContaOF(id, valor){
+  const corpo = {};
+  if (valor === "ignorar") corpo.ignorada = true;
+  else if (valor.startsWith("conta:")) corpo.conta_id = parseInt(valor.slice(6), 10);
+  else if (valor.startsWith("cartao:")) corpo.cartao_id = parseInt(valor.slice(7), 10);
+  try {
+    await apiFetch(`${API}/pluggy/contas/${id}/vinculo`, {
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(corpo),
+    }, {sucesso:"Vínculo salvo"});
+    await carregarOpenFinance();
+  } catch (e) {}
+}
+
 async function carregarContas(){
   document.getElementById("listaContas").innerHTML = `<div class="loading-msg">Carregando...</div>`;
   try {
@@ -3250,6 +3486,7 @@ async function carregarContas(){
     contasCache = await res.json();
     renderizarContas();
     popularSelectsConta();
+    carregarOpenFinance();
   } catch (e) {
     document.getElementById("listaContas").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
   }
@@ -3318,6 +3555,7 @@ function popularSelectsConta(){
   }
 }
 
+document.getElementById("ofItemForm").addEventListener("submit", conectarItemOF);
 document.getElementById("contaForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const body = {
