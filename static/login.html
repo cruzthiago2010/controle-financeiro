@@ -97,6 +97,12 @@
     display:flex; align-items:center; justify-content:center; gap:6px;
   }
   .protegido svg{width:13px; height:13px;}
+  .fonte-aberta{
+    margin-top:8px; font-size:0.72rem; color:var(--muted); opacity:0.7;
+    text-align:center;
+  }
+  .fonte-aberta a{color:var(--muted); text-decoration:underline;}
+  .fonte-aberta a:hover{color:var(--accent);}
   /* Convite específico do aparelho: Android ganha o APK, iPhone ganha o passo
      a passo do "Adicionar à Tela de Início". Some se a pessoa dispensar. */
   .convite{
@@ -206,6 +212,14 @@
       <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
     </svg>
     Seus dados ficam no seu servidor.
+  </div>
+
+  <!-- A AGPL exige que quem usa o app pela rede consiga chegar no código-fonte.
+       Por isso este link fica antes do login, alcançável por qualquer pessoa. -->
+  <div class="fonte-aberta">
+    Software livre —
+    <a href="https://github.com/cruzthiago2010/controle-financeiro" target="_blank" rel="noopener">código-fonte</a>
+    sob AGPL-3.0.
   </div>
 </div>
 

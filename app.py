@@ -1,3 +1,20 @@
+# FinanCerto — controle financeiro pessoal self-hosted.
+# Copyright (C) 2026 Thiago Cruz
+#
+# Este programa é software livre: você pode redistribuí-lo e/ou modificá-lo sob
+# os termos da GNU Affero General Public License, conforme publicada pela Free
+# Software Foundation, na versão 3 da licença ou, a seu critério, qualquer
+# versão posterior.
+#
+# Este programa é distribuído na esperança de ser útil, mas SEM NENHUMA
+# GARANTIA; sem sequer a garantia implícita de COMERCIALIZAÇÃO ou ADEQUAÇÃO A
+# UM FIM ESPECÍFICO. Consulte a GNU Affero General Public License para mais
+# detalhes. O texto oficial e integral está no arquivo LICENSE, em inglês, e é
+# ele que prevalece — este aviso é apenas um resumo.
+#
+# Você deve ter recebido uma cópia da licença junto com este programa. Se não,
+# veja <https://www.gnu.org/licenses/>.
+
 import io
 import re
 import csv

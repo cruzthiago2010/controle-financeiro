@@ -221,3 +221,22 @@ tela cheia, mas sem digital, widget nem notificações.
 
 Se `8420` já estiver em uso, edite `docker-compose.yml` e troque
 `"8420:5000"` para outra porta livre, ex: `"8421:5000"`.
+
+## Licença
+
+FinanCerto é software livre, sob a **GNU Affero General Public License, versão 3
+(AGPL-3.0)**. O texto completo está em [`LICENSE`](LICENSE).
+
+Na prática, o que isso garante:
+
+- **Use à vontade.** Rodar no seu servidor, para você ou para a sua família, sem
+  pedir permissão a ninguém e sem pagar nada.
+- **Modifique à vontade.** O código é seu para adaptar.
+- **Se você distribuir uma versão modificada, publique o código dela.** Vale
+  também para quem *hospeda* uma versão modificada e deixa outras pessoas
+  usarem pela rede — é essa a diferença da AGPL para a GPL comum. Ninguém pode
+  pegar o FinanCerto, fechar o código e revender como serviço.
+
+A escolha da AGPL é coerente com o motivo de o app existir: os seus dados
+financeiros ficam no seu servidor, e o código que mexe neles fica aberto para
+qualquer um auditar.
