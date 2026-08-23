@@ -63,7 +63,9 @@
   button.danger:hover{background:rgba(255,86,48,0.1); transform:none; box-shadow:none;}
   button[disabled]{opacity:0.55; cursor:default; transform:none !important;}
 
-  main{padding:16px; max-width:1000px;}
+  /* 1000px sobrava quase metade da tela vazia num monitor Full HD; o teto
+     agora só existe pra linha não ficar absurda em ultrawide. */
+  main{padding:16px; max-width:1600px; margin:0 auto;}
   .painel{display:none;}
   .painel.ativo{display:block; animation:fadeIn 0.25s ease;}
   @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
@@ -231,8 +233,18 @@
   @media (max-width: 420px){
     form.add-form select, form.add-form input, form.add-form textarea{flex-basis:100%; min-width:0;}
   }
+  /* checkbox não é campo de texto: sem isso o flex-basis de 170px acima
+     esticava a caixinha e jogava o texto do label longe dela. */
+  form.add-form input[type="checkbox"], form.add-form input[type="radio"]{flex:0 0 auto; min-width:0; width:auto;}
   form.add-form textarea{width:100%; min-height:50px; resize:vertical;}
   form.add-form button{width:100%; padding:11px; font-size:1rem;}
+  /* Em monitor grande a caixa acompanha a largura do conteúdo, mas campo e
+     botão param num tamanho legível: esticados, viravam faixas atravessando
+     a tela inteira (o "Adicionar conta" chegava a 1.500px). */
+  @media (min-width: 701px){
+    form.add-form select, form.add-form input{max-width:360px;}
+    form.add-form button{width:auto; min-width:200px; padding:11px 24px; align-self:flex-start;}
+  }
   .empty{color:var(--muted-soft); font-size:0.88rem; padding:22px 10px; text-align:center;}
   .footer-actions{display:flex; gap:8px; margin-top:16px;}
   .footer-actions button{flex:1;}
@@ -788,7 +800,7 @@
   .notif-bolinha.pendente{background:var(--yellow); box-shadow:0 0 0 4px rgba(255,171,0,0.15);}
   .notif-ajuda{font-size:0.79rem; color:var(--muted); line-height:1.5; margin:10px 0 0;}
   .notif-botoes{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;}
-  .notif-botoes button{flex:1; min-width:170px;}
+  .notif-botoes button{flex:1; min-width:170px; max-width:320px;}
   /* ---- Sugestões de descrição (aprendidas do histórico) ---- */
   .campo-com-sugestao{position:relative;}
   .campo-com-sugestao input{width:100%;}
@@ -1114,6 +1126,7 @@
       <button class="nav-item" data-tab="casa" title="Casa"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-casa"/></svg></span><span class="nav-label">Casa</span></button>
       <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
     </nav>
+
     <!-- O usuário agora fica no menu da barra superior. Estes controles seguem
          aqui só como alvo dos cliques daquele menu, escondidos da tela. -->
     <div class="sidebar-rodape" hidden>
@@ -1677,7 +1690,7 @@
         <p style="font-size:0.82rem; color:var(--muted); margin:0 0 10px;">
           Convide outra pessoa da família para entrar nessa casa com o próprio login.
         </p>
-        <button type="button" id="btnConvidarUsuarioCasa" style="width:100%;">
+        <button type="button" id="btnConvidarUsuarioCasa" style="width:100%; max-width:320px;">
           <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg> Convidar usuário
         </button>
       </div>
@@ -1690,7 +1703,7 @@
       <h2>Exportar lançamentos</h2>
       <div class="card">
         <p style="font-size:0.82rem; color:var(--muted); margin:0 0 10px;">Baixa em CSV os lançamentos do mês selecionado no topo (<span id="csvMesAtual"></span>).</p>
-        <a class="secondary" id="btnExportarCsv" href="#" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:9px 14px; border-radius:var(--radius-sm); width:100%; justify-content:center;">
+        <a class="secondary" id="btnExportarCsv" href="#" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:9px 14px; border-radius:var(--radius-sm); width:100%; max-width:320px; justify-content:center;">
           <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Exportar CSV do mês
         </a>
       </div>
@@ -1721,8 +1734,8 @@
           Ao passar do limite, o backup mais antigo é apagado automaticamente.
         </p>
         <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
-          <button type="button" id="salvarConfigBackup" style="flex:1;">Salvar configuração</button>
-          <button type="button" class="secondary" id="backupAgoraBtn" style="flex:1;">Fazer backup agora</button>
+          <button type="button" id="salvarConfigBackup" style="flex:1; max-width:320px;">Salvar configuração</button>
+          <button type="button" class="secondary" id="backupAgoraBtn" style="flex:1; max-width:320px;">Fazer backup agora</button>
         </div>
       </div>
     </div>
@@ -1739,8 +1752,8 @@
           Baixa um .zip com todos os lançamentos, comprovantes e fotos.
         </p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button type="button" id="baixarBackupBtn" style="flex:1;"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Baixar agora</button>
-          <label class="botao-arquivo" style="flex:1;" id="restaurarLabel">
+          <button type="button" id="baixarBackupBtn" style="flex:1; max-width:320px;"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Baixar agora</button>
+          <label class="botao-arquivo" style="flex:1; max-width:320px;" id="restaurarLabel">
             <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-enviar"/></svg> Restaurar de um arquivo
             <input type="file" id="restaurarInput" accept=".zip">
           </label>
