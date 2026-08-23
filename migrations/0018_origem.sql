@@ -1,0 +1,11 @@
+-- De onde veio o lançamento. Mesma ideia do `origem` que as operações de
+-- investimento já têm (migration 0013): não muda cálculo nenhum, serve para a
+-- tela dizer que aquela linha não foi digitada à mão.
+--
+-- Importa porque conferir extrato importado é diferente de conferir o que você
+-- mesmo lançou: sem a marca, um lançamento vindo do banco fica
+-- indistinguível de um erro de digitação seu.
+--
+-- 'manual' como padrão deixa todo o histórico já existente correto, já que até
+-- agora tudo foi digitado.
+ALTER TABLE lancamentos ADD COLUMN origem TEXT DEFAULT 'manual';

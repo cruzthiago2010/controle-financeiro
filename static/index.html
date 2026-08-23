@@ -400,6 +400,15 @@
   .classe-ponto{width:10px; height:10px; border-radius:3px; flex:none;}
   .posicao-rodape{display:flex; justify-content:flex-end; gap:8px; padding:10px 14px; border-top:1px solid var(--border-soft);}
   .posicao-rodape button{font-size:0.78rem; padding:7px 12px;}
+  /* Marca o lançamento que veio do banco, não da digitação. Discreto de
+     propósito: informa a origem sem competir com a descrição. */
+  .selo-of{
+    font-size:0.66rem; font-weight:600; padding:2px 7px; border-radius:999px;
+    background:rgba(0,167,111,0.13); color:var(--green);
+    display:inline-flex; align-items:center; gap:4px; vertical-align:middle;
+    margin-left:6px; white-space:nowrap;
+  }
+  .selo-of svg{width:11px; height:11px;}
   .badge-comprar{font-size:0.7rem; font-weight:700; padding:3px 9px; border-radius:999px; display:inline-block;}
   .badge-comprar.sim{background:rgba(0,167,111,0.15); color:var(--green);}
   .badge-comprar.nao{background:rgba(255,86,48,0.13); color:var(--red);}
@@ -587,17 +596,22 @@
   .cal-lista{margin-top:16px;}
 
   /* Faixa de modo demonstração */
+  /* Discreto de proposito: a faixa amarela de antes competia com o conteudo em
+     toda tela. Continua legivel porque os prints do README sao feitos em modo
+     demo e o aviso precisa aparecer na imagem — some daqui e a captura passa a
+     parecer dado real. */
   .demo-banner{
     display:none; align-items:center; gap:10px; justify-content:center;
-    background:linear-gradient(135deg, var(--yellow), #e0a92e); color:#3a2c00;
-    padding:9px 16px; font-size:0.85rem; font-weight:700; text-align:center;
+    background:rgba(255,171,0,0.10); color:var(--yellow);
+    border-bottom:1px solid rgba(255,171,0,0.28);
+    padding:6px 16px; font-size:0.76rem; font-weight:500; text-align:center;
   }
   .demo-banner.ativo{display:flex;}
   .demo-banner button{
-    background:rgba(0,0,0,0.18); color:#3a2c00; border:none; padding:5px 12px;
-    font-size:0.78rem; font-weight:700; box-shadow:none; border-radius:6px;
+    background:transparent; color:var(--yellow); border:1px solid rgba(255,171,0,0.4);
+    padding:3px 10px; font-size:0.72rem; font-weight:600; box-shadow:none; border-radius:6px;
   }
-  .demo-banner button:hover{background:rgba(0,0,0,0.3); transform:none; box-shadow:none;}
+  .demo-banner button:hover{background:rgba(255,171,0,0.15); transform:none; box-shadow:none;}
 
   /* Banner de instalação do app (PWA) */
   .install-banner{
@@ -3706,7 +3720,7 @@ function criarItemHTML(item){
     <div class="item-topo">
       ${checkboxHTML}
       <div class="desc-wrap">
-        <div class="desc">${escapeHtml(item.descricao)}${item.recorrente ? ` <svg class="ico sm" viewBox="0 0 24 24" style="opacity:.65" title="Repete todo mês"><use href="#i-repetir"/></svg>` : ""}</div>
+        <div class="desc">${escapeHtml(item.descricao)}${item.recorrente ? ` <svg class="ico sm" viewBox="0 0 24 24" style="opacity:.65" title="Repete todo mês"><use href="#i-repetir"/></svg>` : ""}${item.origem === "open_finance" ? `<span class="selo-of" title="Importado do seu banco pelo Open Finance — confira antes de considerar certo"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>Open Finance</span>` : ""}</div>
         <div class="meta ${atrasado ? 'atrasado' : ''}">${metaPartes.join(" · ")}</div>
       </div>
       <span class="valor ${ehRenda ? 'positivo' : 'negativo'}">${formatMoeda(item.valor)}</span>
