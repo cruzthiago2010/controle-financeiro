@@ -5080,6 +5080,264 @@ def restaurar_backup():
     return jsonify({"ok": True})
 
 
+# ---------------- Open Finance (Pluggy) ----------------
+#
+# Esta é a segunda exceção deliberada à regra de "sem chamada externa" do app
+# (a primeira é a cotação de investimentos), e é de outra ordem: manda o
+# extrato bancário por um terceiro. Vale registrar por que ainda assim é
+# defensável: é o desenho do próprio Open Finance, o banco é quem autoriza, e
+# a senha do banco nunca passa pelo FinanCerto — quem coleta é o widget da
+# Pluggy, direto na página da instituição.
+#
+# A credencial é por casa. O plano gratuito (Meu Pluggy) só vale para uso
+# pessoal e contas no próprio nome de quem cadastrou, então uma credencial
+# central atendendo todas as casas seria uso comercial.
+
+PLUGGY_API = "https://api.pluggy.ai"
+
+# A chave que cifra o client_secret mora separada da SECRET_KEY de propósito:
+# trocar a chave do cookie de sessão é uma operação corriqueira, e não pode
+# ter como efeito colateral tornar ilegível o acesso bancário de todo mundo.
+PLUGGY_KEY_PATH = os.path.join(os.path.dirname(DB_PATH), ".pluggy_key")
+
+
+def _pluggy_fernet():
+    """Chave de cifra do client_secret, criada uma vez e guardada em /data
+    (portanto dentro do backup automático, junto do banco que ela decifra)."""
+    from cryptography.fernet import Fernet
+
+    if os.path.exists(PLUGGY_KEY_PATH):
+        with open(PLUGGY_KEY_PATH, "rb") as f:
+            chave = f.read().strip()
+            if chave:
+                return Fernet(chave)
+    chave = Fernet.generate_key()
+    os.makedirs(os.path.dirname(PLUGGY_KEY_PATH), exist_ok=True)
+    with open(PLUGGY_KEY_PATH, "wb") as f:
+        f.write(chave)
+    os.chmod(PLUGGY_KEY_PATH, 0o600)
+    return Fernet(chave)
+
+
+def _pluggy_cifrar(texto):
+    return _pluggy_fernet().encrypt(texto.encode("utf-8")).decode("ascii")
+
+
+def _pluggy_decifrar(cifrado):
+    return _pluggy_fernet().decrypt(cifrado.encode("ascii")).decode("utf-8")
+
+
+def pluggy_credencial_da_casa(conn, casa_id):
+    """Devolve (client_id, client_secret) da casa, ou None se ela ainda não
+    cadastrou. Nunca devolve o segredo cifrado para fora daqui."""
+    row = conn.execute(
+        "SELECT client_id, client_secret_cifrado FROM pluggy_credenciais WHERE casa_id = ?",
+        (casa_id,),
+    ).fetchone()
+    if not row:
+        return None
+    try:
+        return row["client_id"], _pluggy_decifrar(row["client_secret_cifrado"])
+    except Exception:
+        # Chave trocada ou perdida: melhor pedir para cadastrar de novo do que
+        # estourar erro genérico numa tela qualquer.
+        return None
+
+
+# A apiKey da Pluggy vale 2 horas. Pedir uma nova a cada chamada seria um
+# request extra em tudo, então fica em cache por casa, renovada 5 minutos
+# antes de vencer. É cache em memória: reiniciar o app só custa um /auth.
+_pluggy_api_keys = {}
+_pluggy_api_keys_lock = threading.Lock()
+
+
+class PluggyErro(Exception):
+    """Erro vindo da Pluggy que a tela precisa mostrar em português."""
+
+
+def pluggy_api_key(conn, casa_id):
+    agora = time.time()
+    with _pluggy_api_keys_lock:
+        cache = _pluggy_api_keys.get(casa_id)
+        if cache and cache["expira_em"] - agora > 300:
+            return cache["api_key"]
+
+    cred = pluggy_credencial_da_casa(conn, casa_id)
+    if not cred:
+        raise PluggyErro("esta casa ainda não cadastrou as credenciais do Meu Pluggy")
+    client_id, client_secret = cred
+
+    try:
+        resp = requests.post(
+            f"{PLUGGY_API}/auth",
+            json={"clientId": client_id, "clientSecret": client_secret},
+            timeout=20,
+        )
+    except requests.RequestException as e:
+        raise PluggyErro(f"não foi possível falar com a Pluggy: {e}")
+
+    # Credencial errada volta como 400 (foi o que a Pluggy respondeu em teste),
+    # e 403 aparece quando a credencial existe mas não tem acesso — os dois
+    # casos são "confira o que você colou", não erro genérico.
+    if resp.status_code in (400, 401, 403):
+        raise PluggyErro("a Pluggy recusou as credenciais — confira o Client ID e o Client Secret")
+    if resp.status_code >= 400:
+        raise PluggyErro(f"a Pluggy respondeu {resp.status_code} ao autenticar")
+
+    dados = resp.json()
+    api_key = dados.get("apiKey")
+    if not api_key:
+        raise PluggyErro("a Pluggy autenticou mas não devolveu apiKey")
+
+    with _pluggy_api_keys_lock:
+        _pluggy_api_keys[casa_id] = {"api_key": api_key, "expira_em": agora + 7200}
+    return api_key
+
+
+def pluggy_pedir(conn, casa_id, metodo, caminho, **kwargs):
+    """Chamada autenticada na Pluggy. Se a apiKey em cache tiver sido
+    invalidada do outro lado, tenta uma vez com uma chave nova antes de
+    desistir — senão o app ficaria travado até o cache vencer sozinho."""
+    kwargs.setdefault("timeout", 30)
+
+    def _chamar(api_key):
+        return requests.request(
+            metodo,
+            f"{PLUGGY_API}{caminho}",
+            headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
+            **kwargs,
+        )
+
+    try:
+        resp = _chamar(pluggy_api_key(conn, casa_id))
+        if resp.status_code in (401, 403):
+            with _pluggy_api_keys_lock:
+                _pluggy_api_keys.pop(casa_id, None)
+            resp = _chamar(pluggy_api_key(conn, casa_id))
+    except requests.RequestException as e:
+        raise PluggyErro(f"não foi possível falar com a Pluggy: {e}")
+
+    if resp.status_code >= 400:
+        raise PluggyErro(f"a Pluggy respondeu {resp.status_code} em {caminho}")
+    return resp.json() if resp.content else {}
+
+
+@app.route("/api/pluggy/credenciais", methods=["GET"])
+def pluggy_ver_credenciais():
+    """Diz se a casa já configurou, e mostra só o Client ID. O segredo nunca
+    volta para a tela, nem mascarado — não há motivo para ele sair do banco."""
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        row = conn.execute(
+            "SELECT client_id, atualizado_em FROM pluggy_credenciais WHERE casa_id = ?",
+            (casa_id,),
+        ).fetchone()
+        return jsonify({
+            "configurado": bool(row),
+            "client_id": row["client_id"] if row else None,
+            "atualizado_em": row["atualizado_em"] if row else None,
+            "pode_configurar": eh_administrador(conn),
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/pluggy/credenciais", methods=["PUT"])
+def pluggy_salvar_credenciais():
+    if em_demo():
+        return jsonify({"erro": "o modo demonstração não conecta em banco de verdade"}), 400
+    conn = get_db()
+    try:
+        # Mesma regra das outras rotas que mexem na casa: esconder o botão é
+        # conforto, quem barra é a checagem aqui dentro.
+        if not eh_administrador(conn):
+            return jsonify({"erro": "só o administrador da casa pode configurar o Open Finance"}), 403
+
+        dados = request.get_json(silent=True) or {}
+        client_id = (dados.get("client_id") or "").strip()
+        client_secret = (dados.get("client_secret") or "").strip()
+        if not client_id or not client_secret:
+            return jsonify({"erro": "informe o Client ID e o Client Secret do Meu Pluggy"}), 400
+
+        casa_id = minha_casa_id(conn)
+        agora = datetime.now().isoformat()
+        conn.execute(
+            """INSERT INTO pluggy_credenciais
+                   (casa_id, client_id, client_secret_cifrado, criado_em, atualizado_em)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(casa_id) DO UPDATE SET
+                   client_id = excluded.client_id,
+                   client_secret_cifrado = excluded.client_secret_cifrado,
+                   atualizado_em = excluded.atualizado_em""",
+            (casa_id, client_id, _pluggy_cifrar(client_secret), agora, agora),
+        )
+        conn.commit()
+
+        # Credencial trocada invalida a apiKey em cache da casa.
+        with _pluggy_api_keys_lock:
+            _pluggy_api_keys.pop(casa_id, None)
+
+        # Autentica na hora: melhor dizer "credencial errada" agora do que na
+        # primeira vez que a pessoa tentar conectar um banco.
+        try:
+            pluggy_api_key(conn, casa_id)
+        except PluggyErro as e:
+            return jsonify({"ok": True, "aviso": str(e)})
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/pluggy/credenciais", methods=["DELETE"])
+def pluggy_apagar_credenciais():
+    conn = get_db()
+    try:
+        if not eh_administrador(conn):
+            return jsonify({"erro": "só o administrador da casa pode remover o Open Finance"}), 403
+        casa_id = minha_casa_id(conn)
+        conn.execute("DELETE FROM pluggy_credenciais WHERE casa_id = ?", (casa_id,))
+        conn.commit()
+        with _pluggy_api_keys_lock:
+            _pluggy_api_keys.pop(casa_id, None)
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/pluggy/connect-token", methods=["POST"])
+def pluggy_connect_token():
+    """Token de sessão do widget da Pluggy Connect. É ele — e não o
+    client_secret — que vai para o navegador; dura pouco e só serve para abrir
+    o widget."""
+    if em_demo():
+        return jsonify({"erro": "o modo demonstração não conecta em banco de verdade"}), 400
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        corpo = {"clientUserId": f"casa{casa_id}-usuario{uid()}"}
+
+        # Com itemId o widget abre em modo de reconexão, que é o caminho
+        # quando o consentimento do Open Finance expira.
+        dados = request.get_json(silent=True) or {}
+        item_id = (dados.get("item_id") or "").strip()
+        if item_id:
+            dono = conn.execute(
+                "SELECT casa_id FROM pluggy_itens WHERE item_id = ?", (item_id,)
+            ).fetchone()
+            if not dono or dono["casa_id"] != casa_id:
+                return jsonify({"erro": "conexão não encontrada nesta casa"}), 404
+            corpo["itemId"] = item_id
+
+        try:
+            resposta = pluggy_pedir(conn, casa_id, "POST", "/connect_token", json=corpo)
+        except PluggyErro as e:
+            return jsonify({"erro": str(e)}), 400
+        return jsonify({"access_token": resposta.get("accessToken")})
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     init_db()
     # O banco demo só é recriado do zero quando alguém liga o modo demonstração
