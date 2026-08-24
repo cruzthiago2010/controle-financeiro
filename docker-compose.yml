@@ -21,3 +21,9 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       BRAPI_TOKEN: ${BRAPI_TOKEN:-}
+      # O compose lista as variaveis uma a uma, entao variavel nova no .env
+      # precisa ser declarada aqui tambem, senao nao chega no container.
+      APP_ANDROID_VERSAO: ${APP_ANDROID_VERSAO:-}
+      APP_ANDROID_MINIMA: ${APP_ANDROID_MINIMA:-}
+      APP_ANDROID_URL: ${APP_ANDROID_URL:-}
+      APP_ANDROID_NOTAS: ${APP_ANDROID_NOTAS:-}

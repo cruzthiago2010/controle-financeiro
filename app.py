@@ -5581,13 +5581,14 @@ def pluggy_vincular_conta(item_id):
 # Os valores são variáveis de ambiente porque o repositório é público: cada
 # instalação aponta para o próprio APK, e ninguém herda o endereço de release
 # de outra pessoa.
-APP_ANDROID_VERSAO = os.environ.get("APP_ANDROID_VERSAO", "3.1")
-APP_ANDROID_MINIMA = os.environ.get("APP_ANDROID_MINIMA", "")
-APP_ANDROID_URL = os.environ.get(
-    "APP_ANDROID_URL",
-    "https://github.com/cruzthiago2010/controle-financeiro/releases/latest",
-)
-APP_ANDROID_NOTAS = os.environ.get("APP_ANDROID_NOTAS", "")
+# `or` em vez do segundo argumento do get(): o docker-compose passa as
+# variaveis nao preenchidas como string VAZIA, e vazio sobrescreveria o padrao
+# — foi assim que a URL do APK ficou em branco e o botao "Baixar" apontaria
+# para lugar nenhum.
+APP_ANDROID_VERSAO = os.environ.get("APP_ANDROID_VERSAO") or "3.1"
+APP_ANDROID_MINIMA = os.environ.get("APP_ANDROID_MINIMA") or ""
+APP_ANDROID_URL = os.environ.get("APP_ANDROID_URL") or     "https://github.com/cruzthiago2010/controle-financeiro/releases/latest"
+APP_ANDROID_NOTAS = os.environ.get("APP_ANDROID_NOTAS") or ""
 
 
 def _versao_como_lista(texto):
