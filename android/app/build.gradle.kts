@@ -11,8 +11,8 @@ android {
         applicationId = "com.controlefinanceiro.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 8
-        versionName = "3.2"
+        versionCode = 9
+        versionName = "3.3"
     }
 
     buildTypes {

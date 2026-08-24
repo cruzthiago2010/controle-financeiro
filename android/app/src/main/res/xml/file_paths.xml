@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O instalador do Android é outro app, e ele não consegue ler um arquivo do
+     nosso cache diretamente. O FileProvider entrega uma URI temporária que só
+     ele pode abrir, e só enquanto a permissão da intent durar. -->
+<paths>
+    <cache-path name="atualizacoes" path="atualizacoes/" />
+</paths>

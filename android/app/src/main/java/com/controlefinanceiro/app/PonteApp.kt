@@ -54,6 +54,30 @@ class PonteApp(private val context: Context) {
         }
     }
 
+    /**
+     * Baixa a atualização do próprio servidor e abre o instalador.
+     *
+     * Roda numa thread porque o WebView chama isto na thread principal e
+     * baixar 5 MB ali travaria a tela. Devolve na hora: quem acompanha o
+     * resultado é a notificação e o instalador que abre sozinho.
+     */
+    @JavascriptInterface
+    fun baixarEInstalar(url: String): Boolean {
+        Thread {
+            val arquivo = AtualizadorApp.baixar(context, url)
+            if (arquivo == null) {
+                notificar("Atualização", "Não foi possível baixar a atualização.")
+            } else {
+                AtualizadorApp.instalar(context, arquivo)
+            }
+        }.start()
+        return true
+    }
+
+    /** Se o Android já deixa este app instalar pacotes. */
+    @JavascriptInterface
+    fun podeInstalar(): Boolean = AtualizadorApp.podeInstalar(context)
+
     /** Se o Android já autoriza notificações deste app. */
     @JavascriptInterface
     fun podeNotificar(): Boolean =

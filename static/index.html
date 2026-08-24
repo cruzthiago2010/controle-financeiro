@@ -7187,7 +7187,25 @@ async function conferirVersaoApp(){
     ? `Você está na ${instalada} e já existe a ${dados.versao_atual}.`
       + (dados.notas ? " " + dados.notas : "")
     : `Já existe a versão ${dados.versao_atual} do app.`;
-  document.getElementById("updateBtn").onclick = () => window.open(dados.url, "_blank");
+  // Dentro do app, baixar e instalar acontece pela ponte: abrir o navegador
+  // deixaria a pessoa procurando o arquivo, e o WebView nem lida bem com
+  // download. Fora dela (ou em app antigo sem o método) volta a abrir o link.
+  const btn = document.getElementById("updateBtn");
+  const podeBaixar = (() => {
+    try { return typeof window.FinanCertoApp.baixarEInstalar === "function"; }
+    catch (e) { return false; }
+  })();
+  btn.textContent = podeBaixar ? "Baixar e instalar" : "Baixar";
+  btn.onclick = () => {
+    if (podeBaixar){
+      // dados.apk e o arquivo; dados.url e a pagina. Baixar a pagina traria HTML.
+      const alvo = new URL(dados.apk || dados.url, window.location.origin).href;
+      window.FinanCertoApp.baixarEInstalar(alvo);
+      showToast("Baixando a atualização — o instalador abre ao terminar", "ok");
+    } else {
+      window.open(dados.url, "_blank");
+    }
+  };
   const fechar = document.getElementById("updateFechar");
   // Versão obrigatória não é dispensável — é o caso de uma versão quebrada.
   fechar.style.display = dados.obrigatorio ? "none" : "";

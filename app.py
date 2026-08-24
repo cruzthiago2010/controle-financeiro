@@ -5587,7 +5587,25 @@ def pluggy_vincular_conta(item_id):
 # para lugar nenhum.
 APP_ANDROID_VERSAO = os.environ.get("APP_ANDROID_VERSAO") or "3.1"
 APP_ANDROID_MINIMA = os.environ.get("APP_ANDROID_MINIMA") or ""
-APP_ANDROID_URL = os.environ.get("APP_ANDROID_URL") or     "https://github.com/cruzthiago2010/controle-financeiro/releases/latest"
+# Pagina da release, para quem vai olhar com os proprios olhos.
+APP_ANDROID_URL = os.environ.get("APP_ANDROID_URL") or "https://github.com/cruzthiago2010/controle-financeiro/releases/latest"
+
+# O GitHub e a fonte oficial do APK para todo mundo, inclusive para quem
+# publica: uma fonte so evita duas versoes da verdade. O app precisa do
+# ARQUIVO, nao da pagina — baixar a pagina traria HTML, e o instalador do
+# Android engasgaria com uma mensagem que nao explica nada. O endereco e
+# montado a partir da versao anunciada, entao o que se anuncia e o que se
+# baixa sao sempre a mesma coisa.
+APP_ANDROID_REPO = os.environ.get("APP_ANDROID_REPO") or "cruzthiago2010/controle-financeiro"
+
+
+def url_do_apk():
+    do_ambiente = os.environ.get("APP_ANDROID_APK_URL")
+    if do_ambiente:
+        return do_ambiente
+    v = APP_ANDROID_VERSAO
+    return (f"https://github.com/{APP_ANDROID_REPO}/releases/download"
+            f"/v{v}/FinanCerto-{v}.apk")
 APP_ANDROID_NOTAS = os.environ.get("APP_ANDROID_NOTAS") or ""
 
 
@@ -5635,7 +5653,10 @@ def versao_app():
         "instalada": instalada or None,
         "desatualizado": desatualizado,
         "obrigatorio": obrigatorio,
+        # `url` e a pagina (para abrir no navegador) e `apk` e o arquivo
+        # (para o app baixar sozinho). Quem consome escolhe.
         "url": APP_ANDROID_URL,
+        "apk": url_do_apk(),
         "notas": APP_ANDROID_NOTAS or None,
     })
 
