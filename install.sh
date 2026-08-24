@@ -109,7 +109,15 @@ baixar_repo() {
 }
 
 # ── .env ─────────────────────────────────────────────────────────────────────
-sortear() { LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c "${1:-32}"; }
+sortear() {
+  n="${1:-32}"
+  # Ler /dev/urandom direto no tr e cortar com `head -c` fecha o pipe no meio:
+  # o tr morre com SIGPIPE, e o `set -o pipefail` lá em cima aborta a instalação
+  # inteira ("tr: write error: Broken pipe"). Lendo um bloco de tamanho fixo
+  # antes, todo mundo termina sozinho e ninguém leva sinal. 16 bytes por
+  # caractere pedido sobra: cerca de um quarto do sorteio cai em [A-Za-z0-9].
+  head -c "$((n * 16))" /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9' | cut -c1-"$n"
+}
 
 gerar_env() {
   if [ -f "$DESTINO/.env" ]; then
