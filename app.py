@@ -33,7 +33,7 @@ import unicodedata
 import requests
 from urllib.parse import quote, urlparse
 from datetime import datetime, timedelta
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename, safe_join
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import (Flask, request, jsonify, send_from_directory, session, redirect,
                    send_file, has_request_context)
@@ -81,8 +81,15 @@ def caminho_em(pasta, nome):
     nome = os.path.basename(nome or "")
     if not nome or nome in (".", ".."):
         return None
+    # Quem monta o caminho é o safe_join do werkzeug, que devolve None em vez de
+    # um caminho quando o nome tenta sair da pasta. A conferência posicional
+    # continua depois porque o safe_join olha o texto, e não onde o caminho
+    # realmente vai dar — link simbólico apontando para fora passaria por ele.
+    caminho = safe_join(pasta, nome)
+    if not caminho:
+        return None
     base = os.path.realpath(pasta)
-    alvo = os.path.realpath(os.path.join(base, nome))
+    alvo = os.path.realpath(caminho)
     if alvo == base or os.path.commonpath([base, alvo]) != base:
         return None
     return alvo
@@ -2523,8 +2530,15 @@ RE_TICKER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
 
 
 
-def ticker_valido(ticker):
-    return bool(ticker) and bool(RE_TICKER.match(ticker))
+def ticker_seguro(ticker):
+    """Devolve o ticker se ele for um ticker, e None se não for.
+
+    Devolver o texto que saiu do próprio match, em vez de um sim/não sobre o
+    original, é de propósito: o que segue para dentro da URL é o valor que
+    passou pela conferência, e não uma cópia que só passou perto dela.
+    """
+    m = RE_TICKER.match(ticker or "")
+    return m.group(0) if m else None
 
 CLASSES_VALIDAS = CLASSES_COM_TICKER | {"renda_fixa", "fundo", "outro"}
 CLASSES_YAHOO = {"stock", "reit", "etf_internacional"}  # tickers americanos, cotados em USD
@@ -2536,8 +2550,8 @@ def normalizar_ticker(classe, valor):
     """CoinGecko exige o id em minúsculas (ex: "bitcoin") — as outras classes
     com ticker usam maiúsculas. Usado sempre que um ticker é salvo, pra não
     gravar cripto de um jeito que a cotação nunca mais vai encontrar."""
-    valor = (valor or "").strip()
-    if not ticker_valido(valor):
+    valor = ticker_seguro((valor or "").strip())
+    if not valor:
         return None
     return valor.lower() if classe == "cripto" else valor.upper()
 
@@ -2630,11 +2644,12 @@ def buscar_cotacoes_brapi(tickers):
     params = {"token": BRAPI_TOKEN} if BRAPI_TOKEN else {}
     resultado = {}
     for ticker in tickers:
-        if not ticker_valido(ticker):
+        seguro = ticker_seguro(ticker)
+        if not seguro:
             continue
         try:
             resp = requests.get(
-                f"https://brapi.dev/api/quote/{quote(ticker, safe='')}", params=params, timeout=15
+                f"https://brapi.dev/api/quote/{quote(seguro, safe='')}", params=params, timeout=15
             )
             resp.raise_for_status()
             for item in resp.json().get("results", []):
@@ -2667,11 +2682,12 @@ def buscar_cotacoes_yahoo(tickers):
     complicação de tentar buscar em lote."""
     resultado = {}
     for ticker in tickers:
-        if not ticker_valido(ticker):
+        seguro = ticker_seguro(ticker)
+        if not seguro:
             continue
         try:
             resp = requests.get(
-                f"https://query1.finance.yahoo.com/v8/finance/chart/{quote(ticker, safe='')}",
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{quote(seguro, safe='')}",
                 headers={"User-Agent": "Mozilla/5.0"}, timeout=15,
             )
             resp.raise_for_status()
@@ -3154,8 +3170,8 @@ def buscar_e_cachear_logo(conn, classe, ticker):
             "SELECT logo_url FROM ativo_catalogo WHERE classe = 'cripto' AND ticker = ?", (ticker,)
         ).fetchone()
         url = row["logo_url"] if row else None
-    elif classe in CLASSES_COM_TICKER and ticker_valido(ticker):
-        url = f"https://icons.brapi.dev/icons/{quote(ticker.upper(), safe='')}.svg"
+    elif classe in CLASSES_COM_TICKER and ticker_seguro(ticker):
+        url = f"https://icons.brapi.dev/icons/{quote(ticker_seguro(ticker).upper(), safe='')}.svg"
 
     conteudo = tipo = None
     if url:
@@ -3197,10 +3213,11 @@ def buscar_dividendos_brapi(ticker):
     """Histórico de proventos já declarados de um ticker B3 — mesma API da
     cotação, só pedindo o módulo de dividendos a mais. Só funciona com
     BRAPI_TOKEN configurado (o teste gratuito sem token não libera esse módulo)."""
-    if not BRAPI_TOKEN or not ticker_valido(ticker):
+    seguro = ticker_seguro(ticker)
+    if not BRAPI_TOKEN or not seguro:
         return []
     resp = requests.get(
-        f"https://brapi.dev/api/quote/{quote(ticker, safe='')}",
+        f"https://brapi.dev/api/quote/{quote(seguro, safe='')}",
         params={"token": BRAPI_TOKEN, "dividends": "true"}, timeout=20,
     )
     resp.raise_for_status()
@@ -4181,7 +4198,8 @@ def cotacao_ativo_avulsa():
     # Esta rota busca a cotação ao vivo, então o ticker vai direto da query
     # string para a URL da fonte externa — é o caminho mais curto entre o
     # cliente e uma requisição de saída, e o que mais precisa da conferência.
-    if classe not in CLASSES_COM_TICKER or not ticker_valido(ticker_bruto):
+    ticker_bruto = ticker_seguro(ticker_bruto)
+    if classe not in CLASSES_COM_TICKER or not ticker_bruto:
         return jsonify({"preco": None})
     # CoinGecko exige o id em minúsculas (ex: "bitcoin") — as outras classes
     # usam o ticker em maiúsculas, convenção já seguida no resto do módulo.
@@ -4473,7 +4491,6 @@ def baixar_holerite(item_id):
 @app.route("/api/dashboard", methods=["GET"])
 def dashboard():
     mes = request.args.get("mes", datetime.now().strftime("%Y-%m"))
-    hoje = datetime.now().strftime("%Y-%m-%d")
     hoje_dt = datetime.now()
     ano, m = map(int, mes.split("-"))
     ultimo_dia_mes = calendar.monthrange(ano, m)[1]
@@ -5088,8 +5105,10 @@ def criar_backup_automatico():
     for antigo in listar_backups_automaticos()[manter:]:
         try:
             os.remove(os.path.join(BACKUPS_DIR, antigo["nome"]))
-        except OSError:
-            pass
+        except OSError as e:
+            # Não apagar um backup velho não estraga a publicação em andamento,
+            # mas se o disco estiver cheio ou sem permissão é aqui que aparece.
+            print(f"[backup] não deu para apagar {antigo['nome']}: {e}", flush=True)
     return nome
 
 
@@ -6686,8 +6705,10 @@ def pluggy_webhook_status():
                 for w in pluggy_pedir(conn, casa_id, "GET", "/webhooks").get("results", []):
                     registrados.append({"id": w.get("id"), "url": w.get("url"),
                                         "evento": w.get("event")})
-            except PluggyErro:
-                pass
+            except PluggyErro as e:
+                # Listar webhook é informativo: sem isso a tela ainda funciona,
+                # só não mostra o que já está registrado do outro lado.
+                print(f"[pluggy] não deu para listar os webhooks: {e}", flush=True)
         return jsonify({
             "configurado": bool(PLUGGY_WEBHOOK_URL),
             # O segredo nunca sai daqui; a tela só precisa saber se existe URL.
@@ -6785,7 +6806,9 @@ def regra_casa(regra, descricao, valor, tipo):
                 if abs(valor) >= float(c.get("valor")):
                     return True
             except (TypeError, ValueError):
-                pass
+                # Regra com valor em branco ou não numérico simplesmente não
+                # casa; é condição de dado, não erro, e não vale poluir o log.
+                continue
             continue
         op = OPERADORES_REGRA.get(c.get("operador", "contem"))
         if op and op(desc, _texto_normalizado(c.get("valor"))):

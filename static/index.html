@@ -6683,7 +6683,7 @@ function criarLinhaAlocacao(classe, valor){
     <span class="alocacao-nome">${escapeHtml(ROTULOS_CLASSE_INVESTIMENTO[classe] || classe)}</span>
     <div class="alocacao-stepper">
       <button type="button" class="alocacao-menos">−</button>
-      <input type="number" class="alocacao-input" data-classe="${classe}" min="0" max="100" step="1" value="${valor}">
+      <input type="number" class="alocacao-input" data-classe="${escapeHtml(classe)}" min="0" max="100" step="1" value="${Number(valor) || 0}">
       <span class="simbolo">%</span>
       <button type="button" class="alocacao-mais">+</button>
     </div>
