@@ -7088,13 +7088,13 @@ def _intervalo_money_map(periodo):
     hoje = datetime.now().date()
     if periodo == "ano":
         return f"{hoje.year}-01-01", hoje.isoformat()
-    dias = PERIODOS_MONEY_MAP.get(periodo, 180)
+    dias = PERIODOS_MONEY_MAP.get(periodo, 30)
     return (hoje - timedelta(days=dias)).isoformat(), hoje.isoformat()
 
 
 @app.route("/api/money-map", methods=["GET"])
 def money_map():
-    periodo = request.args.get("periodo", "6m")
+    periodo = request.args.get("periodo", "30d")
     inicio, fim = _intervalo_money_map(periodo)
 
     conn = get_db()

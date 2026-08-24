@@ -1519,9 +1519,9 @@
         fica de fora — ela move saldo, mas não é ganho nem gasto.
       </p>
       <div class="mm-periodos" id="mmPeriodos">
-        <button type="button" data-p="30d" data-i18n="30 dias">30 dias</button>
+        <button type="button" data-p="30d" class="ativo" data-i18n="30 dias">30 dias</button>
         <button type="button" data-p="3m" data-i18n="3 meses">3 meses</button>
-        <button type="button" data-p="6m" class="ativo" data-i18n="6 meses">6 meses</button>
+        <button type="button" data-p="6m" data-i18n="6 meses">6 meses</button>
         <button type="button" data-p="ano" data-i18n="Este ano">Este ano</button>
         <button type="button" data-p="1a" data-i18n="12 meses">12 meses</button>
       </div>
@@ -4063,7 +4063,7 @@ async function carregarTudo(){
 // ---------- Money Map ----------
 // Sankey desenhado à mão em SVG. Não usa plugin: o Chart.js do app não traz
 // Sankey, e uma biblioteca a mais só para um gráfico não se paga.
-let mmPeriodo = "6m";
+let mmPeriodo = "30d";
 let mmDados = null;
 
 async function carregarMoneyMap(){
