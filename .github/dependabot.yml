@@ -9,7 +9,7 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "Dependências:"
-    labels: [dependências]
+    labels: [dependencies]
 
   # Actions usadas nos workflows deste repositório
   - package-ecosystem: github-actions
@@ -18,7 +18,7 @@ updates:
       interval: monthly
     commit-message:
       prefix: "Dependências:"
-    labels: [dependências]
+    labels: [dependencies]
 
   # Imagem base do Dockerfile (python:3.11-slim)
   - package-ecosystem: docker
@@ -27,7 +27,7 @@ updates:
       interval: monthly
     commit-message:
       prefix: "Dependências:"
-    labels: [dependências]
+    labels: [dependencies]
 
   # App Android
   - package-ecosystem: gradle
@@ -36,4 +36,4 @@ updates:
       interval: monthly
     commit-message:
       prefix: "Dependências:"
-    labels: [dependências, android]
+    labels: [dependencies, android]
