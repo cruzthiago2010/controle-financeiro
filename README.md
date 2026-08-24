@@ -5,8 +5,8 @@
 <h1 align="center">FinanCerto</h1>
 
 <p align="center">
-  <a href="https://github.com/financerto/controle-financeiro/actions/workflows/ci.yml"><img src="https://github.com/financerto/controle-financeiro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/financerto/controle-financeiro/actions/workflows/codeql.yml"><img src="https://github.com/financerto/controle-financeiro/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+  <a href="https://github.com/financerto/financerto-app/actions/workflows/ci.yml"><img src="https://github.com/financerto/financerto-app/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/financerto/financerto-app/actions/workflows/codeql.yml"><img src="https://github.com/financerto/financerto-app/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/Licença-AGPL--3.0-blue.svg" alt="Licença: AGPL-3.0"></a>
   <br>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11">
@@ -41,7 +41,7 @@ e nada sai dali. Sem mensalidade, sem conta em nuvem, sem telemetria.
 **Linux e macOS** — um comando (instala o Docker se ainda não houver):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/financerto/controle-financeiro/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/financerto/financerto-app/main/install.sh | bash
 ```
 
 O script clona o repositório, sorteia a senha do administrador e a chave de
@@ -50,8 +50,8 @@ sessão, sobe o container e imprime o endereço e a senha no fim.
 **Windows** — instale o [Docker Desktop](https://www.docker.com/products/docker-desktop/) e depois:
 
 ```bash
-git clone https://github.com/financerto/controle-financeiro.git
-cd controle-financeiro
+git clone https://github.com/financerto/financerto-app.git
+cd financerto-app
 copy .env.example .env
 docker compose pull
 docker compose up -d
@@ -60,7 +60,7 @@ docker compose up -d
 Abra `http://localhost:8420` e entre com o usuário `admin`. Pronto.
 
 > **A imagem vem pronta.** Os dois caminhos acima baixam
-> `ghcr.io/financerto/controle-financeiro:latest`, publicada para **amd64 e
+> `ghcr.io/financerto/financerto-app:latest`, publicada para **amd64 e
 > arm64** — então num Raspberry Pi a instalação são segundos, e não os vários
 > minutos de compilar as dependências no próprio aparelho. A etiqueta
 > `latest` acompanha o `main`, que é exatamente o que a instalação entregava
@@ -180,8 +180,8 @@ Se você prefere não rodar o script de instalação, ou quer ver o que ele faz:
 1. Acesse via SSH (ou o terminal instalado).
 2. Clone o repositório e suba o container:
    ```bash
-   git clone https://github.com/financerto/controle-financeiro.git
-   cd controle-financeiro
+   git clone https://github.com/financerto/financerto-app.git
+   cd financerto-app
    docker compose up -d --build
    ```
 3. Acesse no navegador: `http://localhost:8420` (IP da sua máquina).
@@ -413,7 +413,7 @@ tela". O guia está em [CONTRIBUTING.md](CONTRIBUTING.md), e vale o
 [Código de Conduta](CODE_OF_CONDUCT.md) em todos os espaços do projeto.
 
 Encontrou uma falha de segurança? **Não abra issue pública** — use o
-[canal privado](https://github.com/financerto/controle-financeiro/security/advisories/new).
+[canal privado](https://github.com/financerto/financerto-app/security/advisories/new).
 Os detalhes estão em [SECURITY.md](SECURITY.md).
 
 ## Feito com ajuda de IA

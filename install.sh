@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Instalador do FinanCerto — https://github.com/financerto/controle-financeiro
+# Instalador do FinanCerto — https://github.com/financerto/financerto-app
 #
-#   curl -fsSL https://raw.githubusercontent.com/financerto/controle-financeiro/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/financerto/financerto-app/main/install.sh | bash
 #
 # O que ele faz: confere se o Docker está instalado (e instala no Linux se não
 # estiver), clona o repositório, cria um .env com senha e chave de sessão
@@ -15,11 +15,11 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/financerto/controle-financeiro.git"
+REPO_URL="https://github.com/financerto/financerto-app.git"
 PORTA="${PORTA:-8420}"
 BRANCH="${BRANCH:-main}"
 PASTA="${PASTA:-$PWD}"
-DESTINO="$PASTA/controle-financeiro"
+DESTINO="$PASTA/financerto-app"
 
 # ── Cores ────────────────────────────────────────────────────────────────────
 if [ -t 1 ]; then

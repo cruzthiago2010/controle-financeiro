@@ -5874,7 +5874,7 @@ def pluggy_vincular_conta(item_id):
 APP_ANDROID_VERSAO = os.environ.get("APP_ANDROID_VERSAO") or "3.1"
 APP_ANDROID_MINIMA = os.environ.get("APP_ANDROID_MINIMA") or ""
 # Pagina da release, para quem vai olhar com os proprios olhos.
-APP_ANDROID_URL = os.environ.get("APP_ANDROID_URL") or "https://github.com/financerto/controle-financeiro/releases/latest"
+APP_ANDROID_URL = os.environ.get("APP_ANDROID_URL") or "https://github.com/financerto/financerto-app/releases/latest"
 
 # O GitHub e a fonte oficial do APK para todo mundo, inclusive para quem
 # publica: uma fonte so evita duas versoes da verdade. O app precisa do
@@ -5882,7 +5882,7 @@ APP_ANDROID_URL = os.environ.get("APP_ANDROID_URL") or "https://github.com/finan
 # Android engasgaria com uma mensagem que nao explica nada. O endereco e
 # montado a partir da versao anunciada, entao o que se anuncia e o que se
 # baixa sao sempre a mesma coisa.
-APP_ANDROID_REPO = os.environ.get("APP_ANDROID_REPO") or "financerto/controle-financeiro"
+APP_ANDROID_REPO = os.environ.get("APP_ANDROID_REPO") or "financerto/financerto-app"
 
 
 def url_do_apk():

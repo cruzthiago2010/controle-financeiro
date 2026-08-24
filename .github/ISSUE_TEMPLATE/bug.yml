@@ -8,7 +8,7 @@ body:
         Obrigado por reportar. Antes de continuar:
 
         - **Falha de segurança não vai aqui.** Use o
-          [canal privado](https://github.com/financerto/controle-financeiro/security/advisories/new).
+          [canal privado](https://github.com/financerto/financerto-app/security/advisories/new).
         - **Não cole print com o seu saldo, extrato, CPF ou holerite.** Tarje antes.
 
   - type: textarea

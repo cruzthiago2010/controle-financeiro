@@ -10,7 +10,7 @@ pessoa rodar no próprio servidor. Toda contribuição é bem-vinda — inclusiv
 
 ## Antes de escrever código
 
-Abra uma [issue](https://github.com/financerto/controle-financeiro/issues)
+Abra uma [issue](https://github.com/financerto/financerto-app/issues)
 descrevendo o que pretende fazer. Serve para evitar dois trabalhos iguais e para
 alinhar se aquilo cabe no projeto. Para correção pequena e óbvia (typo, link
 quebrado, erro de conta), pode mandar o pull request direto.
@@ -20,8 +20,8 @@ quebrado, erro de conta), pode mandar o pull request direto.
 ## Rodando o projeto
 
 ```bash
-git clone https://github.com/financerto/controle-financeiro.git
-cd controle-financeiro
+git clone https://github.com/financerto/financerto-app.git
+cd financerto-app
 cp .env.example .env      # preencha ADMIN_PASSWORD e SECRET_KEY
 docker compose up -d --build
 ```

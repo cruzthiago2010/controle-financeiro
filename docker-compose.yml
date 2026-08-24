@@ -6,7 +6,7 @@ services:
     # Raspberry Pi é a diferença entre segundos e vários minutos. Quem
     # desenvolve, ou publica a produção, usa "up -d --build": constrói
     # daqui e reaproveita este mesmo nome, sem baixar nada.
-    image: ghcr.io/financerto/controle-financeiro:latest
+    image: ghcr.io/financerto/financerto-app:latest
     container_name: controle-financeiro
     restart: unless-stopped
     ports:
