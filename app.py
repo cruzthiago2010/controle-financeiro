@@ -5639,6 +5639,195 @@ def versao_app():
     })
 
 
+# ---- Importação do extrato para lançamentos ----
+#
+# O que o extrato traz NÃO vira lançamento cegamente. Cada transação passa por
+# três destinos possíveis:
+#   1. já importada antes  -> ignorada (o id da Pluggy é único)
+#   2. casa com lançamento -> marcada como conciliada, nada é criado
+#   3. sobrou              -> vira lançamento novo, com origem='open_finance'
+#
+# O passo 2 é o que impede duplicar. Conferindo com dado real, o saldo que a
+# Pluggy reporta batia com o do app, ou seja, os lançamentos manuais já
+# estavam certos — importar por cima teria duplicado quase tudo.
+
+# Categoria da Pluggy (inglês) -> categoria da casa (português). O que não
+# estiver aqui entra sem categoria, para a pessoa classificar: chutar
+# "Outros" esconderia o que precisa de atenção.
+PLUGGY_CATEGORIAS = {
+    "Taxi and ride-hailing": "Transporte",
+    "Transportation": "Transporte",
+    "Automotive": "Transporte",
+    "Vehicle maintenance": "Transporte",
+    "Car rental": "Transporte",
+    "Parking": "Transporte",
+    "Gas stations": "Combustível",
+    "Gas": "Combustível",
+    "Groceries": "Mercado",
+    "Eating out": "Alimentação",
+    "Food delivery": "Alimentação",
+    "Food and drinks": "Alimentação",
+    "Insurance": "Seguro",
+    "Shopping": "Compras",
+    "Online shopping": "Compras",
+    "Clothing": "Compras",
+    "Electronics": "Compras",
+    "Housing": "Moradia",
+    "Internet": "Internet",
+    "Telecommunications": "Internet",
+    "Loans": "Emprestimos",
+    "Loans and financing": "Emprestimos",
+    "Gyms and fitness centers": "Lazer",
+    "Cinema, theater and concerts": "Lazer",
+    "Office supplies": "Negócios",
+}
+
+# Transferência entre contas do próprio titular: move saldo mas não é ganho
+# nem gasto, então não pode entrar nos totais do mês. É a mesma marcação que a
+# transferência manual entre contas já usa.
+PLUGGY_CATEGORIAS_TRANSFERENCIA = {
+    "Same person transfer",
+    "Same person transfer - CASH",
+}
+
+
+def _pluggy_extrato(conn, casa_id, account_id, desde=None):
+    """Todas as transações da conta, seguindo o cursor da v2.
+
+    Filtra por createdAtFrom e não por dateFrom: `date` é quando a transação
+    aconteceu, e filtrar por ele perde silenciosamente o que a Pluggy ingere
+    depois mas data para trás (fatura de cartão, lojista que liquida tarde).
+    """
+    from urllib.parse import urlparse, parse_qs
+
+    tudo, depois = [], None
+    while True:
+        caminho = f"/v2/transactions?accountId={account_id}"
+        if desde:
+            caminho += f"&createdAtFrom={desde}"
+        if depois:
+            caminho += f"&after={depois}"
+        dados = pluggy_pedir(conn, casa_id, "GET", caminho)
+        resultados = dados.get("results", [])
+        if not resultados:
+            break
+        tudo += resultados
+        proximo = dados.get("next")
+        novo = parse_qs(urlparse(proximo).query).get("after", [None])[0] if proximo else None
+        if not novo or novo == depois:
+            break
+        depois = novo
+    return tudo
+
+
+def _pluggy_casa_com_lancamento(conn, usuario_id, conta_id, tipo, valor, data_iso, dias=3):
+    """Procura um lançamento que já represente essa transação: mesmo tipo,
+    mesmo valor e data próxima. A folga de 3 dias existe porque a data que a
+    pessoa digita raramente é exatamente a que o banco registra."""
+    from datetime import datetime as _dt, timedelta as _td
+
+    try:
+        d = _dt.fromisoformat(data_iso[:10])
+    except ValueError:
+        return None
+    inicio = (d - _td(days=dias)).strftime("%Y-%m-%d")
+    fim = (d + _td(days=dias)).strftime("%Y-%m-%d")
+
+    row = conn.execute(
+        """SELECT id FROM lancamentos
+           WHERE usuario_id = ? AND conta_id = ? AND tipo = ?
+             AND ROUND(ABS(valor), 2) = ROUND(?, 2)
+             AND COALESCE(data_pagamento, vencimento, mes || '-15') BETWEEN ? AND ?
+             AND id NOT IN (SELECT lancamento_id FROM pluggy_transacoes
+                            WHERE lancamento_id IS NOT NULL)
+           LIMIT 1""",
+        (usuario_id, conta_id, tipo, round(abs(valor), 2), inicio, fim),
+    ).fetchone()
+    return row["id"] if row else None
+
+
+def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None, criar=True):
+    """Importa o extrato de uma conta da Pluggy já vinculada.
+
+    mes_de/mes_ate no formato AAAA-MM limitam o período (inclusive). `criar`
+    False faz uma simulação: registra o staging e o casamento, mas não cria
+    lançamento nenhum.
+    """
+    account_id = pluggy_conta["account_id"]
+    conta_id = pluggy_conta["conta_id"]
+    usuario_id = pluggy_conta["usuario_id"]
+    if not conta_id:
+        raise PluggyErro("essa conta da Pluggy ainda não foi vinculada a uma conta do app")
+
+    relatorio = {"vistas": 0, "fora_do_periodo": 0, "ja_importadas": 0,
+                 "conciliadas": 0, "criadas": 0, "transferencias": 0, "sem_categoria": 0}
+
+    for t in _pluggy_extrato(conn, casa_id, account_id):
+        relatorio["vistas"] += 1
+        data = (t.get("date") or "")[:10]
+        mes = data[:7]
+        if (mes_de and mes < mes_de) or (mes_ate and mes > mes_ate):
+            relatorio["fora_do_periodo"] += 1
+            continue
+
+        transacao_id = t.get("id")
+        if conn.execute("SELECT 1 FROM pluggy_transacoes WHERE transacao_id = ?",
+                        (transacao_id,)).fetchone():
+            relatorio["ja_importadas"] += 1
+            continue
+
+        bruto = t.get("amount") or 0
+        pluggy_tipo = (t.get("type") or "").upper()
+        tipo = "renda" if pluggy_tipo == "CREDIT" else "despesa"
+        valor = abs(bruto)
+        categoria_pluggy = t.get("category")
+        descricao = (t.get("description") or "Sem descrição").strip()
+        cc = t.get("creditCardMetadata") or {}
+
+        lancamento_id = _pluggy_casa_com_lancamento(
+            conn, usuario_id, conta_id, tipo, valor, data)
+        estado = "conciliada" if lancamento_id else "pendente"
+
+        if lancamento_id:
+            relatorio["conciliadas"] += 1
+        elif criar:
+            eh_transf = 1 if categoria_pluggy in PLUGGY_CATEGORIAS_TRANSFERENCIA else 0
+            categoria = PLUGGY_CATEGORIAS.get(categoria_pluggy or "")
+            if eh_transf:
+                relatorio["transferencias"] += 1
+            elif not categoria:
+                relatorio["sem_categoria"] += 1
+
+            cur = conn.execute(
+                """INSERT INTO lancamentos
+                       (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id,
+                        pago, data_pagamento, eh_transferencia, usuario_id, criado_em, origem)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'open_finance')""",
+                (mes, tipo, descricao, valor, data, categoria,
+                 conn.execute("SELECT nome FROM contas WHERE id = ?", (conta_id,)).fetchone()["nome"],
+                 conta_id, data, eh_transf, usuario_id, datetime.now().isoformat()),
+            )
+            lancamento_id = cur.lastrowid
+            estado = "aprovada"
+            relatorio["criadas"] += 1
+
+        conn.execute(
+            """INSERT INTO pluggy_transacoes
+                   (transacao_id, account_id, casa_id, usuario_id, descricao, valor, tipo,
+                    data, categoria_pluggy, situacao, parcela_num, parcela_total,
+                    compra_em, fatura_id, estado, lancamento_id, criado_em)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (transacao_id, account_id, casa_id, usuario_id, descricao, bruto, pluggy_tipo,
+             data, categoria_pluggy, t.get("status"), cc.get("installmentNumber"),
+             cc.get("totalInstallments"), (cc.get("purchaseDate") or "")[:10] or None,
+             str(cc.get("billId")) if cc.get("billId") else None,
+             estado, lancamento_id, datetime.now().isoformat()),
+        )
+
+    conn.commit()
+    return relatorio
+
+
 if __name__ == "__main__":
     init_db()
     # O banco demo só é recriado do zero quando alguém liga o modo demonstração
