@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FinanCerto</title>
+<title data-i18n="FinanCerto">FinanCerto</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/static/logo-financerto.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icones/icone-180.png">
@@ -704,6 +704,15 @@
   .atualiza-banner{background:linear-gradient(135deg, #3a2f10, #241d0c);
     border-color:rgba(255,171,0,0.42);}
   .atualiza-banner .ico.xl{color:var(--yellow);}
+  .dropdown-idioma{
+    display:flex; gap:6px; padding:8px 14px 2px; border-top:1px solid var(--border-soft);
+    margin-top:4px;
+  }
+  .dropdown-idioma button{
+    flex:1; background:var(--card2); color:var(--muted); border:1px solid var(--border-soft);
+    padding:5px 8px; font-size:0.74rem; font-weight:600; box-shadow:none;
+  }
+  .dropdown-idioma button.ativo{background:var(--accent); color:#fff; border-color:transparent;}
   .dropdown-versao{
     border-top:1px solid var(--border-soft); margin-top:4px; padding:9px 14px;
     font-size:0.73rem; color:var(--muted-soft); text-align:center;
@@ -1236,44 +1245,44 @@
 <div class="app-shell">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-topo">
-      <span class="logo"><svg class="ico lg logo-marca" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="fcSide" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ecc8f"/><stop offset="1" stop-color="#0e8f6a"/></linearGradient></defs><path d="M50 6 L88 19 V49 C88 71 71 87 50 95 C29 87 12 71 12 49 V19 Z" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linejoin="round"/><path d="M25 72 L41 56 L50 63 L70 43" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M56 43 H70 V57" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg> <span class="logo-texto">FinanCerto</span></span>
-      <button class="sidebar-colapsar" id="sidebarColapsarBtn" type="button" title="Recolher menu"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-esquerda"/></svg></button>
+      <span class="logo"><svg class="ico lg logo-marca" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="fcSide" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2ecc8f"/><stop offset="1" stop-color="#0e8f6a"/></linearGradient></defs><path d="M50 6 L88 19 V49 C88 71 71 87 50 95 C29 87 12 71 12 49 V19 Z" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linejoin="round"/><path d="M25 72 L41 56 L50 63 L70 43" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M56 43 H70 V57" fill="none" stroke="url(#fcSide)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg> <span class="logo-texto" data-i18n="FinanCerto">FinanCerto</span></span>
+      <button class="sidebar-colapsar" id="sidebarColapsarBtn" type="button" title="Recolher menu" data-i18n-title="Recolher menu"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-esquerda"/></svg></button>
     </div>
     <nav class="sidebar-nav">
-      <button class="nav-item ativo" data-tab="dashboard" title="Dashboard"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-dashboard"/></svg></span><span class="nav-label">Dashboard</span></button>
-      <button class="nav-item" data-tab="contas" title="Contas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-banco"/></svg></span><span class="nav-label">Contas</span></button>
-      <button class="nav-item" data-tab="lancamentos" title="Receitas & Despesas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg></span><span class="nav-label">Receitas &amp; Despesas</span></button>
-      <button class="nav-item" data-tab="categorias" title="Categorias"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span><span class="nav-label">Categorias</span></button>
-      <button class="nav-item" data-tab="regras" title="Classificar"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-funil"/></svg></span><span class="nav-label">Classificar</span><span class="nav-selo" id="navNaoCat" hidden>0</span></button>
-      <button class="nav-item" data-tab="calendario" title="Calendário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendario"/></svg></span><span class="nav-label">Calendário</span></button>
-      <button class="nav-item" data-tab="cartoes" title="Cartões"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cartao"/></svg></span><span class="nav-label">Cartões</span></button>
-      <button class="nav-item" data-tab="investimentos" title="Investimentos"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sobe"/></svg></span><span class="nav-label">Investimentos</span></button>
-      <button class="nav-item" data-tab="metas" title="Metas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bussola"/></svg></span><span class="nav-label">Metas</span></button>
-      <button class="nav-item" data-tab="holerites" title="Holerite"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg></span><span class="nav-label">Holerite</span></button>
-      <button class="nav-item" data-tab="consignados" title="Empréstimos" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label">Empréstimos</span></button>
-      <button class="nav-item" data-tab="notificacoes" title="Notificações"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sino"/></svg></span><span class="nav-label">Notificações</span></button>
-      <button class="nav-item" data-tab="casa" title="Casa"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-casa"/></svg></span><span class="nav-label">Casa</span></button>
-      <button class="nav-item" data-tab="backup" title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label">Backup</span></button>
+      <button class="nav-item ativo" data-tab="dashboard" title="Dashboard" data-i18n-title="Dashboard"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-dashboard"/></svg></span><span class="nav-label" data-i18n="Dashboard">Dashboard</span></button>
+      <button class="nav-item" data-tab="contas" title="Contas" data-i18n-title="Contas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-banco"/></svg></span><span class="nav-label" data-i18n="Contas">Contas</span></button>
+      <button class="nav-item" data-tab="lancamentos" title="Receitas & Despesas" data-i18n-title="Receitas & Despesas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg></span><span class="nav-label" data-i18n="Receitas &amp; Despesas">Receitas &amp; Despesas</span></button>
+      <button class="nav-item" data-tab="categorias" title="Categorias" data-i18n-title="Categorias"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span><span class="nav-label" data-i18n="Categorias">Categorias</span></button>
+      <button class="nav-item" data-tab="regras" title="Classificar" data-i18n-title="Classificar"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-funil"/></svg></span><span class="nav-label" data-i18n="Classificar">Classificar</span><span class="nav-selo" id="navNaoCat" hidden>0</span></button>
+      <button class="nav-item" data-tab="calendario" title="Calendário" data-i18n-title="Calendário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-calendario"/></svg></span><span class="nav-label" data-i18n="Calendário">Calendário</span></button>
+      <button class="nav-item" data-tab="cartoes" title="Cartões" data-i18n-title="Cartões"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-cartao"/></svg></span><span class="nav-label" data-i18n="Cartões">Cartões</span></button>
+      <button class="nav-item" data-tab="investimentos" title="Investimentos" data-i18n-title="Investimentos"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sobe"/></svg></span><span class="nav-label" data-i18n="Investimentos">Investimentos</span></button>
+      <button class="nav-item" data-tab="metas" title="Metas" data-i18n-title="Metas"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-bussola"/></svg></span><span class="nav-label" data-i18n="Metas">Metas</span></button>
+      <button class="nav-item" data-tab="holerites" title="Holerite" data-i18n-title="Holerite"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg></span><span class="nav-label" data-i18n="Holerite">Holerite</span></button>
+      <button class="nav-item" data-tab="consignados" title="Empréstimos" data-i18n-title="Empréstimos" id="navConsignados" style="display:none;"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-repetir"/></svg></span><span class="nav-label" data-i18n="Empréstimos">Empréstimos</span></button>
+      <button class="nav-item" data-tab="notificacoes" title="Notificações" data-i18n-title="Notificações"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sino"/></svg></span><span class="nav-label" data-i18n="Notificações">Notificações</span></button>
+      <button class="nav-item" data-tab="casa" title="Casa" data-i18n-title="Casa"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-casa"/></svg></span><span class="nav-label" data-i18n="Casa">Casa</span></button>
+      <button class="nav-item" data-tab="backup" title="Backup" data-i18n-title="Backup"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-escudo"/></svg></span><span class="nav-label" data-i18n="Backup">Backup</span></button>
     </nav>
 
     <!-- Exigência da AGPL §13: quem usa o app pela rede precisa ter como chegar
          no código-fonte. Fica no fim da barra, fora do rodapé escondido. -->
     <a class="sidebar-fonte" href="https://github.com/cruzthiago2010/controle-financeiro" target="_blank" rel="noopener"
-       title="Ver o código-fonte no GitHub — software livre sob AGPL-3.0">
+       title="Ver o código-fonte no GitHub — software livre sob AGPL-3.0" data-i18n-title="Ver o código-fonte no GitHub — software livre sob AGPL-3.0">
       <span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-github"/></svg></span>
-      <span class="nav-label">GitHub</span>
+      <span class="nav-label" data-i18n="GitHub">GitHub</span>
     </a>
 
     <!-- O usuário agora fica no menu da barra superior. Estes controles seguem
          aqui só como alvo dos cliques daquele menu, escondidos da tela. -->
     <div class="sidebar-rodape" hidden>
-      <div class="sidebar-usuario" id="sidebarUsuario" title="Trocar senha">
+      <div class="sidebar-usuario" id="sidebarUsuario" title="Trocar senha" data-i18n-title="Trocar senha">
         <span class="usuario-avatar" id="usuarioAvatar">?</span>
         <span class="nav-label" id="usuarioNomeLabel">...</span>
-        <span class="badge-leitura" title="Somente leitura">Leitura</span>
+        <span class="badge-leitura" title="Somente leitura" data-i18n-title="Somente leitura" data-i18n="Leitura">Leitura</span>
       </div>
-      <button class="nav-item" id="btnAdicionarUsuario" title="Adicionar usuário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg></span><span class="nav-label">Adicionar usuário</span></button>
-      <button class="nav-item" id="btnSair" title="Sair"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sair"/></svg></span><span class="nav-label">Sair</span></button>
+      <button class="nav-item" id="btnAdicionarUsuario" title="Adicionar usuário" data-i18n-title="Adicionar usuário"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg></span><span class="nav-label" data-i18n="Adicionar usuário">Adicionar usuário</span></button>
+      <button class="nav-item" id="btnSair" title="Sair" data-i18n-title="Sair"><span class="nav-icon"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sair"/></svg></span><span class="nav-label" data-i18n="Sair">Sair</span></button>
     </div>
   </aside>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -1281,62 +1290,62 @@
   <div class="conteudo">
     <div class="demo-banner" id="demoBanner">
       <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-olho"/></svg>
-      <span>MODO DEMONSTRAÇÃO ATIVADO — dados fictícios, suas contas reais estão ocultas</span>
-      <button type="button" id="sairDemoBtn">Sair do demo</button>
+      <span data-i18n="MODO DEMONSTRAÇÃO ATIVADO — dados fictícios, suas contas reais estão ocultas">MODO DEMONSTRAÇÃO ATIVADO — dados fictícios, suas contas reais estão ocultas</span>
+      <button type="button" id="sairDemoBtn" data-i18n="Sair do demo">Sair do demo</button>
     </div>
 
     <header class="topbar">
-      <button class="icon-btn" id="menuToggle" type="button" title="Menu"><svg class="ico" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
+      <button class="icon-btn" id="menuToggle" type="button" title="Menu" data-i18n-title="Menu"><svg class="ico" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
       <div class="mes-selector">
-        <button class="icon-btn" id="mesAnteriorBtn" type="button" title="Mês anterior"><svg class="ico" viewBox="0 0 24 24"><use href="#i-esquerda"/></svg></button>
+        <button class="icon-btn" id="mesAnteriorBtn" type="button" title="Mês anterior" data-i18n-title="Mês anterior"><svg class="ico" viewBox="0 0 24 24"><use href="#i-esquerda"/></svg></button>
         <select id="mesSelect"></select>
-        <button class="icon-btn" id="mesProximoBtn" type="button" title="Próximo mês"><svg class="ico" viewBox="0 0 24 24"><use href="#i-direita"/></svg></button>
+        <button class="icon-btn" id="mesProximoBtn" type="button" title="Próximo mês" data-i18n-title="Próximo mês"><svg class="ico" viewBox="0 0 24 24"><use href="#i-direita"/></svg></button>
         <span class="mes-aviso" id="mesAvisoNaoAtual">
           <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg>
-          Não é o mês atual
-          <button type="button" id="voltarMesAtualBtn">Voltar para hoje</button>
+          <span data-i18n="Não é o mês atual">Não é o mês atual</span>
+          <button type="button" id="voltarMesAtualBtn" data-i18n="Voltar para hoje">Voltar para hoje</button>
         </span>
       </div>
       <div class="topbar-acoes">
-        <button class="icon-btn" id="ocultarValoresBtn" type="button" title="Ocultar valores"><svg class="ico" viewBox="0 0 24 24"><use href="#i-olho"/></svg></button>
-        <button class="icon-btn" id="temaBtn" type="button" title="Alternar tema"><svg class="ico" viewBox="0 0 24 24"><use href="#i-lua"/></svg></button>
+        <button class="icon-btn" id="ocultarValoresBtn" type="button" title="Ocultar valores" data-i18n-title="Ocultar valores"><svg class="ico" viewBox="0 0 24 24"><use href="#i-olho"/></svg></button>
+        <button class="icon-btn" id="temaBtn" type="button" title="Alternar tema" data-i18n-title="Alternar tema"><svg class="ico" viewBox="0 0 24 24"><use href="#i-lua"/></svg></button>
 
         <div class="menu-flutuante" id="areaBusca">
-          <button class="icon-btn" id="buscaBtn" type="button" title="Buscar lançamentos">
+          <button class="icon-btn" id="buscaBtn" type="button" title="Buscar lançamentos" data-i18n-title="Buscar lançamentos">
             <svg class="ico" viewBox="0 0 24 24"><use href="#i-busca"/></svg>
           </button>
           <div class="dropdown dropdown-busca" id="dropdownBusca" hidden>
-            <input type="search" id="buscaGlobalInput" placeholder="Buscar por descrição, categoria ou valor…" autocomplete="off">
+            <input type="search" id="buscaGlobalInput" placeholder="Buscar por descrição, categoria ou valor…" data-i18n-placeholder="Buscar por descrição, categoria ou valor…" autocomplete="off">
             <div id="buscaGlobalResultado">
-              <div class="sino-vazio">Digite para procurar em todos os meses.</div>
+              <div class="sino-vazio" data-i18n="Digite para procurar em todos os meses.">Digite para procurar em todos os meses.</div>
             </div>
           </div>
         </div>
 
         <div class="menu-flutuante" id="areaSino">
-          <button class="icon-btn" id="sinoBtn" type="button" title="Contas vencidas e vencendo">
+          <button class="icon-btn" id="sinoBtn" type="button" title="Contas vencidas e vencendo" data-i18n-title="Contas vencidas e vencendo">
             <svg class="ico" viewBox="0 0 24 24"><use href="#i-sino"/></svg>
             <span class="sino-selo" id="sinoSelo" hidden>0</span>
           </button>
           <div class="dropdown dropdown-sino" id="dropdownSino" hidden>
             <div class="sino-cabecalho">
               <div>
-                <div class="sino-titulo">Contas a pagar</div>
+                <div class="sino-titulo" data-i18n="Contas a pagar">Contas a pagar</div>
                 <div class="sino-resumo" id="sinoResumo"></div>
               </div>
-              <button class="sino-marcar" id="sinoMarcarLidas" type="button" title="Marcar todas como lidas">
+              <button class="sino-marcar" id="sinoMarcarLidas" type="button" title="Marcar todas como lidas" data-i18n-title="Marcar todas como lidas">
                 <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg>
               </button>
             </div>
             <div id="listaSino"></div>
             <div class="sino-rodape">
-              <button type="button" id="sinoVerTodas">Ver todas as contas</button>
+              <button type="button" id="sinoVerTodas" data-i18n="Ver todas as contas">Ver todas as contas</button>
             </div>
           </div>
         </div>
 
         <div class="menu-flutuante" id="areaUsuario">
-          <button class="usuario-botao" id="usuarioBtn" type="button" title="Sua conta">
+          <button class="usuario-botao" id="usuarioBtn" type="button" title="Sua conta" data-i18n-title="Sua conta">
             <span class="usuario-avatar" id="topAvatar">?</span>
             <span class="usuario-nome" id="topNome">...</span>
             <svg class="ico sm seta" viewBox="0 0 24 24"><use href="#i-direita"/></svg>
@@ -1350,16 +1359,20 @@
               </div>
             </div>
             <button class="dropdown-item" id="menuTrocarSenha">
-              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-escudo"/></svg> Minha conta
+              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-escudo"/></svg> <span data-i18n="Minha conta">Minha conta</span>
             </button>
             <button class="dropdown-item" id="menuAdicionarUsuario">
-              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg> Adicionar usuário
+              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg> <span data-i18n="Adicionar usuário">Adicionar usuário</span>
             </button>
             <button class="dropdown-item perigo" id="menuSair">
-              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sair"/></svg> Sair
+              <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sair"/></svg> <span data-i18n="Sair">Sair</span>
             </button>
             <!-- Sempre presente: dá pra conferir a versão sem depender de haver
                  uma atualização pendente. No navegador mostra que é a web. -->
+            <div class="dropdown-idioma">
+              <button type="button" data-idioma="pt">Português</button>
+              <button type="button" data-idioma="en">English</button>
+            </div>
             <div class="dropdown-versao" id="menuVersao">—</div>
           </div>
         </div>
@@ -1398,7 +1411,7 @@
 
         <button type="button" data-t="limpar">C</button>
         <button type="button" data-t="00">00</button>
-        <button type="button" class="ok" data-t="ok" style="grid-column:span 2;">OK</button>
+        <button type="button" class="ok" data-t="ok" style="grid-column:span 2;" data-i18n="OK">OK</button>
       </div>
     </div>
 
@@ -1407,11 +1420,11 @@
   <div class="install-banner" id="installBanner">
     <svg class="ico xl" viewBox="0 0 24 24"><use href="#i-celular"/></svg>
     <div class="texto-inst">
-      <strong>Instalar como app</strong>
-      <small id="installDica">Abre em tela cheia, sem a barra do navegador.</small>
+      <strong data-i18n="Instalar como app">Instalar como app</strong>
+      <small id="installDica" data-i18n="Abre em tela cheia, sem a barra do navegador.">Abre em tela cheia, sem a barra do navegador.</small>
     </div>
-    <button type="button" id="installBtn">Instalar</button>
-    <button type="button" class="secondary" id="installFechar" title="Dispensar"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
+    <button type="button" id="installBtn" data-i18n="Instalar">Instalar</button>
+    <button type="button" class="secondary" id="installFechar" title="Dispensar" data-i18n-title="Dispensar"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
   </div>
 
   <!-- Só aparece dentro do app Android, e só quando a versão instalada está
@@ -1419,27 +1432,27 @@
   <div class="install-banner atualiza-banner" id="updateBanner">
     <svg class="ico xl" viewBox="0 0 24 24"><use href="#i-baixar"/></svg>
     <div class="texto-inst">
-      <strong id="updateTitulo">Atualização disponível</strong>
-      <small id="updateDica">Você está na versão — e já existe a —.</small>
+      <strong id="updateTitulo" data-i18n="Atualização disponível">Atualização disponível</strong>
+      <small id="updateDica" data-i18n="Você está na versão — e já existe a —.">Você está na versão — e já existe a —.</small>
     </div>
-    <button type="button" id="updateBtn">Baixar</button>
-    <button type="button" class="secondary" id="updateFechar" title="Agora não"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
+    <button type="button" id="updateBtn" data-i18n="Baixar">Baixar</button>
+    <button type="button" class="secondary" id="updateFechar" title="Agora não" data-i18n-title="Agora não"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
   </div>
 
   <!-- ===================== DASHBOARD ===================== -->
   <section class="painel ativo" id="painel-dashboard">
     <div class="secao mm-cores" id="secaoMoneyMap">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> Money Map</h2>
-      <p class="of-ajuda">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> <span data-i18n="Money Map">Money Map</span></h2>
+      <p class="of-ajuda" data-i18n="De onde o dinheiro veio e para onde foi. Transferência entre contas suas fica de fora — ela move saldo, mas não é ganho nem gasto.">
         De onde o dinheiro veio e para onde foi. Transferência entre contas suas
         fica de fora — ela move saldo, mas não é ganho nem gasto.
       </p>
       <div class="mm-periodos" id="mmPeriodos">
-        <button type="button" data-p="30d">30 dias</button>
-        <button type="button" data-p="3m">3 meses</button>
-        <button type="button" data-p="6m" class="ativo">6 meses</button>
-        <button type="button" data-p="ano">Este ano</button>
-        <button type="button" data-p="1a">12 meses</button>
+        <button type="button" data-p="30d" data-i18n="30 dias">30 dias</button>
+        <button type="button" data-p="3m" data-i18n="3 meses">3 meses</button>
+        <button type="button" data-p="6m" class="ativo" data-i18n="6 meses">6 meses</button>
+        <button type="button" data-p="ano" data-i18n="Este ano">Este ano</button>
+        <button type="button" data-p="1a" data-i18n="12 meses">12 meses</button>
       </div>
       <div class="mm-resumo" id="mmResumo"></div>
       <div class="mm-svg-wrap"><div id="mmGrafico"></div></div>
@@ -1452,37 +1465,37 @@
     <div class="grid2" id="dashCards"></div>
 
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Fluxo de caixa do mês <span style="text-transform:none; font-weight:400; opacity:0.7;">· toque numa coluna para ver o detalhe</span></h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> <span data-i18n="Fluxo de caixa do mês">Fluxo de caixa do mês</span> <span style="text-transform:none; font-weight:400; opacity:0.7;" data-i18n="· toque numa coluna para ver o detalhe">· toque numa coluna para ver o detalhe</span></h2>
       <div class="chart-box"><canvas id="chartComparacao"></canvas></div>
     </div>
 
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Fluxo de caixa diário <span style="text-transform:none; font-weight:400; opacity:0.7;">· entradas, saídas e saldo acumulado dia a dia</span></h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> <span data-i18n="Fluxo de caixa diário">Fluxo de caixa diário</span> <span style="text-transform:none; font-weight:400; opacity:0.7;" data-i18n="· entradas, saídas e saldo acumulado dia a dia">· entradas, saídas e saldo acumulado dia a dia</span></h2>
       <div class="chart-box"><canvas id="chartFluxoCaixa"></canvas></div>
     </div>
 
     <div class="secao">
-      <h2>Gastos por categoria</h2>
+      <h2><span data-i18n="Gastos por categoria">Gastos por categoria</span></h2>
       <div class="card"><div id="rankCategorias"></div></div>
     </div>
 
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Tendência (últimos 6 meses)</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> <span data-i18n="Tendência (últimos 6 meses)">Tendência (últimos 6 meses)</span></h2>
       <div class="chart-box"><canvas id="chartTendencia"></canvas></div>
     </div>
 
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> Contas vencidas e vencendo nos próximos 7 dias</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> <span data-i18n="Contas vencidas e vencendo nos próximos 7 dias">Contas vencidas e vencendo nos próximos 7 dias</span></h2>
       <div id="listaVencendo"></div>
     </div>
 
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-calendario"/></svg> Parcelas futuras</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-calendario"/></svg> <span data-i18n="Parcelas futuras">Parcelas futuras</span></h2>
       <div id="listaParcelasFuturas"></div>
     </div>
 
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-banco"/></svg> Resumo por conta</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-banco"/></svg> <span data-i18n="Resumo por conta">Resumo por conta</span></h2>
       <div id="listaContasResumo"></div>
     </div>
   </section>
@@ -1491,21 +1504,21 @@
   <section class="painel" id="painel-contas">
     <div class="secao">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <h2 style="margin-bottom:0;">Contas</h2>
-        <button class="secondary" type="button" id="btnAbrirTransferencia"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> Transferir</button>
+        <h2 style="margin-bottom:0;"><span data-i18n="Contas">Contas</span></h2>
+        <button class="secondary" type="button" id="btnAbrirTransferencia"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> <span data-i18n="Transferir">Transferir</span></button>
       </div>
       <div class="contas-grid" id="listaContas"></div>
     </div>
     <form class="add-form" id="contaForm">
-      <input type="text" id="contaNome" placeholder="Nome da conta (ex: Nubank, Carteira)" required>
-      <input type="number" id="contaSaldoInicial" placeholder="Saldo inicial (R$)" step="0.01">
-      <button type="submit">Adicionar conta</button>
+      <input type="text" id="contaNome" placeholder="Nome da conta (ex: Nubank, Carteira)" data-i18n-placeholder="Nome da conta (ex: Nubank, Carteira)" required>
+      <input type="number" id="contaSaldoInicial" placeholder="Saldo inicial (R$)" data-i18n-placeholder="Saldo inicial (R$)" step="0.01">
+      <button type="submit" data-i18n="Adicionar conta">Adicionar conta</button>
     </form>
 
     <!-- ===== Open Finance ===== -->
     <div class="secao" id="secaoOpenFinance">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> Open Finance</h2>
-      <p class="of-ajuda">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> <span data-i18n="Open Finance">Open Finance</span></h2>
+      <p class="of-ajuda" data-i18n="Puxa o extrato do banco automaticamente, pela Pluggy. Nada vira lançamento sozinho: o que chega fica esperando você conferir.">
         Puxa o extrato do banco automaticamente, pela Pluggy. Nada vira lançamento
         sozinho: o que chega fica esperando você conferir.
       </p>
@@ -1514,8 +1527,8 @@
       <div id="ofConexoes"></div>
 
       <form class="add-form" id="ofItemForm" hidden>
-        <input type="text" id="ofItemId" placeholder="Item ID do banco (UUID do painel da Pluggy)" required>
-        <button type="submit">Conectar banco</button>
+        <input type="text" id="ofItemId" placeholder="Item ID do banco (UUID do painel da Pluggy)" data-i18n-placeholder="Item ID do banco (UUID do painel da Pluggy)" required>
+        <button type="submit" data-i18n="Conectar banco">Conectar banco</button>
       </form>
     </div>
   </section>
@@ -1524,98 +1537,98 @@
   <section class="painel" id="painel-lancamentos">
 
     <div class="secao pendentes" id="secaoPendentes" style="display:none;">
-      <h2 style="color:var(--yellow);"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> Contas pendentes do mês</h2>
+      <h2 style="color:var(--yellow);"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> <span data-i18n="Contas pendentes do mês">Contas pendentes do mês</span></h2>
       <div id="listaPendentes"></div>
     </div>
 
     <div class="filtros-row">
-      <input type="text" id="buscaInput" placeholder="Buscar por descrição">
-      <select id="filtroCategoria"><option value="">Todas categorias</option></select>
-      <select id="filtroConta"><option value="">Todas contas</option></select>
+      <input type="text" id="buscaInput" placeholder="Buscar por descrição" data-i18n-placeholder="Buscar por descrição">
+      <select id="filtroCategoria"><option value="" data-i18n="Todas categorias">Todas categorias</option></select>
+      <select id="filtroConta"><option value="" data-i18n="Todas contas">Todas contas</option></select>
       <select id="filtroStatus">
-        <option value="">Todos status</option>
-        <option value="pago">Pago</option>
-        <option value="pendente">Pendente</option>
+        <option value="" data-i18n="Todos status">Todos status</option>
+        <option value="pago" data-i18n="Pago">Pago</option>
+        <option value="pendente" data-i18n="Pendente">Pendente</option>
       </select>
       <select id="ordenacaoSelect">
-        <option value="padrao">Ordem padrão</option>
-        <option value="valor-desc">Maior valor</option>
-        <option value="valor-asc">Menor valor</option>
-        <option value="data-asc">Data (mais antiga)</option>
-        <option value="data-desc">Data (mais recente)</option>
-        <option value="categoria">Categoria</option>
+        <option value="padrao" data-i18n="Ordem padrão">Ordem padrão</option>
+        <option value="valor-desc" data-i18n="Maior valor">Maior valor</option>
+        <option value="valor-asc" data-i18n="Menor valor">Menor valor</option>
+        <option value="data-asc" data-i18n="Data (mais antiga)">Data (mais antiga)</option>
+        <option value="data-desc" data-i18n="Data (mais recente)">Data (mais recente)</option>
+        <option value="categoria" data-i18n="Categoria">Categoria</option>
       </select>
     </div>
 
     <div class="secao">
-      <h2>Renda</h2>
+      <h2><span data-i18n="Renda">Renda</span></h2>
       <div id="listaRenda"></div>
-      <div class="total-secao"><span>Total Renda</span><span id="totalRenda">R$ 0,00</span></div>
+      <div class="total-secao"><span data-i18n="Total Renda">Total Renda</span><span id="totalRenda">R$ 0,00</span></div>
     </div>
 
     <div class="secao">
-      <h2>Despesas</h2>
+      <h2><span data-i18n="Despesas">Despesas</span></h2>
       <div id="listaDespesa"></div>
-      <div class="total-secao"><span>Total Despesas</span><span id="totalDespesa">R$ 0,00</span></div>
+      <div class="total-secao"><span data-i18n="Total Despesas">Total Despesas</span><span id="totalDespesa">R$ 0,00</span></div>
     </div>
 
   </section>
 
   <!-- ===================== CATEGORIAS ===================== -->
   <section class="painel" id="painel-regras">
-    <h2>Não categorizados</h2>
+    <h2><span data-i18n="Não categorizados">Não categorizados</span></h2>
     <p class="of-ajuda">
       O que o banco mandou e ninguém soube classificar. Estão agrupados por
       descrição: você resolve o grupo inteiro de uma vez e, marcando
-      <b>criar regra</b>, o próximo que aparecer já vem pronto.
+      <b data-i18n="criar regra">criar regra</b><span data-i18n=", o próximo que aparecer já vem pronto.">, o próximo que aparecer já vem pronto.</span>
     </p>
-    <div id="listaNaoCat"><div class="loading-msg">Carregando...</div></div>
+    <div id="listaNaoCat"><div class="loading-msg" data-i18n="Carregando...">Carregando...</div></div>
 
     <div class="secao" style="margin-top:26px;">
-      <h2>Regras</h2>
-      <p class="of-ajuda">
+      <h2><span data-i18n="Regras">Regras</span></h2>
+      <p class="of-ajuda" data-i18n="Rodam da menor prioridade para a maior, e a primeira que casar decide. Elas olham a descrição do lançamento, que é onde está o nome do estabelecimento.">
         Rodam da menor prioridade para a maior, e a primeira que casar decide.
         Elas olham a descrição do lançamento, que é onde está o nome do
         estabelecimento.
       </p>
       <div class="regras-acoes">
-        <button type="button" class="secondary" onclick="aplicarRegrasHistorico()">
+        <button type="button" class="secondary" onclick="aplicarRegrasHistorico()" data-i18n="Aplicar no que já existe">
           Aplicar no que já existe
         </button>
       </div>
-      <div id="listaRegras"><div class="loading-msg">Carregando...</div></div>
+      <div id="listaRegras"><div class="loading-msg" data-i18n="Carregando...">Carregando...</div></div>
     </div>
   </section>
 
   <section class="painel" id="painel-categorias">
     <div class="secao">
-      <h2>Categorias de Receita</h2>
+      <h2><span data-i18n="Categorias de Receita">Categorias de Receita</span></h2>
       <div class="categorias-grid" id="listaCategoriasReceita"></div>
     </div>
     <div class="secao">
-      <h2>Categorias de Despesa</h2>
+      <h2><span data-i18n="Categorias de Despesa">Categorias de Despesa</span></h2>
       <div class="categorias-grid" id="listaCategoriasDespesa"></div>
     </div>
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-carteira"/></svg> Orçamento mensal por categoria</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-carteira"/></svg> <span data-i18n="Orçamento mensal por categoria">Orçamento mensal por categoria</span></h2>
       <div id="listaOrcamentos" style="display:flex; flex-direction:column; gap:8px;"></div>
     </div>
     <form class="add-form orcamento-form" id="orcamentoForm">
       <select id="orcamentoFormCategoria"></select>
-      <input type="number" id="orcamentoFormLimite" placeholder="Limite mensal (R$)" step="0.01" min="0" required>
-      <button type="submit">Definir orçamento</button>
+      <input type="number" id="orcamentoFormLimite" placeholder="Limite mensal (R$)" data-i18n-placeholder="Limite mensal (R$)" step="0.01" min="0" required>
+      <button type="submit" data-i18n="Definir orçamento">Definir orçamento</button>
     </form>
     <form class="add-form" id="categoriaForm">
       <select id="categoriaFormTipo">
-        <option value="despesa">Despesa</option>
-        <option value="renda">Renda</option>
+        <option value="despesa" data-i18n="Despesa">Despesa</option>
+        <option value="renda" data-i18n="Renda">Renda</option>
       </select>
-      <input type="text" id="categoriaFormNome" placeholder="Nome da categoria" required>
+      <input type="text" id="categoriaFormNome" placeholder="Nome da categoria" data-i18n-placeholder="Nome da categoria" required>
       <label class="toggle-row" style="width:auto; gap:8px; padding:0;">
-        Cor
+        <span data-i18n="Cor">Cor</span>
         <input type="color" id="categoriaFormCor" value="#00a76f" style="width:44px; padding:2px; height:38px;">
       </label>
-      <button type="submit">+ Adicionar categoria</button>
+      <button type="submit" data-i18n="+ Adicionar categoria">+ Adicionar categoria</button>
     </form>
   </section>
 
@@ -1631,44 +1644,44 @@
   <!-- ===================== CARTÕES ===================== -->
   <section class="painel" id="painel-cartoes">
     <div class="secao">
-      <h2>Cartões de crédito</h2>
+      <h2><span data-i18n="Cartões de crédito">Cartões de crédito</span></h2>
       <div class="cartoes-grid" id="listaCartoes"></div>
     </div>
     <form class="add-form" id="cartaoForm">
-      <input type="text" id="cartaoNome" placeholder="Nome do cartão" required>
-      <input type="number" id="cartaoLimite" placeholder="Limite (R$)" step="0.01">
-      <input type="number" id="cartaoFatura" placeholder="Fatura atual (R$)" step="0.01">
-      <input type="number" id="cartaoDiaVenc" placeholder="Dia de vencimento" min="1" max="31">
-      <select id="cartaoConta"><option value="">Sem conta vinculada</option></select>
-      <button type="submit">Adicionar cartão</button>
+      <input type="text" id="cartaoNome" placeholder="Nome do cartão" data-i18n-placeholder="Nome do cartão" required>
+      <input type="number" id="cartaoLimite" placeholder="Limite (R$)" data-i18n-placeholder="Limite (R$)" step="0.01">
+      <input type="number" id="cartaoFatura" placeholder="Fatura atual (R$)" data-i18n-placeholder="Fatura atual (R$)" step="0.01">
+      <input type="number" id="cartaoDiaVenc" placeholder="Dia de vencimento" data-i18n-placeholder="Dia de vencimento" min="1" max="31">
+      <select id="cartaoConta"><option value="" data-i18n="Sem conta vinculada">Sem conta vinculada</option></select>
+      <button type="submit" data-i18n="Adicionar cartão">Adicionar cartão</button>
     </form>
   </section>
 
   <!-- ===================== INVESTIMENTOS ===================== -->
   <section class="painel" id="painel-investimentos">
     <div class="secao">
-      <h2>Investimentos</h2>
+      <h2><span data-i18n="Investimentos">Investimentos</span></h2>
       <div class="segmented investimento-subnav" id="investimentoSubnav" style="max-width:560px; flex-wrap:wrap; height:auto;">
-        <button type="button" class="ativo" data-sub="resumo">Resumo</button>
-        <button type="button" data-sub="posicoes">Posições</button>
-        <button type="button" data-sub="proventos">Proventos</button>
-        <button type="button" data-sub="patrimonio">Patrimônio</button>
-        <button type="button" data-sub="rentabilidade">Rentabilidade</button>
+        <button type="button" class="ativo" data-sub="resumo" data-i18n="Resumo">Resumo</button>
+        <button type="button" data-sub="posicoes" data-i18n="Posições">Posições</button>
+        <button type="button" data-sub="proventos" data-i18n="Proventos">Proventos</button>
+        <button type="button" data-sub="patrimonio" data-i18n="Patrimônio">Patrimônio</button>
+        <button type="button" data-sub="rentabilidade" data-i18n="Rentabilidade">Rentabilidade</button>
       </div>
 
       <div id="subInvestimentosResumo">
         <div class="grid2" id="investKpiCards" style="margin-bottom:16px;"></div>
         <div class="investimento-resumo">
-          <button type="button" class="secondary" id="btnAtualizarCotacoes">Atualizar cotações</button>
-          <button type="button" id="btnAdicionarAtivo">+ Adicionar ativo</button>
+          <button type="button" class="secondary" id="btnAtualizarCotacoes" data-i18n="Atualizar cotações">Atualizar cotações</button>
+          <button type="button" id="btnAdicionarAtivo" data-i18n="+ Adicionar ativo">+ Adicionar ativo</button>
         </div>
         <div class="invest-colunas">
           <div class="invest-painel">
-            <h3 class="invest-painel-titulo">Evolução do patrimônio</h3>
+            <h3 class="invest-painel-titulo"><span data-i18n="Evolução do patrimônio">Evolução do patrimônio</span></h3>
             <div class="chart-box" style="max-height:280px;"><canvas id="chartEvolucaoPatrimonio"></canvas></div>
           </div>
           <div class="invest-painel">
-            <h3 class="invest-painel-titulo">Ativos na carteira</h3>
+            <h3 class="invest-painel-titulo"><span data-i18n="Ativos na carteira">Ativos na carteira</span></h3>
             <div class="invest-rosca-com-legenda">
               <div class="chart-box" style="max-height:230px;"><canvas id="chartInvestimentosClasse"></canvas></div>
               <div class="invest-legenda" id="legendaClasses"></div>
@@ -1676,8 +1689,8 @@
           </div>
         </div>
         <div class="invest-secao-topo">
-          <h3 class="investimento-subtitulo">Meus ativos <span class="invest-contagem" id="contagemAtivosResumo"></span></h3>
-          <button type="button" class="secondary" id="btnConfigurarAlocacao">Configurar % Ideal da carteira</button>
+          <h3 class="investimento-subtitulo"><span data-i18n="Meus ativos">Meus ativos</span> <span class="invest-contagem" id="contagemAtivosResumo"></span></h3>
+          <button type="button" class="secondary" id="btnConfigurarAlocacao" data-i18n="Configurar % Ideal da carteira">Configurar % Ideal da carteira</button>
         </div>
         <div id="listaPosicoesResumo"></div>
       </div>
@@ -1685,18 +1698,18 @@
       <div id="subInvestimentosPosicoes" hidden>
         <div class="grid2" id="investKpiCardsPosicoes" style="margin-bottom:16px;"></div>
         <div class="invest-secao-topo">
-          <h3 class="investimento-subtitulo">Meus ativos <span class="invest-contagem" id="contagemAtivosPosicoes"></span></h3>
-          <button type="button" class="secondary" id="btnConfigurarAlocacao2">Configurar % Ideal da carteira</button>
+          <h3 class="investimento-subtitulo"><span data-i18n="Meus ativos">Meus ativos</span> <span class="invest-contagem" id="contagemAtivosPosicoes"></span></h3>
+          <button type="button" class="secondary" id="btnConfigurarAlocacao2" data-i18n="Configurar % Ideal da carteira">Configurar % Ideal da carteira</button>
         </div>
         <div id="listaPosicoes"></div>
       </div>
 
       <div id="subInvestimentosPatrimonio" hidden>
         <div class="invest-painel" style="margin-bottom:16px;">
-          <h3 class="invest-painel-titulo">Evolução do patrimônio</h3>
+          <h3 class="invest-painel-titulo"><span data-i18n="Evolução do patrimônio">Evolução do patrimônio</span></h3>
           <div class="chart-box" style="max-height:340px;"><canvas id="chartPatrimonioGrande"></canvas></div>
         </div>
-        <h3 class="investimento-subtitulo">Patrimônio por mês</h3>
+        <h3 class="investimento-subtitulo"><span data-i18n="Patrimônio por mês">Patrimônio por mês</span></h3>
         <div id="tabelaPatrimonioMensal"></div>
       </div>
 
@@ -1704,61 +1717,61 @@
         <div class="invest-colunas invest-colunas-estreita">
           <div class="invest-cards-laterais" id="cardsRentabilidade"></div>
           <div class="invest-painel">
-            <h3 class="invest-painel-titulo">Rentabilidade comparada com o CDI</h3>
+            <h3 class="invest-painel-titulo"><span data-i18n="Rentabilidade comparada com o CDI">Rentabilidade comparada com o CDI</span></h3>
             <div class="chart-box" style="max-height:300px;"><canvas id="chartRentabilidade"></canvas></div>
           </div>
         </div>
-        <h3 class="investimento-subtitulo" style="margin-top:18px;">Rentabilidade mês a mês</h3>
+        <h3 class="investimento-subtitulo" style="margin-top:18px;"><span data-i18n="Rentabilidade mês a mês">Rentabilidade mês a mês</span></h3>
         <div id="tabelaRentabilidade"></div>
       </div>
 
       <div id="subInvestimentosProventos" hidden>
         <div class="invest-colunas invest-colunas-estreita">
           <div class="invest-painel invest-painel-resumo">
-            <h3 class="invest-painel-titulo">Resumo</h3>
+            <h3 class="invest-painel-titulo"><span data-i18n="Resumo">Resumo</span></h3>
             <div class="invest-resumo-linha">
-              <span class="rotulo">Média mensal (últ. 12 meses)</span>
+              <span class="rotulo" data-i18n="Média mensal (últ. 12 meses)">Média mensal (últ. 12 meses)</span>
               <span class="valor" id="proventosMediaMensal">R$ 0,00</span>
             </div>
             <div class="invest-resumo-linha">
-              <span class="rotulo">Total de 12 meses</span>
+              <span class="rotulo" data-i18n="Total de 12 meses">Total de 12 meses</span>
               <span class="valor" id="proventosTotal12m">R$ 0,00</span>
             </div>
             <div class="invest-resumo-linha">
-              <span class="rotulo">Total da carteira</span>
+              <span class="rotulo" data-i18n="Total da carteira">Total da carteira</span>
               <span class="valor" id="proventosTotalCarteira">R$ 0,00</span>
             </div>
             <div class="invest-resumo-linha">
-              <span class="rotulo">A receber</span>
+              <span class="rotulo" data-i18n="A receber">A receber</span>
               <span class="valor a-receber" id="proventosTotalReceber">R$ 0,00</span>
             </div>
-            <h4 class="invest-painel-subtitulo">Distribuição em 12 meses</h4>
+            <h4 class="invest-painel-subtitulo"><span data-i18n="Distribuição em 12 meses">Distribuição em 12 meses</span></h4>
             <div class="chart-box" style="max-height:190px;"><canvas id="chartProventosPorAtivo"></canvas></div>
             <div class="invest-legenda" id="legendaProventosAtivo"></div>
           </div>
           <div class="invest-painel">
             <div class="invest-painel-topo">
-              <h3 class="invest-painel-titulo">Evolução de proventos</h3>
+              <h3 class="invest-painel-titulo"><span data-i18n="Evolução de proventos">Evolução de proventos</span></h3>
               <div class="segmented invest-toggle-periodo" id="proventosPeriodo">
-                <button type="button" class="ativo" data-periodo="mensal">Mensal</button>
-                <button type="button" data-periodo="anual">Anual</button>
+                <button type="button" class="ativo" data-periodo="mensal" data-i18n="Mensal">Mensal</button>
+                <button type="button" data-periodo="anual" data-i18n="Anual">Anual</button>
               </div>
             </div>
             <div class="chart-box" style="max-height:270px;"><canvas id="chartEvolucaoProventos"></canvas></div>
-            <button type="button" class="secondary" id="btnImportarProventos" style="margin-top:12px;">Importar proventos agora</button>
-            <div style="font-size:0.72rem; color:var(--muted); margin-top:8px;">Dividendos, JCP e rendimentos já declarados na B3 entram sozinhos 1x por dia — o botão força uma busca agora.</div>
+            <button type="button" class="secondary" id="btnImportarProventos" style="margin-top:12px;" data-i18n="Importar proventos agora">Importar proventos agora</button>
+            <div style="font-size:0.72rem; color:var(--muted); margin-top:8px;" data-i18n="Dividendos, JCP e rendimentos já declarados na B3 entram sozinhos 1x por dia — o botão força uma busca agora.">Dividendos, JCP e rendimentos já declarados na B3 entram sozinhos 1x por dia — o botão força uma busca agora.</div>
           </div>
         </div>
 
-        <h3 class="investimento-subtitulo" style="margin-top:18px;">Histórico mensal</h3>
+        <h3 class="investimento-subtitulo" style="margin-top:18px;"><span data-i18n="Histórico mensal">Histórico mensal</span></h3>
         <div id="historicoProventos"></div>
 
         <div class="invest-secao-topo" style="margin-top:22px;">
-          <h3 class="investimento-subtitulo">Meus proventos</h3>
+          <h3 class="investimento-subtitulo"><span data-i18n="Meus proventos">Meus proventos</span></h3>
           <div class="segmented invest-toggle-periodo" id="proventosFiltroStatus">
-            <button type="button" class="ativo" data-status="todos">Todos</button>
-            <button type="button" data-status="recebidos">Recebidos</button>
-            <button type="button" data-status="a_receber">A receber</button>
+            <button type="button" class="ativo" data-status="todos" data-i18n="Todos">Todos</button>
+            <button type="button" data-status="recebidos" data-i18n="Recebidos">Recebidos</button>
+            <button type="button" data-status="a_receber" data-i18n="A receber">A receber</button>
           </div>
         </div>
         <div id="tabelaProventosDetalhe"></div>
@@ -1769,111 +1782,111 @@
   <!-- ===================== METAS ===================== -->
   <section class="painel" id="painel-metas">
     <div class="secao">
-      <h2>Metas de economia</h2>
+      <h2><span data-i18n="Metas de economia">Metas de economia</span></h2>
       <div class="metas-grid" id="listaMetas"></div>
     </div>
     <form class="add-form" id="metaForm">
-      <input type="text" id="metaNome" placeholder="Nome da meta (ex: Viagem, Reserva de emergência)" required>
-      <input type="number" id="metaValorAlvo" placeholder="Valor alvo (R$)" step="0.01" min="0.01" required>
-      <input type="month" id="metaPrazo" placeholder="Prazo (opcional)">
-      <button type="submit">Criar meta</button>
+      <input type="text" id="metaNome" placeholder="Nome da meta (ex: Viagem, Reserva de emergência)" data-i18n-placeholder="Nome da meta (ex: Viagem, Reserva de emergência)" required>
+      <input type="number" id="metaValorAlvo" placeholder="Valor alvo (R$)" data-i18n-placeholder="Valor alvo (R$)" step="0.01" min="0.01" required>
+      <input type="month" id="metaPrazo" placeholder="Prazo (opcional)" data-i18n-placeholder="Prazo (opcional)">
+      <button type="submit" data-i18n="Criar meta">Criar meta</button>
     </form>
   </section>
 
   <!-- ===================== HOLERITE ===================== -->
   <section class="painel" id="painel-holerites">
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> Renda e descontos por mês</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-grafico"/></svg> <span data-i18n="Renda e descontos por mês">Renda e descontos por mês</span></h2>
       <div class="chart-box"><canvas id="chartHolerites"></canvas></div>
     </div>
     <div class="secao">
-      <h2>Holerites importados</h2>
+      <h2><span data-i18n="Holerites importados">Holerites importados</span></h2>
       <div class="holerites-grid" id="listaHolerites"></div>
     </div>
     <form class="add-form" id="holeriteForm" enctype="multipart/form-data">
       <input type="file" id="holeriteArquivo" accept="application/pdf" required>
       <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; color:var(--muted);">
-        <input type="checkbox" id="holeriteLancarReceita" checked style="width:auto;">
+        <input type="checkbox" id="holeriteLancarReceita" checked style="width:auto;" data-i18n="Lançar automaticamente como receita">
         Lançar automaticamente como receita
       </label>
-      <button type="submit">Importar holerite</button>
+      <button type="submit" data-i18n="Importar holerite">Importar holerite</button>
     </form>
   </section>
 
   <!-- ===================== CONSIGNADOS ===================== -->
   <section class="painel" id="painel-consignados">
     <div class="secao">
-      <h2>Empréstimos</h2>
+      <h2><span data-i18n="Empréstimos">Empréstimos</span></h2>
       <div class="metas-grid" id="listaConsignados"></div>
     </div>
     <form class="add-form" id="consignadoForm">
-      <input type="text" id="consignadoNome" placeholder="Nome (ex: Empréstimo Santander)" required>
-      <input type="number" id="consignadoValorParcela" placeholder="Valor da parcela (R$)" step="0.01" min="0.01" required>
-      <input type="number" id="consignadoParcelaAtual" placeholder="Parcela atual (ex: 3)" min="1">
-      <input type="number" id="consignadoParcelaTotal" placeholder="Total de parcelas (ex: 12)" min="1">
-      <button type="submit">Adicionar empréstimo</button>
+      <input type="text" id="consignadoNome" placeholder="Nome (ex: Empréstimo Santander)" data-i18n-placeholder="Nome (ex: Empréstimo Santander)" required>
+      <input type="number" id="consignadoValorParcela" placeholder="Valor da parcela (R$)" data-i18n-placeholder="Valor da parcela (R$)" step="0.01" min="0.01" required>
+      <input type="number" id="consignadoParcelaAtual" placeholder="Parcela atual (ex: 3)" data-i18n-placeholder="Parcela atual (ex: 3)" min="1">
+      <input type="number" id="consignadoParcelaTotal" placeholder="Total de parcelas (ex: 12)" data-i18n-placeholder="Total de parcelas (ex: 12)" min="1">
+      <button type="submit" data-i18n="Adicionar empréstimo">Adicionar empréstimo</button>
     </form>
   </section>
 
   <!-- ===================== NOTIFICAÇÕES ===================== -->
   <section class="painel" id="painel-notificacoes">
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> Avisos de contas</h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> <span data-i18n="Avisos de contas">Avisos de contas</span></h2>
       <div class="card">
         <div class="notif-estado" id="notifEstado">
           <span class="notif-bolinha" id="notifBolinha"></span>
-          <span id="notifEstadoTexto">Verificando…</span>
+          <span id="notifEstadoTexto" data-i18n="Verificando…">Verificando…</span>
         </div>
         <p class="notif-ajuda" id="notifAjuda"></p>
         <div class="notif-botoes">
-          <button type="button" id="notifPermitirBtn" style="display:none;">Permitir notificações</button>
+          <button type="button" id="notifPermitirBtn" style="display:none;" data-i18n="Permitir notificações">Permitir notificações</button>
           <button type="button" class="secondary" id="notifTestarBtn">
-            <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> Testar notificação
+            <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> <span data-i18n="Testar notificação">Testar notificação</span>
           </button>
         </div>
       </div>
     </div>
 
     <div class="secao">
-      <h2>O que avisar</h2>
+      <h2><span data-i18n="O que avisar">O que avisar</span></h2>
       <div class="card">
         <label class="toggle-row">
-          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> Contas vencendo ou vencidas</span>
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> <span data-i18n="Contas vencendo ou vencidas">Contas vencendo ou vencidas</span></span>
           <span class="toggle-switch"><input type="checkbox" id="notifContas" checked><span class="toggle-slider"></span></span>
         </label>
-        <label style="margin-top:14px;">Avisar com quantos dias de antecedência</label>
+        <label style="margin-top:14px;" data-i18n="Avisar com quantos dias de antecedência">Avisar com quantos dias de antecedência</label>
         <select id="notifDias">
-          <option value="1">1 dia antes</option>
-          <option value="3" selected>3 dias antes</option>
-          <option value="7">7 dias antes</option>
+          <option value="1" data-i18n="1 dia antes">1 dia antes</option>
+          <option value="3" selected data-i18n="3 dias antes">3 dias antes</option>
+          <option value="7" data-i18n="7 dias antes">7 dias antes</option>
         </select>
 
         <label class="toggle-row" style="margin-top:18px;">
-          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-cartao"/></svg> Cartão perto do limite</span>
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-cartao"/></svg> <span data-i18n="Cartão perto do limite">Cartão perto do limite</span></span>
           <span class="toggle-switch"><input type="checkbox" id="notifCartoes" checked><span class="toggle-slider"></span></span>
         </label>
-        <p class="notif-ajuda">Avisa quando a fatura passa de 80% do limite.</p>
+        <p class="notif-ajuda" data-i18n="Avisa quando a fatura passa de 80% do limite.">Avisa quando a fatura passa de 80% do limite.</p>
 
         <label class="toggle-row" style="margin-top:18px;">
-          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-desce"/></svg> Saldo negativo em alguma conta</span>
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-desce"/></svg> <span data-i18n="Saldo negativo em alguma conta">Saldo negativo em alguma conta</span></span>
           <span class="toggle-switch"><input type="checkbox" id="notifSaldo" checked><span class="toggle-slider"></span></span>
         </label>
       </div>
     </div>
 
     <div class="secao" id="secaoAppFechado">
-      <h2>Com o app fechado</h2>
+      <h2><span data-i18n="Com o app fechado">Com o app fechado</span></h2>
       <div class="card">
         <p class="notif-ajuda" style="margin:0;">
           Pelo navegador, os avisos só aparecem enquanto o FinanCerto está aberto —
           é uma limitação de quem roda o próprio servidor, sem um serviço de push.
-          Para receber com o celular guardado, use o <b>app do Android</b>, que
+          Para receber com o celular guardado, use o <b data-i18n="app do Android">app do Android</b>, que
           confere as contas em segundo plano.
         </p>
         <a class="secondary" id="notifBaixarApp" href="https://github.com/cruzthiago2010/controle-financeiro/releases/latest"
            target="_blank" rel="noopener"
            style="display:inline-flex; align-items:center; gap:7px; text-decoration:none; margin-top:12px; padding:9px 14px; border-radius:var(--radius-sm);">
-          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Baixar o app Android
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> <span data-i18n="Baixar o app Android">Baixar o app Android</span>
         </a>
       </div>
     </div>
@@ -1882,27 +1895,27 @@
   <!-- ===================== CASA ===================== -->
   <section class="painel" id="painel-casa">
     <div class="secao">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-casa"/></svg> <span id="casaNomeTitulo">Casa</span></h2>
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-casa"/></svg> <span id="casaNomeTitulo" data-i18n="Casa">Casa</span></h2>
       <div class="simple-card">
         <div style="min-width:0;">
-          <div class="nome">Administrador</div>
+          <div class="nome" data-i18n="Administrador">Administrador</div>
           <div class="sub" id="casaAdminNome">—</div>
         </div>
       </div>
     </div>
 
     <div class="secao">
-      <h2>Quem faz parte</h2>
-      <div id="listaMembrosCasa"><div class="loading-msg">Carregando...</div></div>
+      <h2><span data-i18n="Quem faz parte">Quem faz parte</span></h2>
+      <div id="listaMembrosCasa"><div class="loading-msg" data-i18n="Carregando...">Carregando...</div></div>
     </div>
 
     <div class="secao" id="secaoConvidarCasa" style="display:none;">
       <div class="card">
-        <p style="font-size:0.82rem; color:var(--muted); margin:0 0 10px;">
+        <p style="font-size:0.82rem; color:var(--muted); margin:0 0 10px;" data-i18n="Convide outra pessoa da família para entrar nessa casa com o próprio login.">
           Convide outra pessoa da família para entrar nessa casa com o próprio login.
         </p>
         <button type="button" id="btnConvidarUsuarioCasa" style="width:100%; max-width:320px;">
-          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg> Convidar usuário
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-usuario-mais"/></svg> <span data-i18n="Convidar usuário">Convidar usuário</span>
         </button>
       </div>
     </div>
@@ -1911,61 +1924,61 @@
   <!-- ===================== BACKUP ===================== -->
   <section class="painel" id="painel-backup">
     <div class="secao">
-      <h2>Exportar lançamentos</h2>
+      <h2><span data-i18n="Exportar lançamentos">Exportar lançamentos</span></h2>
       <div class="card">
-        <p style="font-size:0.82rem; color:var(--muted); margin:0 0 10px;">Baixa em CSV os lançamentos do mês selecionado no topo (<span id="csvMesAtual"></span>).</p>
+        <p style="font-size:0.82rem; color:var(--muted); margin:0 0 10px;"><span data-i18n="Baixa em CSV os lançamentos do mês selecionado no topo (">Baixa em CSV os lançamentos do mês selecionado no topo (</span><span id="csvMesAtual"></span>).</p>
         <a class="secondary" id="btnExportarCsv" href="#" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:9px 14px; border-radius:var(--radius-sm); width:100%; max-width:320px; justify-content:center;">
-          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Exportar CSV do mês
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> <span data-i18n="Exportar CSV do mês">Exportar CSV do mês</span>
         </a>
       </div>
     </div>
     <div class="secao" id="secaoConfigAdmin" style="display:none;">
-      <h2>Configurações administrativas</h2>
+      <h2><span data-i18n="Configurações administrativas">Configurações administrativas</span></h2>
       <div class="card">
         <label class="toggle-row">
-          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> Habilitar aba Empréstimos</span>
+          <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> <span data-i18n="Habilitar aba Empréstimos">Habilitar aba Empréstimos</span></span>
           <span class="toggle-switch"><input type="checkbox" id="toggleConsignados"><span class="toggle-slider"></span></span>
         </label>
-        <p style="font-size:0.78rem; color:var(--muted); margin:8px 0 0;">Só o administrador (primeiro usuário criado) vê e altera isso. Quando ligado, a aba Empréstimos aparece pra todos os usuários.</p>
+        <p style="font-size:0.78rem; color:var(--muted); margin:8px 0 0;" data-i18n="Só o administrador (primeiro usuário criado) vê e altera isso. Quando ligado, a aba Empréstimos aparece pra todos os usuários.">Só o administrador (primeiro usuário criado) vê e altera isso. Quando ligado, a aba Empréstimos aparece pra todos os usuários.</p>
       </div>
     </div>
     <div class="secao">
-      <h2>Backup automático</h2>
+      <h2><span data-i18n="Backup automático">Backup automático</span></h2>
       <div class="card">
-        <label>Com que frequência?</label>
+        <label data-i18n="Com que frequência?">Com que frequência?</label>
         <select id="backupPeriodo">
-          <option value="desligado">Desligado</option>
-          <option value="diario">Todo dia</option>
-          <option value="semanal">Toda semana</option>
-          <option value="mensal">Todo mês</option>
+          <option value="desligado" data-i18n="Desligado">Desligado</option>
+          <option value="diario" data-i18n="Todo dia">Todo dia</option>
+          <option value="semanal" data-i18n="Toda semana">Toda semana</option>
+          <option value="mensal" data-i18n="Todo mês">Todo mês</option>
         </select>
-        <label>Quantos backups manter?</label>
+        <label data-i18n="Quantos backups manter?">Quantos backups manter?</label>
         <input type="number" id="backupManter" min="1" max="30" value="5">
-        <p style="font-size:0.78rem; color:var(--muted-soft); margin:10px 0 0;">
+        <p style="font-size:0.78rem; color:var(--muted-soft); margin:10px 0 0;" data-i18n="Ao passar do limite, o backup mais antigo é apagado automaticamente.">
           Ao passar do limite, o backup mais antigo é apagado automaticamente.
         </p>
         <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
-          <button type="button" id="salvarConfigBackup" style="flex:1; max-width:320px;">Salvar configuração</button>
-          <button type="button" class="secondary" id="backupAgoraBtn" style="flex:1; max-width:320px;">Fazer backup agora</button>
+          <button type="button" id="salvarConfigBackup" style="flex:1; max-width:320px;" data-i18n="Salvar configuração">Salvar configuração</button>
+          <button type="button" class="secondary" id="backupAgoraBtn" style="flex:1; max-width:320px;" data-i18n="Fazer backup agora">Fazer backup agora</button>
         </div>
       </div>
     </div>
 
     <div class="secao">
-      <h2>Backups salvos no servidor</h2>
+      <h2><span data-i18n="Backups salvos no servidor">Backups salvos no servidor</span></h2>
       <div id="listaBackups"></div>
     </div>
 
     <div class="secao">
-      <h2>Baixar / restaurar manualmente</h2>
+      <h2><span data-i18n="Baixar / restaurar manualmente">Baixar / restaurar manualmente</span></h2>
       <div class="card">
-        <p style="font-size:0.8rem; color:var(--muted); margin:0 0 12px;" id="backupInfo">
+        <p style="font-size:0.8rem; color:var(--muted); margin:0 0 12px;" id="backupInfo" data-i18n="Baixa um .zip com todos os lançamentos, comprovantes e fotos.">
           Baixa um .zip com todos os lançamentos, comprovantes e fotos.
         </p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button type="button" id="baixarBackupBtn" style="flex:1; max-width:320px;"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> Baixar agora</button>
+          <button type="button" id="baixarBackupBtn" style="flex:1; max-width:320px;"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-baixar"/></svg> <span data-i18n="Baixar agora">Baixar agora</span></button>
           <label class="botao-arquivo" style="flex:1; max-width:320px;" id="restaurarLabel">
-            <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-enviar"/></svg> Restaurar de um arquivo
+            <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-enviar"/></svg> <span data-i18n="Restaurar de um arquivo">Restaurar de um arquivo</span>
             <input type="file" id="restaurarInput" accept=".zip">
           </label>
         </div>
@@ -1980,33 +1993,33 @@
 <!-- Modal de edição de lançamento -->
 <div class="modal-overlay" id="modalEdicao">
   <div class="modal-box">
-    <h3>Editar lançamento</h3>
+    <h3><span data-i18n="Editar lançamento">Editar lançamento</span></h3>
     <input type="hidden" id="editId">
-    <label>Descrição</label>
+    <label data-i18n="Descrição">Descrição</label>
     <input type="text" id="editDesc">
-    <label>Valor (R$)</label>
+    <label data-i18n="Valor (R$)">Valor (R$)</label>
     <input type="text" inputmode="none" id="editValor" placeholder="0,00" readonly>
-    <label>Categoria</label>
+    <label data-i18n="Categoria">Categoria</label>
     <select id="editCategoria"></select>
-    <label>Vencimento / data</label>
+    <label data-i18n="Vencimento / data">Vencimento / data</label>
     <input type="date" id="editVenc">
-    <label>Conta</label>
-    <select id="editConta"><option value="">Sem conta</option></select>
+    <label data-i18n="Conta">Conta</label>
+    <select id="editConta"><option value="" data-i18n="Sem conta">Sem conta</option></select>
     <label class="toggle-row">
-      <span id="editPagoLabel"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg> Já paga</span>
+      <span id="editPagoLabel"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg> <span data-i18n="Já paga">Já paga</span></span>
       <span class="toggle-switch"><input type="checkbox" id="editPago"><span class="toggle-slider"></span></span>
     </label>
-    <label id="editDataPagLabel" style="display:none;">Data do pagamento</label>
+    <label id="editDataPagLabel" style="display:none;" data-i18n="Data do pagamento">Data do pagamento</label>
     <input type="date" id="editDataPag" style="display:none;">
-    <label>Observação</label>
+    <label data-i18n="Observação">Observação</label>
     <textarea id="editObs"></textarea>
     <label class="modal-rec">
-      <input type="checkbox" id="editRec">
+      <input type="checkbox" id="editRec" data-i18n="Repetir todo mês (recorrente)">
       Repetir todo mês (recorrente)
     </label>
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="editCancelar">Cancelar</button>
-      <button type="button" id="editSalvar">Salvar alterações</button>
+      <button class="secondary" type="button" id="editCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="editSalvar" data-i18n="Salvar alterações">Salvar alterações</button>
     </div>
   </div>
 </div>
@@ -2014,22 +2027,22 @@
 <!-- Modal de edição de conta -->
 <div class="modal-overlay" id="modalEdicaoConta">
   <div class="modal-box">
-    <h3>Editar conta</h3>
+    <h3><span data-i18n="Editar conta">Editar conta</span></h3>
     <input type="hidden" id="editContaId">
-    <label>Nome</label>
+    <label data-i18n="Nome">Nome</label>
     <input type="text" id="editContaNome">
-    <label id="editContaSaldoLabel">Saldo inicial (R$)</label>
+    <label id="editContaSaldoLabel" data-i18n="Saldo inicial (R$)">Saldo inicial (R$)</label>
     <input type="number" id="editContaSaldoInicial" step="0.01">
     <!-- Substitui o campo quando a conta vem do Open Finance: ali o saldo
          inicial é calculado, e mexer nele faria o saldo parar de bater. -->
     <div class="aviso-calculado" id="editContaSaldoAviso" hidden>
-      O saldo inicial desta conta é <b>calculado a partir do extrato</b> do banco.
+      <span data-i18n="O saldo inicial desta conta é">O saldo inicial desta conta é</span> <b data-i18n="calculado a partir do extrato">calculado a partir do extrato</b> do banco.
       Por isso não dá para editar aqui — se editasse, o saldo do app deixaria de
       bater com o do banco.
     </div>
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="editContaCancelar">Cancelar</button>
-      <button type="button" id="editContaSalvar">Salvar alterações</button>
+      <button class="secondary" type="button" id="editContaCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="editContaSalvar" data-i18n="Salvar alterações">Salvar alterações</button>
     </div>
   </div>
 </div>
@@ -2037,21 +2050,21 @@
 <!-- Modal de edição de cartão -->
 <div class="modal-overlay" id="modalEdicaoCartao">
   <div class="modal-box">
-    <h3>Editar cartão</h3>
+    <h3><span data-i18n="Editar cartão">Editar cartão</span></h3>
     <input type="hidden" id="editCartaoId">
-    <label>Nome</label>
+    <label data-i18n="Nome">Nome</label>
     <input type="text" id="editCartaoNome">
-    <label>Limite (R$)</label>
+    <label data-i18n="Limite (R$)">Limite (R$)</label>
     <input type="number" id="editCartaoLimite" step="0.01">
-    <label>Fatura atual (R$)</label>
+    <label data-i18n="Fatura atual (R$)">Fatura atual (R$)</label>
     <input type="number" id="editCartaoFatura" step="0.01">
-    <label>Dia de vencimento</label>
+    <label data-i18n="Dia de vencimento">Dia de vencimento</label>
     <input type="number" id="editCartaoDiaVenc" min="1" max="31">
-    <label>Conta vinculada</label>
-    <select id="editCartaoConta"><option value="">Sem conta vinculada</option></select>
+    <label data-i18n="Conta vinculada">Conta vinculada</label>
+    <select id="editCartaoConta"><option value="" data-i18n="Sem conta vinculada">Sem conta vinculada</option></select>
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="editCartaoCancelar">Cancelar</button>
-      <button type="button" id="editCartaoSalvar">Salvar alterações</button>
+      <button class="secondary" type="button" id="editCartaoCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="editCartaoSalvar" data-i18n="Salvar alterações">Salvar alterações</button>
     </div>
   </div>
 </div>
@@ -2062,119 +2075,119 @@
     <input type="file" id="comprovanteFabInput" accept="image/*,application/pdf" style="display:none;">
     <input type="file" id="notaFiscalFabInput" accept="image/*" capture="environment" style="display:none;">
     <button class="fab-mini" id="fabNotaFiscal" type="button">
-      <span class="fab-mini-label">Escanear nota fiscal</span>
+      <span class="fab-mini-label" data-i18n="Escanear nota fiscal">Escanear nota fiscal</span>
       <span class="fab-mini-icone comprovante"><svg class="ico" viewBox="0 0 24 24"><use href="#i-camera"/></svg></span>
     </button>
     <button class="fab-mini" id="fabComprovante" type="button">
-      <span class="fab-mini-label">Importar comprovante</span>
+      <span class="fab-mini-label" data-i18n="Importar comprovante">Importar comprovante</span>
       <span class="fab-mini-icone comprovante"><svg class="ico" viewBox="0 0 24 24"><use href="#i-clipe"/></svg></span>
     </button>
     <button class="fab-mini" id="fabTransferencia" type="button">
-      <span class="fab-mini-label">Transferência</span>
+      <span class="fab-mini-label" data-i18n="Transferência">Transferência</span>
       <span class="fab-mini-icone transferencia"><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg></span>
     </button>
     <button class="fab-mini" id="fabReceita" type="button">
-      <span class="fab-mini-label">Receita</span>
+      <span class="fab-mini-label" data-i18n="Receita">Receita</span>
       <span class="fab-mini-icone receita"><svg class="ico" viewBox="0 0 24 24"><use href="#i-sobe"/></svg></span>
     </button>
     <button class="fab-mini" id="fabDespesa" type="button">
-      <span class="fab-mini-label">Despesa</span>
+      <span class="fab-mini-label" data-i18n="Despesa">Despesa</span>
       <span class="fab-mini-icone despesa"><svg class="ico" viewBox="0 0 24 24"><use href="#i-desce"/></svg></span>
     </button>
   </div>
-  <button class="fab" id="fabToggle" type="button" title="Novo"><svg class="ico lg" viewBox="0 0 24 24"><use href="#i-mais"/></svg></button>
+  <button class="fab" id="fabToggle" type="button" title="Novo" data-i18n-title="Novo"><svg class="ico lg" viewBox="0 0 24 24"><use href="#i-mais"/></svg></button>
 </div>
 
 <div class="modal-overlay" id="modalNovoLancamento">
   <div class="modal-box">
-    <h3>Novo lançamento</h3>
+    <h3><span data-i18n="Novo lançamento">Novo lançamento</span></h3>
     <div id="comprovantePendenteAviso"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-clipe"/></svg> <span id="comprovantePendenteNome"></span></div>
     <div class="segmented" id="tipoSegmented">
-      <button type="button" class="ativo despesa" data-tipo="despesa">Despesa</button>
-      <button type="button" class="renda" data-tipo="renda">Receita</button>
+      <button type="button" class="ativo despesa" data-tipo="despesa" data-i18n="Despesa">Despesa</button>
+      <button type="button" class="renda" data-tipo="renda" data-i18n="Receita">Receita</button>
     </div>
     <input type="hidden" id="tipoInput" value="despesa">
 
-    <label>Descrição</label>
+    <label data-i18n="Descrição">Descrição</label>
     <div class="campo-com-sugestao">
-      <input type="text" id="descInput" placeholder="Ex: Mercado, Salário..." autocomplete="off">
+      <input type="text" id="descInput" placeholder="Ex: Mercado, Salário..." data-i18n-placeholder="Ex: Mercado, Salário..." autocomplete="off">
       <div class="sugestoes" id="sugestoesDesc" hidden></div>
     </div>
 
-    <label>Valor (R$)</label>
+    <label data-i18n="Valor (R$)">Valor (R$)</label>
     <input type="text" inputmode="none" id="valorInput" placeholder="0,00" readonly>
 
-    <label>Data / vencimento</label>
+    <label data-i18n="Data / vencimento">Data / vencimento</label>
     <input type="date" id="vencInput">
 
-    <label>Categoria</label>
+    <label data-i18n="Categoria">Categoria</label>
     <div class="select-com-icone">
       <span class="dot-preview" id="dotCategoria"></span>
       <select id="categoriaInput"></select>
-      <button type="button" class="icon" id="novaCategoriaBtn" title="Criar nova categoria">+</button>
+      <button type="button" class="icon" id="novaCategoriaBtn" title="Criar nova categoria" data-i18n-title="Criar nova categoria">+</button>
     </div>
     <div id="novaCategoriaBox" style="display:none; margin-top:8px;">
-      <input type="text" id="novaCategoriaNomeInline" placeholder="Nome da nova categoria">
+      <input type="text" id="novaCategoriaNomeInline" placeholder="Nome da nova categoria" data-i18n-placeholder="Nome da nova categoria">
       <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
         <input type="color" id="novaCategoriaCorInline" value="#00a76f" style="width:44px; padding:2px; height:38px; flex:none;">
-        <button type="button" class="secondary" id="novaCategoriaCancelarInline" style="flex:1;">Cancelar</button>
-        <button type="button" id="novaCategoriaSalvarInline" style="flex:1;">Salvar categoria</button>
+        <button type="button" class="secondary" id="novaCategoriaCancelarInline" style="flex:1;" data-i18n="Cancelar">Cancelar</button>
+        <button type="button" id="novaCategoriaSalvarInline" style="flex:1;" data-i18n="Salvar categoria">Salvar categoria</button>
       </div>
     </div>
 
-    <label>Conta</label>
+    <label data-i18n="Conta">Conta</label>
     <div class="select-com-icone">
       <span class="dot-preview" id="dotConta"></span>
-      <select id="contaInput"><option value="">Sem conta</option></select>
+      <select id="contaInput"><option value="" data-i18n="Sem conta">Sem conta</option></select>
     </div>
 
     <label class="toggle-row">
-      <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> Parcelar</span>
+      <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> <span data-i18n="Parcelar">Parcelar</span></span>
       <span class="toggle-switch"><input type="checkbox" id="parcelarInput"><span class="toggle-slider"></span></span>
     </label>
     <div id="parcelasBox" style="display:none;">
-      <label>Número de parcelas</label>
+      <label data-i18n="Número de parcelas">Número de parcelas</label>
       <input type="number" id="parcelasInput" min="2" value="2">
-      <label>O valor informado acima é</label>
+      <label data-i18n="O valor informado acima é">O valor informado acima é</label>
       <div class="segmented" id="modoValorSegmented">
-        <button type="button" class="ativo" data-modo="total">Valor total</button>
-        <button type="button" data-modo="parcela">Valor parcela</button>
+        <button type="button" class="ativo" data-modo="total" data-i18n="Valor total">Valor total</button>
+        <button type="button" data-modo="parcela" data-i18n="Valor parcela">Valor parcela</button>
       </div>
       <div class="formula-box" id="parcelaPreview" style="margin-top:10px; margin-bottom:0;"></div>
     </div>
 
-    <label>Observação (opcional)</label>
+    <label data-i18n="Observação (opcional)">Observação (opcional)</label>
     <textarea id="obsInput"></textarea>
 
     <div id="opcoesNaoParceladas">
       <label class="toggle-row">
-        <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> Repetir todo mês (recorrente)</span>
+        <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> <span data-i18n="Repetir todo mês (recorrente)">Repetir todo mês (recorrente)</span></span>
         <span class="toggle-switch"><input type="checkbox" id="recInput"><span class="toggle-slider"></span></span>
       </label>
       <div id="recorrenciaBox" style="display:none;">
-        <label>Por quantos meses?</label>
+        <label data-i18n="Por quantos meses?">Por quantos meses?</label>
         <div class="segmented" id="recDuracaoSegmented">
-          <button type="button" class="ativo" data-modo="sempre">Sempre</button>
-          <button type="button" data-modo="limitado">Nº de vezes</button>
+          <button type="button" class="ativo" data-modo="sempre" data-i18n="Sempre">Sempre</button>
+          <button type="button" data-modo="limitado" data-i18n="Nº de vezes">Nº de vezes</button>
         </div>
         <div id="recVezesBox" style="display:none;">
-          <input type="number" id="recVezesInput" min="2" value="6" placeholder="ex: 6">
+          <input type="number" id="recVezesInput" min="2" value="6" placeholder="ex: 6" data-i18n-placeholder="ex: 6">
           <div class="formula-box" id="recPreview" style="margin-top:10px; margin-bottom:0;"></div>
         </div>
       </div>
       <label class="toggle-row">
-        <span id="labelEfetivada"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg> Já paga</span>
+        <span id="labelEfetivada"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg> <span data-i18n="Já paga">Já paga</span></span>
         <span class="toggle-switch"><input type="checkbox" id="pagoInput"><span class="toggle-slider"></span></span>
       </label>
       <label class="toggle-row" id="previstoBox" style="display:none;">
-        <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> É uma previsão (será substituída quando eu importar o holerite)</span>
+        <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> <span data-i18n="É uma previsão (será substituída quando eu importar o holerite)">É uma previsão (será substituída quando eu importar o holerite)</span></span>
         <span class="toggle-switch"><input type="checkbox" id="previstoInput"><span class="toggle-slider"></span></span>
       </label>
     </div>
 
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="novoCancelar">Cancelar</button>
-      <button type="button" id="novoSalvar">Adicionar lançamento</button>
+      <button class="secondary" type="button" id="novoCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="novoSalvar" data-i18n="Adicionar lançamento">Adicionar lançamento</button>
     </div>
   </div>
 </div>
@@ -2182,112 +2195,112 @@
 <!-- Modal de adicionar ativo (compra/venda) -->
 <div class="modal-overlay" id="modalAdicionarAtivo">
   <div class="modal-box">
-    <h3>Adicionar ativo</h3>
+    <h3><span data-i18n="Adicionar ativo">Adicionar ativo</span></h3>
     <div class="segmented" id="ativoTipoSegmented">
-      <button type="button" class="ativo compra" data-tipo="aporte">Compra</button>
-      <button type="button" class="venda" data-tipo="resgate">Venda</button>
+      <button type="button" class="ativo compra" data-tipo="aporte" data-i18n="Compra">Compra</button>
+      <button type="button" class="venda" data-tipo="resgate" data-i18n="Venda">Venda</button>
     </div>
 
-    <label>Tipo de ativo</label>
+    <label data-i18n="Tipo de ativo">Tipo de ativo</label>
     <select id="ativoClasseInput" required>
-      <option value="">Selecione</option>
-      <option value="acao">Ação</option>
-      <option value="fii">Fundo imobiliário (FII)</option>
-      <option value="etf">ETF</option>
-      <option value="bdr">BDR</option>
-      <option value="cripto">Criptomoeda</option>
-      <option value="stock">Stock (EUA)</option>
-      <option value="reit">Reit (EUA)</option>
-      <option value="etf_internacional">ETF internacional</option>
-      <option value="renda_fixa">Renda fixa</option>
-      <option value="fundo">Fundo de investimento</option>
-      <option value="outro">Outro</option>
+      <option value="" data-i18n="Selecione">Selecione</option>
+      <option value="acao" data-i18n="Ação">Ação</option>
+      <option value="fii" data-i18n="Fundo imobiliário (FII)">Fundo imobiliário (FII)</option>
+      <option value="etf" data-i18n="ETF">ETF</option>
+      <option value="bdr" data-i18n="BDR">BDR</option>
+      <option value="cripto" data-i18n="Criptomoeda">Criptomoeda</option>
+      <option value="stock" data-i18n="Stock (EUA)">Stock (EUA)</option>
+      <option value="reit" data-i18n="Reit (EUA)">Reit (EUA)</option>
+      <option value="etf_internacional" data-i18n="ETF internacional">ETF internacional</option>
+      <option value="renda_fixa" data-i18n="Renda fixa">Renda fixa</option>
+      <option value="fundo" data-i18n="Fundo de investimento">Fundo de investimento</option>
+      <option value="outro" data-i18n="Outro">Outro</option>
     </select>
 
     <div id="ativoBuscaWrap" style="display:none;">
-      <label>Ativo</label>
+      <label data-i18n="Ativo">Ativo</label>
       <div class="autocomplete-wrap">
-        <input type="text" id="ativoTickerInput" placeholder="Digite pra buscar (ex: petrobras, bitcoin)" autocomplete="off">
+        <input type="text" id="ativoTickerInput" placeholder="Digite pra buscar (ex: petrobras, bitcoin)" data-i18n-placeholder="Digite pra buscar (ex: petrobras, bitcoin)" autocomplete="off">
         <div class="autocomplete-lista" id="ativoTickerLista" hidden></div>
       </div>
     </div>
 
     <div id="ativoNomeWrap" style="display:none;">
-      <label>Nome</label>
-      <input type="text" id="ativoNomeInput" placeholder="Ex: Tesouro Selic 2029, Poupança">
+      <label data-i18n="Nome">Nome</label>
+      <input type="text" id="ativoNomeInput" placeholder="Ex: Tesouro Selic 2029, Poupança" data-i18n-placeholder="Ex: Tesouro Selic 2029, Poupança">
     </div>
 
     <div id="ativoIndexadorWrap" style="display:none;">
-      <label>Emissor</label>
-      <input type="text" id="ativoEmissorInput" placeholder="Ex: Banco Inter, Tesouro Nacional">
-      <label>Tipo de investimento</label>
+      <label data-i18n="Emissor">Emissor</label>
+      <input type="text" id="ativoEmissorInput" placeholder="Ex: Banco Inter, Tesouro Nacional" data-i18n-placeholder="Ex: Banco Inter, Tesouro Nacional">
+      <label data-i18n="Tipo de investimento">Tipo de investimento</label>
       <select id="ativoTipoInvestimentoInput">
-        <option value="">Selecione</option>
-        <option value="cdb">CDB</option>
-        <option value="lci">LCI</option>
-        <option value="lca">LCA</option>
-        <option value="debenture">Debênture</option>
-        <option value="cri">CRI</option>
-        <option value="cra">CRA</option>
-        <option value="tesouro_selic">Tesouro Selic</option>
-        <option value="tesouro_ipca">Tesouro IPCA+</option>
-        <option value="tesouro_prefixado">Tesouro Prefixado</option>
-        <option value="outro">Outro</option>
+        <option value="" data-i18n="Selecione">Selecione</option>
+        <option value="cdb" data-i18n="CDB">CDB</option>
+        <option value="lci" data-i18n="LCI">LCI</option>
+        <option value="lca" data-i18n="LCA">LCA</option>
+        <option value="debenture" data-i18n="Debênture">Debênture</option>
+        <option value="cri" data-i18n="CRI">CRI</option>
+        <option value="cra" data-i18n="CRA">CRA</option>
+        <option value="tesouro_selic" data-i18n="Tesouro Selic">Tesouro Selic</option>
+        <option value="tesouro_ipca" data-i18n="Tesouro IPCA+">Tesouro IPCA+</option>
+        <option value="tesouro_prefixado" data-i18n="Tesouro Prefixado">Tesouro Prefixado</option>
+        <option value="outro" data-i18n="Outro">Outro</option>
       </select>
-      <label>Indexador</label>
+      <label data-i18n="Indexador">Indexador</label>
       <select id="ativoIndexadorInput">
-        <option value="">Indexador</option>
-        <option value="cdi">% do CDI</option>
-        <option value="ipca">IPCA + taxa</option>
-        <option value="prefixado">Prefixado</option>
+        <option value="" data-i18n="Indexador">Indexador</option>
+        <option value="cdi" data-i18n="% do CDI">% do CDI</option>
+        <option value="ipca" data-i18n="IPCA + taxa">IPCA + taxa</option>
+        <option value="prefixado" data-i18n="Prefixado">Prefixado</option>
       </select>
-      <label>Taxa (ex: 110 ou 6)</label>
+      <label data-i18n="Taxa (ex: 110 ou 6)">Taxa (ex: 110 ou 6)</label>
       <input type="number" id="ativoTaxaInput" step="0.01">
-      <label>Data de vencimento (opcional)</label>
+      <label data-i18n="Data de vencimento (opcional)">Data de vencimento (opcional)</label>
       <input type="date" id="ativoVencimentoInput">
       <label class="toggle-row">
-        <span>Liquidez diária</span>
+        <span data-i18n="Liquidez diária">Liquidez diária</span>
         <span class="toggle-switch"><input type="checkbox" id="ativoLiquidezInput"><span class="toggle-slider"></span></span>
       </label>
     </div>
 
-    <label>Conta</label>
+    <label data-i18n="Conta">Conta</label>
     <select id="ativoContaInput" required></select>
 
     <div class="campos-2col">
       <div>
-        <label id="ativoDataLabel">Data de Compra</label>
+        <label id="ativoDataLabel" data-i18n="Data de Compra">Data de Compra</label>
         <input type="date" id="ativoDataInput">
       </div>
       <div id="ativoQuantidadeWrap">
-        <label>Quantidade</label>
+        <label data-i18n="Quantidade">Quantidade</label>
         <input type="number" id="ativoQuantidadeInput" step="0.00000001" min="0.00000001" placeholder="0">
       </div>
     </div>
 
     <div class="campos-2col" id="ativoPrecoCustosWrap">
       <div>
-        <label>Preço em R$</label>
+        <label data-i18n="Preço em R$">Preço em R$</label>
         <input type="number" id="ativoPrecoInput" step="0.01" min="0.01" placeholder="0,00">
       </div>
       <div>
-        <label>Outros custos</label>
+        <label data-i18n="Outros custos">Outros custos</label>
         <input type="number" id="ativoCustosInput" step="0.01" min="0" placeholder="0,00">
       </div>
     </div>
 
     <div id="ativoValorWrap" style="display:none;">
-      <label>Valor em R$</label>
+      <label data-i18n="Valor em R$">Valor em R$</label>
       <input type="number" id="ativoValorInput" step="0.01" min="0.01" placeholder="0,00">
     </div>
 
     <div class="formula-box">
-      <div class="linha total"><span>Valor total</span><span id="ativoValorTotalTexto">R$ 0,00</span></div>
+      <div class="linha total"><span data-i18n="Valor total">Valor total</span><span id="ativoValorTotalTexto">R$ 0,00</span></div>
     </div>
 
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="ativoCancelar">Cancelar</button>
-      <button type="button" id="ativoSalvar">Registrar compra</button>
+      <button class="secondary" type="button" id="ativoCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="ativoSalvar" data-i18n="Registrar compra">Registrar compra</button>
     </div>
   </div>
 </div>
@@ -2297,35 +2310,35 @@
      tipo de pagamento e se o dinheiro já caiu na conta. -->
 <div class="modal-overlay" id="modalProvento">
   <div class="modal-box">
-    <h3 id="proventoTitulo">Lançar provento</h3>
-    <label>Tipo de pagamento</label>
+    <h3 id="proventoTitulo"><span data-i18n="Lançar provento">Lançar provento</span></h3>
+    <label data-i18n="Tipo de pagamento">Tipo de pagamento</label>
     <select id="proventoTipoPagamento">
-      <option value="dividendo">Dividendo</option>
-      <option value="jscp">JSCP (15% de IR na fonte)</option>
-      <option value="rendimento">Rendimento</option>
+      <option value="dividendo" data-i18n="Dividendo">Dividendo</option>
+      <option value="jscp" data-i18n="JSCP (15% de IR na fonte)">JSCP (15% de IR na fonte)</option>
+      <option value="rendimento" data-i18n="Rendimento">Rendimento</option>
     </select>
     <div class="campos-2col">
       <div>
-        <label>Data com (opcional)</label>
+        <label data-i18n="Data com (opcional)">Data com (opcional)</label>
         <input type="date" id="proventoDataCom">
       </div>
       <div>
-        <label>Data de pagamento</label>
+        <label data-i18n="Data de pagamento">Data de pagamento</label>
         <input type="date" id="proventoData">
       </div>
     </div>
-    <label>Valor bruto anunciado (R$)</label>
+    <label data-i18n="Valor bruto anunciado (R$)">Valor bruto anunciado (R$)</label>
     <input type="number" id="proventoValor" step="0.01" min="0.01" placeholder="0,00">
     <label class="toggle-row">
-      <span>Já caiu na conta</span>
+      <span data-i18n="Já caiu na conta">Já caiu na conta</span>
       <span class="toggle-switch"><input type="checkbox" id="proventoPago" checked><span class="toggle-slider"></span></span>
     </label>
     <div class="formula-box">
-      <div class="linha total"><span>Valor líquido</span><span id="proventoLiquidoTexto">R$ 0,00</span></div>
+      <div class="linha total"><span data-i18n="Valor líquido">Valor líquido</span><span id="proventoLiquidoTexto">R$ 0,00</span></div>
     </div>
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="proventoCancelar">Cancelar</button>
-      <button type="button" id="proventoSalvar">Registrar provento</button>
+      <button class="secondary" type="button" id="proventoCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="proventoSalvar" data-i18n="Registrar provento">Registrar provento</button>
     </div>
   </div>
 </div>
@@ -2333,23 +2346,23 @@
 <!-- Modal de % Ideal por classe -->
 <div class="modal-overlay" id="modalAlocacaoIdeal">
   <div class="modal-box">
-    <h3>Distribuição da carteira</h3>
-    <p style="font-size:0.78rem; color:var(--muted); margin:-8px 0 14px;">
+    <h3><span data-i18n="Distribuição da carteira">Distribuição da carteira</span></h3>
+    <p style="font-size:0.78rem; color:var(--muted); margin:-8px 0 14px;" data-i18n="Defina a porcentagem ideal pra cada classe de ativo que você quer ter na carteira. Com base nisso, o app mostra se cada uma está acima ou abaixo da meta.">
       Defina a porcentagem ideal pra cada classe de ativo que você quer ter na carteira. Com base nisso, o app mostra se cada uma está acima ou abaixo da meta.
     </p>
     <div class="chart-box" style="max-width:200px; max-height:170px; margin:0 auto 16px;"><canvas id="chartAlocacaoIdeal"></canvas></div>
     <div id="alocacaoIdealCampos"></div>
     <div class="alocacao-adicionar">
       <select id="alocacaoNovaClasse"></select>
-      <button type="button" class="secondary" id="alocacaoAdicionarBtn">+ Adicionar tipo de ativo</button>
+      <button type="button" class="secondary" id="alocacaoAdicionarBtn" data-i18n="+ Adicionar tipo de ativo">+ Adicionar tipo de ativo</button>
     </div>
-    <div class="alocacao-aviso" id="alocacaoAviso" hidden>Reorganize a distribuição dos ativos para alcançar 100%.</div>
+    <div class="alocacao-aviso" id="alocacaoAviso" hidden data-i18n="Reorganize a distribuição dos ativos para alcançar 100%.">Reorganize a distribuição dos ativos para alcançar 100%.</div>
     <div class="formula-box">
-      <div class="linha total"><span>Total</span><span id="alocacaoTotalTexto">0%</span></div>
+      <div class="linha total"><span data-i18n="Total">Total</span><span id="alocacaoTotalTexto">0%</span></div>
     </div>
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="alocacaoCancelar">Cancelar</button>
-      <button type="button" id="alocacaoSalvar">Salvar alterações</button>
+      <button class="secondary" type="button" id="alocacaoCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="alocacaoSalvar" data-i18n="Salvar alterações">Salvar alterações</button>
     </div>
   </div>
 </div>
@@ -2357,20 +2370,20 @@
 <!-- Modal de transferência entre contas -->
 <div class="modal-overlay" id="modalTransferencia">
   <div class="modal-box">
-    <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> Transferência entre contas</h3>
-    <label>Conta de origem</label>
+    <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> <span data-i18n="Transferência entre contas">Transferência entre contas</span></h3>
+    <label data-i18n="Conta de origem">Conta de origem</label>
     <select id="transfContaOrigem"></select>
-    <label>Conta de destino</label>
+    <label data-i18n="Conta de destino">Conta de destino</label>
     <select id="transfContaDestino"></select>
-    <label>Valor (R$)</label>
+    <label data-i18n="Valor (R$)">Valor (R$)</label>
     <input type="number" id="transfValor" step="0.01" placeholder="0,00">
-    <label>Data</label>
+    <label data-i18n="Data">Data</label>
     <input type="date" id="transfData">
-    <label>Descrição (opcional)</label>
-    <input type="text" id="transfDescricao" placeholder="Ex: Reserva de emergência">
+    <label data-i18n="Descrição (opcional)">Descrição (opcional)</label>
+    <input type="text" id="transfDescricao" placeholder="Ex: Reserva de emergência" data-i18n-placeholder="Ex: Reserva de emergência">
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="transfCancelar">Cancelar</button>
-      <button type="button" id="transfSalvar">Transferir</button>
+      <button class="secondary" type="button" id="transfCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="transfSalvar" data-i18n="Transferir">Transferir</button>
     </div>
   </div>
 </div>
@@ -2378,26 +2391,26 @@
 <!-- Modal de revisão da nota fiscal escaneada -->
 <div class="modal-overlay" id="modalNotaFiscal">
   <div class="modal-box">
-    <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg> Nota fiscal escaneada</h3>
-    <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px;">A leitura é automática e pode errar alguns dígitos — confira tudo antes de lançar.</p>
-    <label>Loja</label>
-    <input type="text" id="notaFiscalLoja" placeholder="Nome do local">
-    <label>Data da compra</label>
+    <h3><svg class="ico" viewBox="0 0 24 24"><use href="#i-recibo"/></svg> <span data-i18n="Nota fiscal escaneada">Nota fiscal escaneada</span></h3>
+    <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px;" data-i18n="A leitura é automática e pode errar alguns dígitos — confira tudo antes de lançar.">A leitura é automática e pode errar alguns dígitos — confira tudo antes de lançar.</p>
+    <label data-i18n="Loja">Loja</label>
+    <input type="text" id="notaFiscalLoja" placeholder="Nome do local" data-i18n-placeholder="Nome do local">
+    <label data-i18n="Data da compra">Data da compra</label>
     <input type="date" id="notaFiscalData">
-    <label>Categoria</label>
+    <label data-i18n="Categoria">Categoria</label>
     <select id="notaFiscalCategoria"></select>
-    <label>Itens</label>
+    <label data-i18n="Itens">Itens</label>
     <div id="notaFiscalItens"></div>
-    <button type="button" class="secondary" id="notaFiscalAdicionarItem" style="width:100%; margin-top:6px;">+ Adicionar item</button>
+    <button type="button" class="secondary" id="notaFiscalAdicionarItem" style="width:100%; margin-top:6px;" data-i18n="+ Adicionar item">+ Adicionar item</button>
     <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--muted); margin-top:12px;">
-      <span>Soma dos itens</span>
+      <span data-i18n="Soma dos itens">Soma dos itens</span>
       <span id="notaFiscalSomaItens">R$ 0,00</span>
     </div>
-    <label>Valor total da despesa (R$)</label>
+    <label data-i18n="Valor total da despesa (R$)">Valor total da despesa (R$)</label>
     <input type="number" id="notaFiscalValorTotal" step="0.01" placeholder="0,00">
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="notaFiscalCancelar">Cancelar</button>
-      <button type="button" id="notaFiscalSalvar">Lançar despesa</button>
+      <button class="secondary" type="button" id="notaFiscalCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="notaFiscalSalvar" data-i18n="Lançar despesa">Lançar despesa</button>
     </div>
   </div>
 </div>
@@ -2405,15 +2418,15 @@
 <!-- Modal de escopo ao excluir um lançamento recorrente -->
 <div class="modal-overlay" id="modalExcluirRecorrente">
   <div class="modal-box">
-    <h3>Excluir lançamento recorrente</h3>
+    <h3><span data-i18n="Excluir lançamento recorrente">Excluir lançamento recorrente</span></h3>
     <p style="font-size:0.88rem; color:var(--muted); margin:0 0 6px;" id="excluirRecTexto"></p>
     <div class="modal-acoes" style="flex-direction:column; gap:8px;">
-      <button type="button" id="excluirSoEsteMes">Excluir só neste mês</button>
+      <button type="button" id="excluirSoEsteMes" data-i18n="Excluir só neste mês">Excluir só neste mês</button>
       <button type="button" class="danger" id="excluirTodosMeses"
-              style="border:1px solid var(--red); border-radius:var(--radius-sm); padding:11px;">
+              style="border:1px solid var(--red); border-radius:var(--radius-sm); padding:11px;" data-i18n="Excluir em todos os meses">
         Excluir em todos os meses
       </button>
-      <button type="button" class="secondary" id="excluirRecCancelar">Cancelar</button>
+      <button type="button" class="secondary" id="excluirRecCancelar" data-i18n="Cancelar">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2421,11 +2434,11 @@
 <!-- Modal de explicação dos cards do dashboard -->
 <div class="modal-overlay" id="modalExplicacao">
   <div class="modal-box">
-    <h3 id="explicacaoTitulo">Como chegamos nesse valor</h3>
+    <h3 id="explicacaoTitulo"><span data-i18n="Como chegamos nesse valor">Como chegamos nesse valor</span></h3>
     <div class="formula-box" id="explicacaoFormula"></div>
     <div id="explicacaoListas"></div>
     <div class="modal-acoes">
-      <button type="button" id="explicacaoFechar">Fechar</button>
+      <button type="button" id="explicacaoFechar" data-i18n="Fechar">Fechar</button>
     </div>
   </div>
 </div>
@@ -2433,15 +2446,15 @@
 <!-- Modal de edição de categoria -->
 <div class="modal-overlay" id="modalEdicaoCategoria">
   <div class="modal-box">
-    <h3>Editar categoria</h3>
+    <h3><span data-i18n="Editar categoria">Editar categoria</span></h3>
     <input type="hidden" id="editCategoriaId">
-    <label>Nome</label>
+    <label data-i18n="Nome">Nome</label>
     <input type="text" id="editCategoriaNome">
-    <label>Cor</label>
+    <label data-i18n="Cor">Cor</label>
     <input type="color" id="editCategoriaCor" style="width:60px; padding:2px; height:40px;">
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="editCategoriaCancelar">Cancelar</button>
-      <button type="button" id="editCategoriaSalvar">Salvar alterações</button>
+      <button class="secondary" type="button" id="editCategoriaCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="editCategoriaSalvar" data-i18n="Salvar alterações">Salvar alterações</button>
     </div>
   </div>
 </div>
@@ -2449,20 +2462,20 @@
 <!-- Modal de adicionar usuário -->
 <div class="modal-overlay" id="modalNovoUsuario">
   <div class="modal-box">
-    <h3>Adicionar usuário</h3>
-    <label>Nome</label>
-    <input type="text" id="novoUsuarioNome" placeholder="Ex: Nome da sua esposa">
-    <label>Usuário (login)</label>
-    <input type="text" id="novoUsuarioUsername" placeholder="ex: esposa" autocapitalize="off">
-    <label>Senha</label>
-    <input type="password" id="novoUsuarioSenha" placeholder="mínimo 4 caracteres">
+    <h3><span data-i18n="Adicionar usuário">Adicionar usuário</span></h3>
+    <label data-i18n="Nome">Nome</label>
+    <input type="text" id="novoUsuarioNome" placeholder="Ex: Nome da sua esposa" data-i18n-placeholder="Ex: Nome da sua esposa">
+    <label data-i18n="Usuário (login)">Usuário (login)</label>
+    <input type="text" id="novoUsuarioUsername" placeholder="ex: esposa" data-i18n-placeholder="ex: esposa" autocapitalize="off">
+    <label data-i18n="Senha">Senha</label>
+    <input type="password" id="novoUsuarioSenha" placeholder="mínimo 4 caracteres" data-i18n-placeholder="mínimo 4 caracteres">
     <label class="toggle-row">
-      Somente leitura (não pode editar, só ver)
+      <span data-i18n="Somente leitura (não pode editar, só ver)">Somente leitura (não pode editar, só ver)</span>
       <span class="toggle-switch"><input type="checkbox" id="novoUsuarioSomenteLeitura"><span class="toggle-slider"></span></span>
     </label>
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="novoUsuarioCancelar">Cancelar</button>
-      <button type="button" id="novoUsuarioSalvar">Adicionar</button>
+      <button class="secondary" type="button" id="novoUsuarioCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="novoUsuarioSalvar" data-i18n="Adicionar">Adicionar</button>
     </div>
   </div>
 </div>
@@ -2470,17 +2483,17 @@
 <!-- Modal do administrador redefinindo a senha de outro membro da casa -->
 <div class="modal-overlay" id="modalSenhaMembro">
   <div class="modal-box">
-    <h3>Trocar senha de <span id="senhaMembroNome"></span></h3>
-    <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px;">
+    <h3><span data-i18n="Trocar senha de">Trocar senha de</span> <span id="senhaMembroNome"></span></h3>
+    <p style="font-size:0.78rem; color:var(--muted); margin:0 0 10px;" data-i18n="Não é preciso saber a senha atual — só o administrador acessa esta tela.">
       Não é preciso saber a senha atual — só o administrador acessa esta tela.
     </p>
-    <label>Nova senha</label>
-    <input type="password" id="senhaMembroNova" placeholder="mínimo 4 caracteres">
-    <label>Confirmar nova senha</label>
-    <input type="password" id="senhaMembroConfirmar" placeholder="repita a nova senha">
+    <label data-i18n="Nova senha">Nova senha</label>
+    <input type="password" id="senhaMembroNova" placeholder="mínimo 4 caracteres" data-i18n-placeholder="mínimo 4 caracteres">
+    <label data-i18n="Confirmar nova senha">Confirmar nova senha</label>
+    <input type="password" id="senhaMembroConfirmar" placeholder="repita a nova senha" data-i18n-placeholder="repita a nova senha">
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="senhaMembroCancelar">Cancelar</button>
-      <button type="button" id="senhaMembroSalvar">Salvar</button>
+      <button class="secondary" type="button" id="senhaMembroCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="senhaMembroSalvar" data-i18n="Salvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -2488,10 +2501,10 @@
 <!-- Modal do administrador vendo as contas de outro membro da casa -->
 <div class="modal-overlay" id="modalContasMembro">
   <div class="modal-box">
-    <h3>Contas de <span id="contasMembroNome"></span></h3>
+    <h3><span data-i18n="Contas de">Contas de</span> <span id="contasMembroNome"></span></h3>
     <div id="listaContasMembro"></div>
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="contasMembroFechar">Fechar</button>
+      <button class="secondary" type="button" id="contasMembroFechar" data-i18n="Fechar">Fechar</button>
     </div>
   </div>
 </div>
@@ -2499,40 +2512,40 @@
 <!-- Modal de trocar senha -->
 <div class="modal-overlay" id="modalTrocarSenha">
   <div class="modal-box">
-    <h3>Meu perfil</h3>
+    <h3><span data-i18n="Meu perfil">Meu perfil</span></h3>
 
     <div class="perfil-foto-area">
       <div class="perfil-foto" id="perfilFotoPreview"></div>
       <div class="perfil-foto-acoes">
         <label class="botao-arquivo" id="perfilFotoLabel">
-          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-camera"/></svg> Escolher foto
+          <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-camera"/></svg> <span data-i18n="Escolher foto">Escolher foto</span>
           <input type="file" id="perfilFotoInput" accept="image/*">
         </label>
-        <button type="button" class="secondary" id="perfilFotoRemover">Remover foto</button>
+        <button type="button" class="secondary" id="perfilFotoRemover" data-i18n="Remover foto">Remover foto</button>
       </div>
     </div>
 
-    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;">Modo demonstração</h3>
-    <p style="font-size:0.78rem; color:var(--muted-soft); margin:6px 0 10px;">
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;"><span data-i18n="Modo demonstração">Modo demonstração</span></h3>
+    <p style="font-size:0.78rem; color:var(--muted-soft); margin:6px 0 10px;" data-i18n="Troca temporariamente seus dados por um conjunto fictício, para mostrar o app a outras pessoas sem expor suas contas. Seus dados reais continuam intactos.">
       Troca temporariamente seus dados por um conjunto fictício, para mostrar o app
       a outras pessoas sem expor suas contas. Seus dados reais continuam intactos.
     </p>
     <label class="toggle-row" style="padding-top:0;">
-      <span id="demoLabel">Modo demonstração desligado</span>
+      <span id="demoLabel" data-i18n="Modo demonstração desligado">Modo demonstração desligado</span>
       <span class="toggle-switch"><input type="checkbox" id="demoToggle"><span class="toggle-slider"></span></span>
     </label>
 
-    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;">Login com Google</h3>
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;"><span data-i18n="Login com Google">Login com Google</span></h3>
     <div id="googleVinculoBox" style="margin-top:8px;"></div>
 
-    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;">Trocar senha</h3>
-    <label>Senha atual</label>
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;"><span data-i18n="Trocar senha">Trocar senha</span></h3>
+    <label data-i18n="Senha atual">Senha atual</label>
     <input type="password" id="senhaAtualInput">
-    <label>Nova senha</label>
-    <input type="password" id="novaSenhaInput" placeholder="mínimo 4 caracteres">
+    <label data-i18n="Nova senha">Nova senha</label>
+    <input type="password" id="novaSenhaInput" placeholder="mínimo 4 caracteres" data-i18n-placeholder="mínimo 4 caracteres">
     <div class="modal-acoes">
-      <button class="secondary" type="button" id="trocarSenhaCancelar">Fechar</button>
-      <button type="button" id="trocarSenhaSalvar">Salvar nova senha</button>
+      <button class="secondary" type="button" id="trocarSenhaCancelar" data-i18n="Fechar">Fechar</button>
+      <button type="button" id="trocarSenhaSalvar" data-i18n="Salvar nova senha">Salvar nova senha</button>
     </div>
 
   </div>
@@ -2543,6 +2556,429 @@ const API = "/api";
 
 // Ícones de linha usados em conteúdo gerado por JS.
 const svgIco = (nome, cls = "ico") => `<svg class="${cls}" viewBox="0 0 24 24"><use href="#i-${nome}"/></svg>`;
+
+// ---------- Idioma ----------
+// O CÓDIGO fica em português; só o texto exibido é traduzido. A chave da
+// tabela é o próprio português, para o HTML continuar legível sem consultar um
+// catálogo de códigos.
+//
+// Elementos estáticos carregam data-i18n com o texto original, então trocar de
+// idioma e voltar não perde nada. Conteúdo montado por JS passa por t().
+const TRADUCOES = {"en": {
+"% do CDI": "% of CDI",
+"+ Adicionar ativo": "+ Add asset",
+"+ Adicionar categoria": "+ Add category",
+"+ Adicionar item": "+ Add item",
+"+ Adicionar tipo de ativo": "+ Add asset type",
+", o próximo que aparecer já vem pronto.": ", the next one will come sorted.",
+", que confere as contas em segundo plano.": ", which checks bills in the background.",
+"1 dia antes": "1 day before",
+"12 meses": "12 months",
+"3 dias antes": "3 days before",
+"3 meses": "3 months",
+"30 dias": "30 days",
+"6 meses": "6 months",
+"7 dias antes": "7 days before",
+"A leitura é automática e pode errar alguns dígitos — confira tudo antes de lançar.": "Scanning is automatic and may misread digits — check everything before saving.",
+"A receber": "Expected",
+"Aberto pelo navegador": "Opened in the browser",
+"Abre em tela cheia, sem a barra do navegador.": "Opens full screen, without the browser bar.",
+"Adicionar": "Add",
+"Adicionar ativo": "Add asset",
+"Adicionar cartão": "Add card",
+"Adicionar conta": "Add account",
+"Adicionar empréstimo": "Add loan",
+"Adicionar lançamento": "Add entry",
+"Adicionar usuário": "Add user",
+"Administrador": "Administrator",
+"Agora não": "Not now",
+"Alternar tema": "Switch theme",
+"Anual": "Yearly",
+"Ao passar do limite, o backup mais antigo é apagado automaticamente.": "Past the limit, the oldest backup is deleted automatically.",
+"Aplicar no que já existe": "Apply to existing entries",
+"Ativar avisos na hora": "Turn on instant alerts",
+"Ativo": "Asset",
+"Ativos na carteira": "Assets in portfolio",
+"Atualizar cotações": "Refresh prices",
+"Atualização disponível": "Update available",
+"Atualização necessária": "Update required",
+"Avisa quando a fatura passa de 80% do limite.": "Warns when the bill passes 80% of the limit.",
+"Avisar com quantos dias de antecedência": "How many days ahead to warn",
+"Avisos de contas": "Bill reminders",
+"Ação": "Stock",
+"BDR": "BDR",
+"Backup": "Backup",
+"Backup automático": "Automatic backup",
+"Backups salvos no servidor": "Backups kept on the server",
+"Baixa em CSV os lançamentos do mês selecionado no topo (": "Downloads a CSV of the entries for the month selected above (",
+"Baixa um .zip com todos os lançamentos, comprovantes e fotos.": "Downloads a .zip with every entry, receipt and photo.",
+"Baixar": "Download",
+"Baixar / restaurar manualmente": "Download / restore manually",
+"Baixar agora": "Download now",
+"Baixar e instalar": "Download and install",
+"Baixar o app Android": "Download the Android app",
+"Buscar lançamentos": "Search entries",
+"Buscar por descrição": "Search by description",
+"Buscar por descrição, categoria ou valor…": "Search by description, category or amount…",
+"CDB": "CDB",
+"CRA": "CRA",
+"CRI": "CRI",
+"Calendário": "Calendar",
+"Cancelar": "Cancel",
+"Carregando...": "Loading...",
+"Cartão perto do limite": "Card near the limit",
+"Cartões": "Cards",
+"Cartões de crédito": "Credit cards",
+"Casa": "Household",
+"Categoria": "Category",
+"Categorias": "Categories",
+"Categorias de Despesa": "Expense categories",
+"Categorias de Receita": "Income categories",
+"Classificar": "Sort out",
+"Com o app fechado": "With the app closed",
+"Com que frequência?": "How often?",
+"Como chegamos nesse valor": "How we got to this number",
+"Compra": "Buy",
+"Conectar banco": "Connect bank",
+"Configurar % Ideal da carteira": "Set target portfolio mix",
+"Configurações administrativas": "Admin settings",
+"Confirmar nova senha": "Confirm new password",
+"Conta": "Account",
+"Conta Pluggy conectada": "Pluggy account connected",
+"Conta de destino": "Destination account",
+"Conta de origem": "Source account",
+"Conta vinculada": "Linked account",
+"Contas": "Accounts",
+"Contas a pagar": "Bills to pay",
+"Contas de": "Accounts of",
+"Contas pendentes do mês": "Unpaid bills this month",
+"Contas vencendo ou vencidas": "Bills due or overdue",
+"Contas vencidas e vencendo": "Overdue and upcoming bills",
+"Contas vencidas e vencendo nos próximos 7 dias": "Overdue bills and those due in the next 7 days",
+"Convidar usuário": "Invite user",
+"Convide outra pessoa da família para entrar nessa casa com o próprio login.": "Invite someone else in the family to join this household with their own login.",
+"Cor": "Color",
+"Criar meta": "Create goal",
+"Criar nova categoria": "Create new category",
+"Criptomoeda": "Cryptocurrency",
+"Dashboard": "Dashboard",
+"Data": "Date",
+"Data (mais antiga)": "Date (oldest)",
+"Data (mais recente)": "Date (newest)",
+"Data / vencimento": "Date / due date",
+"Data com (opcional)": "Ex-date (optional)",
+"Data da compra": "Purchase date",
+"Data de Compra": "Purchase date",
+"Data de pagamento": "Payment date",
+"Data de vencimento (opcional)": "Due date (optional)",
+"Data do pagamento": "Payment date",
+"De onde o dinheiro veio e para onde foi. Transferência entre contas suas fica de fora — ela move saldo, mas não é ganho nem gasto.": "Where the money came from and where it went. Transfers between your own accounts are left out — they move balance, but are neither income nor spending.",
+"Debênture": "Debenture",
+"Defina a porcentagem ideal pra cada classe de ativo que você quer ter na carteira. Com base nisso, o app mostra se cada uma está acima ou abaixo da meta.": "Set the target share for each asset class in your portfolio. From that, the app shows whether each one is above or below target.",
+"Definir orçamento": "Set budget",
+"Descrição": "Description",
+"Descrição (opcional)": "Description (optional)",
+"Desligado": "Off",
+"Despesa": "Expense",
+"Despesas": "Expenses",
+"Dia de vencimento": "Due day",
+"Digite para procurar em todos os meses.": "Type to search across every month.",
+"Digite pra buscar (ex: petrobras, bitcoin)": "Type to search (e.g. petrobras, bitcoin)",
+"Dispensar": "Dismiss",
+"Distribuição da carteira": "Portfolio mix",
+"Distribuição em 12 meses": "Spread over 12 months",
+"Dividendo": "Dividend",
+"Dividendos, JCP e rendimentos já declarados na B3 entram sozinhos 1x por dia — o botão força uma busca agora.": "Dividends, JCP and income already declared on B3 come in on their own once a day — the button forces a fetch now.",
+"ETF": "ETF",
+"ETF internacional": "International ETF",
+"Editar cartão": "Edit card",
+"Editar categoria": "Edit category",
+"Editar conta": "Edit account",
+"Editar lançamento": "Edit entry",
+"Emissor": "Issuer",
+"Empréstimos": "Loans",
+"Entrou": "Money in",
+"Escanear nota fiscal": "Scan receipt",
+"Escolha a categoria...": "Choose the category...",
+"Escolher foto": "Choose photo",
+"Este ano": "This year",
+"Evolução de proventos": "Income over time",
+"Evolução do patrimônio": "Net worth over time",
+"Ex: Banco Inter, Tesouro Nacional": "e.g. Banco Inter, Tesouro Nacional",
+"Ex: Mercado, Salário...": "e.g. Groceries, Salary...",
+"Ex: Nome da sua esposa": "e.g. your partner's name",
+"Ex: Reserva de emergência": "e.g. Emergency fund",
+"Ex: Tesouro Selic 2029, Poupança": "e.g. Tesouro Selic 2029, Savings",
+"Excluir em todos os meses": "Delete from every month",
+"Excluir lançamento recorrente": "Delete recurring entry",
+"Excluir só neste mês": "Delete only this month",
+"Exportar CSV do mês": "Export this month as CSV",
+"Exportar lançamentos": "Export entries",
+"Fatura atual (R$)": "Current bill (R$)",
+"Fazer backup agora": "Back up now",
+"Fechar": "Close",
+"FinanCerto": "FinanCerto",
+"Fluxo de caixa diário": "Daily cash flow",
+"Fluxo de caixa do mês": "Cash flow this month",
+"Fundo de investimento": "Investment fund",
+"Fundo imobiliário (FII)": "Real estate fund (FII)",
+"Gastos por categoria": "Spending by category",
+"GitHub": "GitHub",
+"Habilitar aba Empréstimos": "Enable the Loans tab",
+"Histórico mensal": "Monthly history",
+"Holerite": "Payslip",
+"Holerites importados": "Imported payslips",
+"IPCA + taxa": "IPCA + rate",
+"Ignorar esta conta": "Ignore this account",
+"Importar comprovante": "Import receipt",
+"Importar holerite": "Import payslip",
+"Importar proventos agora": "Import income now",
+"Indexador": "Index",
+"Instalar": "Install",
+"Instalar como app": "Install as an app",
+"Investimentos": "Investments",
+"Item ID do banco (UUID do painel da Pluggy)": "Bank Item ID (UUID from the Pluggy dashboard)",
+"Itens": "Items",
+"JSCP (15% de IR na fonte)": "JCP (15% withholding tax)",
+"Já caiu na conta": "Already in the account",
+"Já paga": "Already paid",
+"LCA": "LCA",
+"LCI": "LCI",
+"Lançar automaticamente como receita": "Post automatically as income",
+"Lançar despesa": "Add expense",
+"Lançar provento": "Add income",
+"Leitura": "Read-only",
+"Limite (R$)": "Limit (R$)",
+"Limite mensal (R$)": "Monthly limit (R$)",
+"Liquidez diária": "Daily liquidity",
+"Login com Google": "Sign in with Google",
+"Loja": "Store",
+"MODO DEMONSTRAÇÃO ATIVADO — dados fictícios, suas contas reais estão ocultas": "DEMO MODE ON — made-up data, your real accounts are hidden",
+"Maior valor": "Highest amount",
+"Marcar todas como lidas": "Mark all as read",
+"Menor valor": "Lowest amount",
+"Mensal": "Monthly",
+"Menu": "Menu",
+"Metas": "Goals",
+"Metas de economia": "Savings goals",
+"Meu perfil": "My profile",
+"Meus ativos": "My assets",
+"Meus proventos": "My income",
+"Minha conta": "My account",
+"Modo demonstração": "Demo mode",
+"Modo demonstração desligado": "Demo mode off",
+"Money Map": "Money Map",
+"Média mensal (últ. 12 meses)": "Monthly average (last 12 months)",
+"Mês anterior": "Previous month",
+"Nada pendente — tudo classificado.": "Nothing pending — all sorted.",
+"Nenhum banco conectado ainda. Conecte no meu.pluggy.ai e cole o Item ID abaixo.": "No bank connected yet. Connect at meu.pluggy.ai and paste the Item ID below.",
+"Nenhum lançamento ainda.": "No entries yet.",
+"Nenhum resultado para os filtros aplicados.": "No results for the filters applied.",
+"Nenhuma conta cadastrada. Adicione a primeira abaixo.": "No accounts yet. Add the first one below.",
+"Nenhuma regra ainda.": "No rules yet.",
+"Nome": "Name",
+"Nome (ex: Empréstimo Santander)": "Name (e.g. Santander loan)",
+"Nome da categoria": "Category name",
+"Nome da conta (ex: Nubank, Carteira)": "Account name (e.g. Nubank, Wallet)",
+"Nome da meta (ex: Viagem, Reserva de emergência)": "Goal name (e.g. Trip, Emergency fund)",
+"Nome da nova categoria": "New category name",
+"Nome do cartão": "Card name",
+"Nome do local": "Place name",
+"Nota fiscal escaneada": "Scanned receipt",
+"Notificações": "Notifications",
+"Nova senha": "New password",
+"Novo": "New",
+"Novo lançamento": "New entry",
+"Nº de vezes": "Times",
+"Não categorizados": "Uncategorized",
+"Não foi possível carregar.": "Could not load.",
+"Não é o mês atual": "Not the current month",
+"Não é preciso saber a senha atual — só o administrador acessa esta tela.": "No need to know the current password — only the administrator can open this screen.",
+"Número de parcelas": "Number of instalments",
+"O que avisar": "What to warn about",
+"O que o banco mandou e ninguém soube classificar. Estão agrupados por descrição: você resolve o grupo inteiro de uma vez e, marcando": "What the bank sent and nobody could classify. They are grouped by description: you handle the whole group at once and, by ticking",
+"O saldo inicial desta conta é": "The starting balance of this account is",
+"O valor informado acima é": "The amount entered above is",
+"OK": "OK",
+"Observação": "Note",
+"Observação (opcional)": "Note (optional)",
+"Ocultar valores": "Hide amounts",
+"Open Finance": "Open Finance",
+"Ordem padrão": "Default order",
+"Orçamento mensal por categoria": "Monthly budget by category",
+"Outro": "Other",
+"Outros custos": "Other costs",
+"Pago": "Paid",
+"Parcela atual (ex: 3)": "Current instalment (e.g. 3)",
+"Parcelar": "Split into instalments",
+"Parcelas futuras": "Upcoming instalments",
+"Patrimônio": "Net worth",
+"Patrimônio por mês": "Net worth by month",
+"Pelo navegador, os avisos só aparecem enquanto o FinanCerto está aberto — é uma limitação de quem roda o próprio servidor, sem um serviço de push. Para receber com o celular guardado, use o": "In the browser, alerts only appear while FinanCerto is open — a limitation of self-hosting without a push service. To get them with your phone put away, use the",
+"Pendente": "Pending",
+"Permitir notificações": "Allow notifications",
+"Por quantos meses?": "For how many months?",
+"Posições": "Holdings",
+"Prazo (opcional)": "Deadline (optional)",
+"Prefixado": "Fixed rate",
+"Preço em R$": "Price in R$",
+"Proventos": "Income",
+"Próximo mês": "Next month",
+"Puxa o extrato do banco automaticamente, pela Pluggy. Nada vira lançamento sozinho: o que chega fica esperando você conferir.": "Pulls your bank statement automatically, through Pluggy. Nothing becomes an entry on its own: what arrives waits for you to check it.",
+"Quantidade": "Quantity",
+"Quantos backups manter?": "How many backups to keep?",
+"Quem faz parte": "Who is in it",
+"Recebidos": "Received",
+"Receita": "Income",
+"Receitas & Despesas": "Income & Expenses",
+"Receitas &amp; Despesas": "Income &amp; Expenses",
+"Recolher menu": "Collapse menu",
+"Registrar compra": "Record purchase",
+"Registrar provento": "Record income",
+"Regras": "Rules",
+"Reit (EUA)": "REIT (US)",
+"Remover foto": "Remove photo",
+"Renda": "Income",
+"Renda e descontos por mês": "Earnings and deductions by month",
+"Renda fixa": "Fixed income",
+"Rendimento": "Yield",
+"Rentabilidade": "Return",
+"Rentabilidade comparada com o CDI": "Return compared with CDI",
+"Rentabilidade mês a mês": "Return month by month",
+"Reorganize a distribuição dos ativos para alcançar 100%.": "Rebalance the asset mix so it adds up to 100%.",
+"Repetir todo mês (recorrente)": "Repeat every month (recurring)",
+"Restaurar de um arquivo": "Restore from a file",
+"Resumo": "Summary",
+"Resumo por conta": "Summary by account",
+"Rodam da menor prioridade para a maior, e a primeira que casar decide. Elas olham a descrição do lançamento, que é onde está o nome do estabelecimento.": "They run from lowest priority to highest, and the first match decides. They look at the entry description, which is where the merchant name is.",
+"Sair": "Sign out",
+"Sair do demo": "Leave demo",
+"Saiu": "Money out",
+"Saldo inicial (R$)": "Starting balance (R$)",
+"Saldo inicial:": "Starting balance:",
+"Saldo negativo em alguma conta": "Negative balance in some account",
+"Salvar": "Save",
+"Salvar alterações": "Save changes",
+"Salvar categoria": "Save category",
+"Salvar configuração": "Save settings",
+"Salvar nova senha": "Save new password",
+"Selecione": "Select",
+"Sem conta": "No account",
+"Sem conta vinculada": "No linked account",
+"Sem lançamentos efetivados nesse período.": "No settled entries in this period.",
+"Sempre": "Always",
+"Senha": "Password",
+"Senha atual": "Current password",
+"Sobrou": "Left over",
+"Soma dos itens": "Sum of items",
+"Somente leitura": "Read-only",
+"Somente leitura (não pode editar, só ver)": "Read-only (can view, cannot edit)",
+"Stock (EUA)": "Stock (US)",
+"Sua conta": "Your account",
+"Só o administrador (primeiro usuário criado) vê e altera isso. Quando ligado, a aba Empréstimos aparece pra todos os usuários.": "Only the administrator (the first user created) sees and changes this. When on, the Loans tab appears for every user.",
+"Taxa (ex: 110 ou 6)": "Rate (e.g. 110 or 6)",
+"Tendência (últimos 6 meses)": "Trend (last 6 months)",
+"Tesouro IPCA+": "Tesouro IPCA+",
+"Tesouro Prefixado": "Tesouro Prefixado",
+"Tesouro Selic": "Tesouro Selic",
+"Testar notificação": "Test notification",
+"Tipo de ativo": "Asset type",
+"Tipo de investimento": "Investment type",
+"Tipo de pagamento": "Payment type",
+"Toda semana": "Every week",
+"Todas categorias": "All categories",
+"Todas contas": "All accounts",
+"Todo dia": "Every day",
+"Todo mês": "Every month",
+"Todos": "All",
+"Todos status": "All statuses",
+"Total": "Total",
+"Total Despesas": "Total expenses",
+"Total Renda": "Total income",
+"Total da carteira": "Portfolio total",
+"Total de 12 meses": "12-month total",
+"Total de parcelas (ex: 12)": "Total instalments (e.g. 12)",
+"Transferir": "Transfer",
+"Transferência": "Transfer",
+"Transferência entre contas": "Transfer between accounts",
+"Troca temporariamente seus dados por um conjunto fictício, para mostrar o app a outras pessoas sem expor suas contas. Seus dados reais continuam intactos.": "Temporarily swaps your data for a made-up set, so you can show the app to other people without exposing your accounts. Your real data stays untouched.",
+"Trocar senha": "Change password",
+"Trocar senha de": "Change password for",
+"Usuário (login)": "Username",
+"Valor (R$)": "Amount (R$)",
+"Valor alvo (R$)": "Target amount (R$)",
+"Valor bruto anunciado (R$)": "Gross amount announced (R$)",
+"Valor da parcela (R$)": "Instalment amount (R$)",
+"Valor em R$": "Amount in R$",
+"Valor líquido": "Net amount",
+"Valor parcela": "Instalment",
+"Valor total": "Total amount",
+"Valor total da despesa (R$)": "Total expense amount (R$)",
+"Vencimento / data": "Due date",
+"Venda": "Sell",
+"Ver o código-fonte no GitHub — software livre sob AGPL-3.0": "View the source on GitHub — free software under AGPL-3.0",
+"Ver todas as contas": "See all accounts",
+"Verificando…": "Checking…",
+"Você está na versão — e já existe a —.": "You are on version — and — is already out.",
+"Voltar para hoje": "Back to today",
+"agora há pouco": "just now",
+"app do Android": "Android app",
+"ativa": "active",
+"calculado a partir do extrato": "calculated from the statement",
+"criar regra": "create rule",
+"criar regra para": "create a rule for",
+"do banco": "from the bank",
+"do banco. Por isso não dá para editar aqui — se editasse, o saldo do app deixaria de bater com o do banco.": "from the bank. That is why it cannot be edited here — if it were, the app balance would stop matching the bank.",
+"em dia": "up to date",
+"ex: 6": "e.g. 6",
+"ex: esposa": "e.g. partner",
+"lançamento": "entry",
+"lançamentos": "entries",
+"mínimo 4 caracteres": "at least 4 characters",
+"repita a nova senha": "repeat the new password",
+"sincronizada": "synced",
+"· entradas, saídas e saldo acumulado dia a dia": "· money in, money out and running balance day by day",
+"· toque numa coluna para ver o detalhe": "· tap a bar to see the detail",
+"É uma previsão (será substituída quando eu importar o holerite)": "This is a forecast (it will be replaced when I import the payslip)",
+"— não usar ainda —": "— not in use yet —",
+"— é transferência entre contas —": "— it is a transfer between accounts —"
+}};
+
+let idiomaAtual = (() => {
+  try { return localStorage.getItem("idioma") || "pt"; } catch (e) { return "pt"; }
+})();
+
+function t(texto){
+  if (idiomaAtual === "pt") return texto;
+  const tabela = TRADUCOES[idiomaAtual];
+  return (tabela && tabela[texto]) || texto;
+}
+
+function aplicarIdioma(){
+  document.documentElement.lang = idiomaAtual === "en" ? "en" : "pt-BR";
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach(el => {
+    el.title = t(el.dataset.i18nTitle);
+  });
+  document.querySelectorAll("[data-idioma]").forEach(b => {
+    b.classList.toggle("ativo", b.dataset.idioma === idiomaAtual);
+  });
+}
+
+function trocarIdioma(novo){
+  idiomaAtual = novo;
+  try { localStorage.setItem("idioma", novo); } catch (e) {}
+  aplicarIdioma();
+  // O que a tela desenha por JS não tem data-i18n; recarregar é o jeito
+  // honesto de traduzir tudo sem espalhar t() por cada template.
+  if (typeof carregarTudo === "function") carregarTudo();
+}
+
 const ICO = {
   lua: svgIco("lua"), sol: svgIco("sol"),
   olho: svgIco("olho"), olhoFechado: svgIco("olho-fechado"),
@@ -2740,7 +3176,7 @@ function tempoDesde(iso){
     const min = Math.round((Date.now() - d.getTime()) / 60000);
     // O selo ao lado já diz "sincronizada"; repetir a palavra aqui ficava
     // "sincronizada · sincronizado há 3h".
-    if (min < 60) return "agora há pouco";
+    if (min < 60) return t("agora há pouco");
     const h = Math.round(min / 60);
     if (h < 24) return `há ${h}h`;
     const dias = Math.round(h / 24);
@@ -3495,7 +3931,7 @@ function renderizarMoneyMap(){
 
   if (!mmDados || (!mmDados.receitas.length && !mmDados.despesas.length)){
     resumo.innerHTML = "";
-    alvo.innerHTML = `<div class="mm-vazio">Sem lançamentos efetivados nesse período.</div>`;
+    alvo.innerHTML = `<div class="mm-vazio">${t("Sem lançamentos efetivados nesse período.")}</div>`;
     return;
   }
 
@@ -3506,15 +3942,15 @@ function renderizarMoneyMap(){
 
   resumo.innerHTML = `
     <div>
-      <div class="rot"><span class="mm-ponto" style="background:${entra}"></span> Entrou</div>
+      <div class="rot"><span class="mm-ponto" style="background:${entra}"></span> ${t("Entrou")}</div>
       <div class="val" style="color:${entra}">${formatMoeda(mmDados.total_receita)}</div>
     </div>
     <div>
-      <div class="rot"><span class="mm-ponto" style="background:${sai}"></span> Saiu</div>
+      <div class="rot"><span class="mm-ponto" style="background:${sai}"></span> ${t("Saiu")}</div>
       <div class="val" style="color:${sai}">${formatMoeda(mmDados.total_despesa)}</div>
     </div>
     <div>
-      <div class="rot">Sobrou</div>
+      <div class="rot">${t("Sobrou")}</div>
       <div class="val" style="color:${saldo >= 0 ? entra : sai}">${formatMoeda(saldo)}</div>
     </div>`;
 
@@ -3606,6 +4042,11 @@ function desenharSankey(d, corEntra, corSai){
   }
 }
 
+document.querySelectorAll("[data-idioma]").forEach(b => {
+  b.addEventListener("click", (e) => { e.stopPropagation(); trocarIdioma(b.dataset.idioma); });
+});
+aplicarIdioma();
+
 document.getElementById("mmPeriodos").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-p]");
   if (!b) return;
@@ -3659,7 +4100,7 @@ function renderizarNaoCat(){
     return;
   }
   if (!naoCatCache.grupos.length){
-    el.innerHTML = `<div class="empty">Nada pendente — tudo classificado.</div>`;
+    el.innerHTML = `<div class="empty">${t("Nada pendente — tudo classificado.")}</div>`;
     return;
   }
 
@@ -3668,25 +4109,25 @@ function renderizarNaoCat(){
       <div class="grupo-nc-topo">
         <span class="grupo-nc-desc">${escapeHtml(g.descricao)}</span>
         <span class="grupo-nc-meta">
-          ${g.quantidade} lançamento${g.quantidade > 1 ? "s" : ""}
+          ${g.quantidade} ${g.quantidade > 1 ? t("lançamentos") : t("lançamento")}
           · ${formatMoeda(g.total)}
           ${g.primeira && g.primeira !== g.ultima
             ? " · de " + formatData(g.primeira) + " a " + formatData(g.ultima)
             : (g.ultima ? " · " + formatData(g.ultima) : "")}
-          ${g.do_banco ? " · do banco" : ""}
+          ${g.do_banco ? " · " + t("do banco") : ""}
         </span>
       </div>
       <div class="grupo-nc-form">
         <select id="gnc-cat-${i}">
-          <option value="">Escolha a categoria...</option>
+          <option value="">${t("Escolha a categoria...")}</option>
           ${opcoesCategoria(g.tipo === "renda" ? "receita" : "despesa")}
-          <option value="__transf__">— é transferência entre contas —</option>
+          <option value="__transf__">${t("— é transferência entre contas —")}</option>
         </select>
         <label class="grupo-nc-regra">
           <input type="checkbox" id="gnc-regra-${i}" checked>
-          criar regra para <code>${escapeHtml(g.sugestao)}</code>
+          ${t("criar regra para")} <code>${escapeHtml(g.sugestao)}</code>
         </label>
-        <button type="button" onclick="classificarGrupo(${i})">Salvar</button>
+        <button type="button" onclick="classificarGrupo(${i})">${t("Salvar")}</button>
       </div>
     </div>
   `).join("");
@@ -3723,7 +4164,7 @@ function renderizarRegras(){
   const el = document.getElementById("listaRegras");
   if (!el) return;
   if (!regrasCache.length){
-    el.innerHTML = `<div class="empty">Nenhuma regra ainda.</div>`;
+    el.innerHTML = `<div class="empty">${t("Nenhuma regra ainda.")}</div>`;
     return;
   }
   el.innerHTML = regrasCache.map(r => {
@@ -3842,8 +4283,8 @@ function renderizarOpenFinance(){
 
   elCred.innerHTML = `<div class="of-cartao">
       <div class="of-cartao-topo">
-        <span class="of-banco">Conta Pluggy conectada</span>
-        <span class="of-selo ok">ativa</span>
+        <span class="of-banco">${t("Conta Pluggy conectada")}</span>
+        <span class="of-selo ok">${t("ativa")}</span>
         <span class="of-conta-sub">${escapeHtml(ofCredCache.client_id || "")}</span>
         ${ofCredCache.pode_configurar
           ? `<div class="of-cartao-acoes">
@@ -3879,9 +4320,9 @@ function renderizarOpenFinance(){
               · ${escapeHtml(c.numero || "")} · ${formatMoeda(c.saldo)}</div>
           </div>
           <select onchange="vincularContaOF(${c.id}, this.value)">
-            <option value=""${atual===""?" selected":""}>— não usar ainda —</option>
+            <option value=""${atual===""?" selected":""}>${t("— não usar ainda —")}</option>
             ${opcoesConta}${opcoesCartao}
-            <option value="ignorar"${atual==="ignorar"?" selected":""}>Ignorar esta conta</option>
+            <option value="ignorar"${atual==="ignorar"?" selected":""}>${t("Ignorar esta conta")}</option>
           </select>
         </div>`;
     }).join("");
@@ -3903,7 +4344,7 @@ function renderizarOpenFinance(){
       Remover a conexão apaga só o vínculo aqui. Para <b>revogar de verdade</b> o
       compartilhamento, use o aplicativo do seu banco — é lá que o consentimento vive.
       <div style="margin-top:9px;">
-        <button type="button" class="secondary" onclick="ativarWebhookOF()">Ativar avisos na hora</button>
+        <button type="button" class="secondary" onclick="ativarWebhookOF()">${t("Ativar avisos na hora")}</button>
         <span id="ofWebhookEstado" style="margin-left:8px;"></span>
       </div>
     </div>`;
@@ -4038,7 +4479,7 @@ function renderizarContas(){
         <div class="conta-identidade">
           <div class="conta-nome">${escapeHtml(c.nome)}</div>
           <div class="conta-sub">${c.sincronizada
-              ? `<span class="selo-sinc" title="Atualizada pelo Open Finance${c.extrato_ate ? " · lançamentos até " + escapeHtml(formatData(c.extrato_ate)) : ""}"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>sincronizada</span>`
+              ? `<span class="selo-sinc" title="Atualizada pelo Open Finance${c.extrato_ate ? " · lançamentos até " + escapeHtml(formatData(c.extrato_ate)) : ""}"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>${t("sincronizada")}</span>`
                 + (c.ultimo_sync ? " · " + tempoDesde(c.ultimo_sync) : "")
               : "Saldo inicial: " + formatMoeda(c.saldo_inicial)}${usuariosCache.length > 1 && c.usuario_nome ? " · " + escapeHtml(c.usuario_nome) : ""}</div>
         </div>
@@ -7640,7 +8081,7 @@ async function conferirVersaoApp(){
     // No navegador não há APK: dizer isso é melhor que deixar um traço solto,
     // porque explica por que não há número de versão para mostrar.
     const linha = document.getElementById("menuVersao");
-    if (linha) linha.textContent = "Aberto pelo navegador";
+    if (linha) linha.textContent = t("Aberto pelo navegador");
     return;
   }
   // `versao()` foi adicionada à ponte depois do primeiro APK; num app antigo
@@ -7663,7 +8104,7 @@ async function conferirVersaoApp(){
     if (instalada){
       linha.innerHTML = dados.desatualizado
         ? `App ${escapeHtml(instalada)} · <span class="desatualizada">a ${escapeHtml(dados.versao_atual)} já saiu</span>`
-        : `App ${escapeHtml(instalada)} · em dia`;
+        : `App ${escapeHtml(instalada)} · ${t("em dia")}`;
     } else {
       linha.textContent = `App instalado · versão desconhecida (publicada: ${dados.versao_atual})`;
     }
@@ -7680,7 +8121,7 @@ async function conferirVersaoApp(){
 
   const banner = document.getElementById("updateBanner");
   document.getElementById("updateTitulo").textContent =
-    dados.obrigatorio ? "Atualização necessária" : "Atualização disponível";
+    dados.obrigatorio ? t("Atualização necessária") : t("Atualização disponível");
   document.getElementById("updateDica").textContent = instalada
     ? `Você está na ${instalada} e já existe a ${dados.versao_atual}.`
       + (dados.notas ? " " + dados.notas : "")
@@ -7693,7 +8134,7 @@ async function conferirVersaoApp(){
     try { return typeof window.FinanCertoApp.baixarEInstalar === "function"; }
     catch (e) { return false; }
   })();
-  btn.textContent = podeBaixar ? "Baixar e instalar" : "Baixar";
+  btn.textContent = podeBaixar ? t("Baixar e instalar") : t("Baixar");
   btn.onclick = () => {
     if (podeBaixar){
       // dados.apk e o arquivo; dados.url e a pagina. Baixar a pagina traria HTML.
