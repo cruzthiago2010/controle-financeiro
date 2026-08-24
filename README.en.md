@@ -384,8 +384,6 @@ Finance off, nothing that already came in is lost.
   attachment name into another path, and checks both are refused
 - `.github/workflows/` — CI (ruff, migrations, image build, attachment tests)
   and CodeQL
-- `umbrel-app.yml` — optional manifest, in case you want to publish it as a
-  formal app in an Umbrel community app store
 
 **The code and the comments are in Portuguese.** Only the interface is
 translated, through a lookup table keyed by the Portuguese text.

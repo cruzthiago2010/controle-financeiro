@@ -389,8 +389,6 @@ Open Finance, nada do que já entrou se perde.
   nome de anexo virar outro caminho, e confere que as duas coisas são recusadas
 - `.github/workflows/` — CI (ruff, migrations, build da imagem e o teste dos
   anexos) e CodeQL
-- `umbrel-app.yml` — manifesto opcional, caso queira publicar como app
-  formal numa community app store do Umbrel
 
 ## Trocar a porta
 
