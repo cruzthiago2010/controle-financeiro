@@ -376,7 +376,10 @@ Finance off, nothing that already came in is lost.
   your own key.
 - `install.sh` — one-command installer (checks Docker, clones, generates the
   `.env` with a random password, and starts the container)
-- `.github/workflows/` — CI (ruff, migrations, image build) and CodeQL
+- `testes/teste_anexos.py` — checks payslip-PDF reading and receipt OCR with
+  files generated on the fly; runs from inside the container
+- `.github/workflows/` — CI (ruff, migrations, image build, attachment tests)
+  and CodeQL
 - `umbrel-app.yml` — optional manifest, in case you want to publish it as a
   formal app in an Umbrel community app store
 

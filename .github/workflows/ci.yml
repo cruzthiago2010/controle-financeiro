@@ -72,6 +72,15 @@ jobs:
           docker logs financerto-ci
           exit 1
 
+      - name: Holerite em PDF e nota fiscal por OCR
+        # Roda de dentro do container, onde o tesseract e as bibliotecas de
+        # imagem já existem. É o que pega uma atualização de dependência que
+        # passa no import e só quebra no arquivo de verdade.
+        run: |
+          docker cp testes/teste_anexos.py financerto-ci:/app/teste_anexos.py
+          docker exec -e SENHA=senha-de-teste-do-ci financerto-ci \
+            python /app/teste_anexos.py
+
       - name: Log do container
         if: always()
         run: docker logs financerto-ci || true

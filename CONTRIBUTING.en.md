@@ -46,6 +46,7 @@ python app.py            # needs tesseract-ocr and libzbar0 on the system
 | `static/login.html`, `static/registro.html` | login and public sign-up screens |
 | `migrations/*.sql` | schema changes, applied in order at startup |
 | `android/` | Android app (WebView with fingerprint, notifications, widget) |
+| `testes/` | smoke test for the routes that open uploaded files |
 | `docs/screenshots/` | captures used in the README |
 
 There is no frontend build step: plain HTML, CSS and JavaScript, served as-is.
@@ -79,8 +80,19 @@ start it with `docker compose up` and nothing else.
    mobile and installed as a PWA.
 4. Describe **what changes for the person using it**, not only what changed in
    the file. For visual changes, attach a before/after capture.
-5. CI runs `ruff`, compiles the Python and builds the Docker image. It has to
-   pass.
+5. CI runs `ruff`, compiles the Python, builds the Docker image and runs the
+   attachment tests. They have to pass.
+
+To run the attachment tests locally, with the container already up:
+
+```bash
+docker compose cp testes/teste_anexos.py controle-financeiro:/app/teste_anexos.py
+docker compose exec -e SENHA=<your password> controle-financeiro python /app/teste_anexos.py
+```
+
+It generates a payslip and a receipt on the fly and checks the values read
+back — this is the test that catches a Pillow or pypdf update which passes the
+`import` and only breaks on a real file.
 
 Large pull requests take longer to review. If the change is big, split it into
 parts that stand on their own.

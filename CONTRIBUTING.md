@@ -46,6 +46,7 @@ python app.py            # precisa de tesseract-ocr e libzbar0 no sistema
 | `static/login.html`, `static/registro.html` | telas de entrada e de cadastro público |
 | `migrations/*.sql` | mudanças de schema, aplicadas em ordem no start |
 | `android/` | app Android (WebView com digital, notificação e widget) |
+| `testes/` | teste de fumaça das rotas que abrem arquivo enviado |
 | `docs/screenshots/` | capturas usadas no README |
 
 Não há etapa de build no frontend: é HTML, CSS e JavaScript servidos direto.
@@ -80,7 +81,19 @@ Manter assim é proposital — quem clona precisa conseguir subir com um
    telefone e instalado como PWA.
 4. Descreva **o que muda para quem usa**, não só o que mudou no arquivo. Se for
    visual, anexe uma captura antes/depois.
-5. O CI roda `ruff`, compila o Python e monta a imagem Docker. Precisa passar.
+5. O CI roda `ruff`, compila o Python, monta a imagem Docker e roda o teste
+   dos anexos. Precisa passar.
+
+Para rodar o teste dos anexos na sua máquina, com o container já de pé:
+
+```bash
+docker compose cp testes/teste_anexos.py controle-financeiro:/app/teste_anexos.py
+docker compose exec -e SENHA=<a sua senha> controle-financeiro python /app/teste_anexos.py
+```
+
+Ele monta um holerite e um cupom fiscal na hora e confere os valores lidos —
+é o teste que pega uma atualização de Pillow ou pypdf que passa no `import` e
+só quebra no arquivo de verdade.
 
 Pull request grande demora a ser revisado. Se a mudança é grande, quebre em
 partes que façam sentido sozinhas.

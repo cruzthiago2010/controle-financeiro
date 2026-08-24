@@ -381,7 +381,10 @@ Open Finance, nada do que já entrou se perde.
   assine com a sua própria chave.
 - `install.sh` — instalador de um comando (confere o Docker, clona, gera o
   `.env` com senha sorteada e sobe o container)
-- `.github/workflows/` — CI (ruff, migrations e build da imagem) e CodeQL
+- `testes/teste_anexos.py` — confere a leitura do holerite em PDF e do cupom
+  fiscal por OCR, com arquivos montados na hora; roda de dentro do container
+- `.github/workflows/` — CI (ruff, migrations, build da imagem e o teste dos
+  anexos) e CodeQL
 - `umbrel-app.yml` — manifesto opcional, caso queira publicar como app
   formal numa community app store do Umbrel
 
