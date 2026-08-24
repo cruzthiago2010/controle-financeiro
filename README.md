@@ -2,6 +2,10 @@
   <img src="static/logo-financerto.svg" width="96" alt="FinanCerto">
 </p>
 
+<p align="center">
+  <b>Português</b> · <a href="README.en.md">English</a>
+</p>
+
 # FinanCerto — Self-hosted
 
 App de controle financeiro mensal (renda, despesas, cartões),
