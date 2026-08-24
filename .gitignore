@@ -34,3 +34,9 @@ NOTAS-PESSOAIS.md
 # Contexto de trabalho do Claude — repositório é público
 CLAUDE.md
 .claude/
+
+# Scripts do fluxo de manutenção, não do app — quem só quer hospedar sobe com
+# "docker compose up -d --build", e o install.sh já faz isso por ele. Ficam no
+# disco de quem publica, fora do repositório público.
+publicar.sh
+publicar-staging.sh
