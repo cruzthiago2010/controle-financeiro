@@ -12,7 +12,13 @@
 <meta name="theme-color" content="#141a21">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<!-- O Chart.js vem do próprio servidor. Buscá-lo num CDN contradizia a
+     promessa do app: cada abertura de tela avisava a Cloudflare que aquele
+     endereço estava usando o FinanCerto, e uma instalação sem internet (ou
+     com o CDN fora do ar) ficava sem gráfico nenhum. De quebra, um script
+     de terceiro numa página que mostra saldo e extrato é confiança demais
+     depositada em quem não faz parte do trato. -->
+<script src="/static/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#141a21; --card:#1c252e; --card2:#252f3a; --card3:#2c3742;
@@ -3199,9 +3205,19 @@ function corHash(str){
   for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
   return PALETA_CORES[hash % PALETA_CORES.length];
 }
+// A cor da categoria vem do banco, onde foi gravada por quem usa o app, e vai
+// direto para dentro de um atributo style em mais de dez lugares desta tela.
+// Escapar em cada um seria uma regra para lembrar toda vez, e basta esquecer
+// uma; conferir aqui resolve todos de uma vez. O que não tem cara de cor não é
+// cor, e o desenho cai na paleta que o app já gera a partir do nome.
+const RE_COR = /^#[0-9a-fA-F]{3,8}$/;
+function corSegura(cor){
+  const c = cor == null ? "" : String(cor).trim();
+  return RE_COR.test(c) ? c : null;
+}
 function corPara(str){
   if (!str) return null;
-  return categoriaCorCache[str] || corHash(str);
+  return corSegura(categoriaCorCache[str]) || corHash(str);
 }
 
 // Logo (ícone oficial do app do banco, em static/logos/) e cor de marca, pra
@@ -3252,21 +3268,27 @@ function corDoBanco(nome){
 // iniciais sobre a cor. onerror volta pras iniciais se a imagem sumir.
 function marcaHTML(nome, classe){
   const b = bancoDe(nome);
-  const cor = (b && b.cor) || corPara(nome) || "#00a76f";
+  const cor = corSegura(b && b.cor) || corPara(nome) || "#00a76f";
   const inicial = (nome || "?").trim().slice(0, 2).toUpperCase();
   if (b && b.logo){
     return `<div class="${classe} com-logo" style="background:${cor}">
       <img src="/static/logos/${b.logo}.png" alt="${escapeHtml(nome)}" loading="lazy"
-           onerror="this.parentNode.classList.remove('com-logo'); this.replaceWith(document.createTextNode('${escapeHtml(inicial)}'))">
+           data-inicial="${escapeHtml(inicial)}"
+           onerror="this.parentNode.classList.remove('com-logo'); this.replaceWith(document.createTextNode(this.dataset.inicial))">
     </div>`;
   }
   return `<div class="${classe}" style="background:${cor}">${escapeHtml(inicial)}</div>`;
 }
 
+// O caminho antigo (textContent num div, e depois ler o innerHTML) escapa
+// & < >, mas devolve aspas intactas — e boa parte do que estas telas montam é
+// interpolada dentro de atributo, onde a aspa é justamente o que fecha o valor
+// e abre espaço para outro atributo. Nome de categoria e cor de categoria são
+// escolhidos por quem usa o app, então a troca aqui é explícita e cobre as duas
+// aspas além dos sinais de tag.
+const ESCAPES_HTML = {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"};
 function escapeHtml(str){
-  const div = document.createElement("div");
-  div.textContent = str == null ? "" : String(str);
-  return div.innerHTML;
+  return str == null ? "" : String(str).replace(/[&<>"']/g, c => ESCAPES_HTML[c]);
 }
 
 function showToast(msg, tipo){
@@ -3721,8 +3743,9 @@ function atualizarPreviewRecorrencia(){
   const vezes = Math.max(Number(document.getElementById("recVezesInput").value) || 2, 2);
   const ultimo = somarMesesStr(mesAtual, vezes - 1);
   document.getElementById("recPreview").innerHTML =
-    `<div class="linha"><span>Repete</span><span>${vezes}x</span></div>` +
-    `<div class="linha total"><span>De ${formatMes(mesAtual)} até</span><span>${formatMes(ultimo)}</span></div>`;
+    `<div class="linha"><span>Repete</span><span>${Number(vezes)}x</span></div>` +
+    `<div class="linha total"><span>De ${escapeHtml(formatMes(mesAtual))} até</span>` +
+    `<span>${escapeHtml(formatMes(ultimo))}</span></div>`;
 }
 function somarMesesStr(mes, n){
   let atual = mes;
@@ -4483,9 +4506,11 @@ function renderizarOpenFinance(){
           <span class="of-banco">${escapeHtml(it.conector_nome || "Banco")}</span>
           <span class="of-selo ${problema ? "atencao" : "ok"}">${escapeHtml(it.status || "—")}</span>
           <div class="of-cartao-acoes">
-            <button class="icon" type="button" onclick="sincronizarItemOF('${it.item_id}')"
+            <button class="icon" type="button" data-item="${escapeHtml(it.item_id)}"
+                    onclick="sincronizarItemOF(this.dataset.item)"
                     title="Sincronizar">${ICO.restaurar || ICO.repetir || "↻"}</button>
-            <button class="icon danger" type="button" onclick="removerItemOF('${it.item_id}')"
+            <button class="icon danger" type="button" data-item="${escapeHtml(it.item_id)}"
+                    onclick="removerItemOF(this.dataset.item)"
                     title="Remover conexão">${ICO.x}</button>
           </div>
         </div>
@@ -4742,7 +4767,8 @@ async function excluirConta(id){
 async function carregarLancamentos(){
   document.getElementById("listaRenda").innerHTML = `<div class="loading-msg">Carregando...</div>`;
   document.getElementById("listaDespesa").innerHTML = `<div class="loading-msg">Carregando...</div>`;
-  document.getElementById("btnExportarCsv").href = `${API}/lancamentos/exportar-csv?mes=${mesAtual}`;
+  document.getElementById("btnExportarCsv").href =
+    `${API}/lancamentos/exportar-csv?mes=${encodeURIComponent(mesAtual)}`;
   document.getElementById("csvMesAtual").textContent = formatMes(mesAtual);
   try {
     const [lancRes] = await Promise.all([
@@ -5265,14 +5291,22 @@ async function carregarDashboard(){
     catEl.innerHTML = cats.map(c => {
       const pct = (c.total / totalCat) * 100;
       const cor = corPara(c.categoria) || "#00a76f";
-      return `<div class="rank-linha clicavel" onclick="abrirDetalheCategoria('${escapeHtml(c.categoria).replace(/'/g, "\\'")}')">
+      return `<div class="rank-linha clicavel" data-categoria="${escapeHtml(c.categoria)}">
         <div class="rank-topo">
-          <span class="rank-nome"><i class="rank-ponto" style="background:${cor}"></i>${escapeHtml(c.categoria)}</span>
+          <span class="rank-nome"><i class="rank-ponto" style="background:${escapeHtml(cor)}"></i>${escapeHtml(c.categoria)}</span>
           <span class="rank-valor">${formatMoeda(c.total)} <span class="rank-pct">${pct.toFixed(1).replace('.', ',')}%</span></span>
         </div>
-        <div class="rank-trilha"><div class="rank-barra" style="width:${pct.toFixed(2)}%; background:${cor}"></div></div>
+        <div class="rank-trilha"><div class="rank-barra" style="width:${pct.toFixed(2)}%; background:${escapeHtml(cor)}"></div></div>
       </div>`;
     }).join("");
+    // O nome da categoria é digitado por quem usa o app. Montar um onclick com
+    // ele colava texto de fora dentro de código: o navegador desescapa o
+    // atributo antes de executá-lo, então nenhum escape de HTML segurava — uma
+    // categoria chamada `\'); alert(1); //` saía do string e virava comando. O
+    // nome agora viaja num data-attribute, que é dado, e o clique é ouvido aqui.
+    catEl.querySelectorAll(".rank-linha").forEach(linha => {
+      linha.addEventListener("click", () => abrirDetalheCategoria(linha.dataset.categoria));
+    });
   }
 
   // Gráfico de tendência (últimos meses)
@@ -6645,8 +6679,8 @@ function criarLinhaAlocacao(classe, valor){
   div.className = "alocacao-linha";
   div.dataset.classe = classe;
   div.innerHTML = `
-    <span class="alocacao-dot" style="background:${cor};"></span>
-    <span class="alocacao-nome">${ROTULOS_CLASSE_INVESTIMENTO[classe] || classe}</span>
+    <span class="alocacao-dot" style="background:${escapeHtml(cor)};"></span>
+    <span class="alocacao-nome">${escapeHtml(ROTULOS_CLASSE_INVESTIMENTO[classe] || classe)}</span>
     <div class="alocacao-stepper">
       <button type="button" class="alocacao-menos">−</button>
       <input type="number" class="alocacao-input" data-classe="${classe}" min="0" max="100" step="1" value="${valor}">

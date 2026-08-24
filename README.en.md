@@ -360,6 +360,8 @@ Finance off, nothing that already came in is lost.
 - `static/login.html` — sign-in screen
 - `static/registro.html` — public sign-up screen (creates a new household)
 - `static/manifest.json`, `static/sw.js`, `static/icon*.svg` — PWA files
+- `static/chart.umd.min.js` — Chart.js 4.4.1 (MIT), served by the app itself:
+  charts work offline and no CDN learns who opened the screen
 - `Dockerfile` / `docker-compose.yml` — packaging (includes `tesseract-ocr` for
   receipt scanning)
 - `.env.example` — a template of the environment variables accepted; copy it to

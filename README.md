@@ -364,6 +364,8 @@ Open Finance, nada do que já entrou se perde.
 - `static/login.html` — tela de login
 - `static/registro.html` — tela de cadastro público (cria uma casa nova)
 - `static/manifest.json`, `static/sw.js`, `static/icon*.svg` — arquivos do PWA
+- `static/chart.umd.min.js` — Chart.js 4.4.1 (MIT), servido pelo próprio app:
+  os gráficos funcionam sem internet e nenhum CDN fica sabendo quem abriu a tela
 - `Dockerfile` / `docker-compose.yml` — empacotamento (inclui `tesseract-ocr`
   para a leitura de nota fiscal)
 - `.env.example` — modelo das variáveis de ambiente aceitas; copie para

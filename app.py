@@ -55,6 +55,19 @@ BRAPI_TOKEN = os.environ.get("BRAPI_TOKEN", "")
 EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 
+# A cor escolhida para uma categoria ou uma meta é gravada como texto e a
+# tela a coloca dentro de um atributo style. Um valor com aspa fecharia o
+# atributo e abriria outro no lugar, então o que não for uma cor deixa de
+# ser gravado como se fosse — o app volta a decidir a cor sozinho.
+RE_COR = re.compile(r"^#[0-9A-Fa-f]{3,8}$")
+
+
+def cor_valida(cor):
+    cor = (cor or "").strip()
+    return cor if RE_COR.match(cor) else None
+
+
+
 def caminho_em(pasta, nome):
     """Devolve o caminho de `nome` dentro de `pasta`, ou None se ele escapar.
 
@@ -1405,7 +1418,7 @@ def criar_categoria():
     data = request.get_json(force=True)
     nome = data.get("nome", "").strip()
     tipo = data.get("tipo")
-    cor = data.get("cor") or None
+    cor = cor_valida(data.get("cor"))
     if not nome or tipo not in ("receita", "despesa"):
         return jsonify({"erro": msg("nome e tipo (receita/despesa) são obrigatórios")}), 400
     conn = get_db()
@@ -1422,7 +1435,7 @@ def criar_categoria():
 def editar_categoria(item_id):
     data = request.get_json(force=True)
     nome = data.get("nome", "").strip()
-    cor = data.get("cor") or None
+    cor = cor_valida(data.get("cor"))
     if not nome:
         return jsonify({"erro": msg("nome é obrigatório")}), 400
     conn = get_db()
@@ -2340,7 +2353,7 @@ def criar_meta():
         "estado, inicio, icone, cor) VALUES (?, ?, 0, ?, ?, ?, 'ativa', ?, ?, ?)",
         (nome, valor_alvo, prazo, datetime.now().isoformat(), uid(),
          datetime.now().strftime("%Y-%m"), (data.get("icone") or "").strip() or None,
-         (data.get("cor") or "").strip() or None),
+         cor_valida(data.get("cor"))),
     )
     conn.commit()
     conn.close()
@@ -2506,6 +2519,8 @@ CLASSES_COM_TICKER = {"acao", "fii", "etf", "bdr", "cripto", "stock", "reit", "e
 # as fontes usam: B3 (PETR4, MXRF11), CoinGecko (bitcoin, usd-coin) e
 # americanos com ponto ou hífen (BRK.B, BRK-B).
 RE_TICKER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
+
+
 
 
 def ticker_valido(ticker):
