@@ -6864,6 +6864,86 @@ def classificar_nao_categorizados():
         conn.close()
 
 
+# ---------------- Money Map ----------------
+#
+# De onde o dinheiro veio e para onde foi, num período. É um fluxo, não uma
+# série temporal nem um ranking — por isso Sankey e não barra: o que interessa
+# é a proporção de cada origem e cada destino dentro do mesmo total.
+#
+# Transferência entre contas próprias fica de fora. Ela move saldo mas não é
+# ganho nem gasto, e entraria dos dois lados inflando o mapa inteiro.
+
+PERIODOS_MONEY_MAP = {
+    "30d": 30, "3m": 90, "6m": 180, "1a": 365,
+}
+
+
+def _intervalo_money_map(periodo):
+    """(inicio, fim) em AAAA-MM-DD. `ano` é o ano corrente, não os últimos
+    365 dias — é o que a pessoa espera de 'este ano'."""
+    hoje = datetime.now().date()
+    if periodo == "ano":
+        return f"{hoje.year}-01-01", hoje.isoformat()
+    dias = PERIODOS_MONEY_MAP.get(periodo, 180)
+    return (hoje - timedelta(days=dias)).isoformat(), hoje.isoformat()
+
+
+@app.route("/api/money-map", methods=["GET"])
+def money_map():
+    periodo = request.args.get("periodo", "6m")
+    inicio, fim = _intervalo_money_map(periodo)
+
+    conn = get_db()
+    try:
+        # Só o que foi efetivado: previsão não é dinheiro que andou, e
+        # misturar os dois faria o mapa mostrar um mês que ainda não aconteceu.
+        linhas = conn.execute(
+            """SELECT tipo, COALESCE(NULLIF(categoria,''), 'Sem categoria') AS categoria,
+                      SUM(valor) AS total, COUNT(*) AS n
+               FROM lancamentos
+               WHERE usuario_id = ? AND pago = 1 AND eh_transferencia = 0
+                 AND COALESCE(data_pagamento, vencimento, mes || '-15') BETWEEN ? AND ?
+               GROUP BY tipo, categoria""",
+            (uid(), inicio, fim),
+        ).fetchall()
+
+        receitas = sorted(
+            [{"nome": r["categoria"], "valor": r["total"], "n": r["n"]}
+             for r in linhas if r["tipo"] == "renda"],
+            key=lambda x: -x["valor"])
+        despesas = sorted(
+            [{"nome": r["categoria"], "valor": r["total"], "n": r["n"]}
+             for r in linhas if r["tipo"] == "despesa"],
+            key=lambda x: -x["valor"])
+
+        # Acima de 8 fatias a legenda vira ilegível e as faixas somem de finas.
+        # O que sobra vira "Outros" — some do detalhe, não da conta.
+        def agrupar(lista, limite=6):
+            if len(lista) <= limite:
+                return lista
+            resto = lista[limite:]
+            return lista[:limite] + [{
+                "nome": "Outros", "valor": sum(x["valor"] for x in resto),
+                "n": sum(x["n"] for x in resto), "agrupado": len(resto),
+            }]
+
+        total_receita = sum(r["valor"] for r in receitas)
+        total_despesa = sum(d["valor"] for d in despesas)
+
+        return jsonify({
+            "periodo": periodo,
+            "inicio": inicio,
+            "fim": fim,
+            "receitas": agrupar(receitas),
+            "despesas": agrupar(despesas),
+            "total_receita": total_receita,
+            "total_despesa": total_despesa,
+            "saldo": total_receita - total_despesa,
+        })
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     init_db()
     # O banco demo só é recriado do zero quando alguém liga o modo demonstração

@@ -252,6 +252,34 @@
   .empty{color:var(--muted-soft); font-size:0.88rem; padding:22px 10px; text-align:center;}
   /* ---- Open Finance ---- */
   .of-ajuda{color:var(--muted); font-size:0.84rem; line-height:1.5; margin:0 0 14px;}
+  /* ---- Money Map ----
+     As cores não são as do app: o --red (#ff5630) é claro demais para o fundo
+     escuro do gráfico e reprovou na faixa de luminosidade. Estes tons passaram
+     nas seis checagens (inclusive separação para daltonismo) em cada tema. */
+  .mm-cores{--mm-entra:#00a76f; --mm-sai:#cf3d21;}
+  :root[data-theme="light"] .mm-cores, body.tema-claro .mm-cores{--mm-entra:#00875a; --mm-sai:#d13c1f;}
+  .mm-periodos{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
+  .mm-periodos button{
+    background:var(--card2); color:var(--muted); border:1px solid var(--border-soft);
+    padding:6px 13px; font-size:0.79rem; font-weight:600; box-shadow:none;
+  }
+  .mm-periodos button.ativo{background:var(--accent); color:#fff; border-color:transparent;}
+  .mm-resumo{display:flex; gap:22px; flex-wrap:wrap; margin-bottom:16px;}
+  .mm-resumo div{min-width:120px;}
+  .mm-resumo .rot{
+    color:var(--muted); font-size:0.75rem; display:flex; align-items:center; gap:6px;
+  }
+  /* O ponto colorido ao lado do rótulo é a legenda: identidade nunca fica só
+     na cor da faixa. */
+  .mm-ponto{width:9px; height:9px; border-radius:50%; flex:none; display:inline-block;}
+  .mm-resumo .val{font-size:1.15rem; font-weight:700; margin-top:2px;}
+  .mm-svg-wrap{overflow-x:auto;}
+  .mm-svg{display:block; min-width:680px; width:100%;}
+  .mm-fluxo{opacity:0.42; transition:opacity 0.15s;}
+  .mm-fluxo:hover{opacity:0.78;}
+  .mm-rot{font-size:13px; font-weight:600; fill:var(--text);}
+  .mm-val{font-size:12px; fill:var(--muted);}
+  .mm-vazio{color:var(--muted-soft); font-size:0.86rem; padding:26px 10px; text-align:center;}
   .nav-selo{
     margin-left:auto; background:var(--yellow); color:#3a2c00; font-size:0.68rem;
     font-weight:700; padding:1px 7px; border-radius:999px; flex:none;
@@ -1400,6 +1428,23 @@
 
   <!-- ===================== DASHBOARD ===================== -->
   <section class="painel ativo" id="painel-dashboard">
+    <div class="secao mm-cores" id="secaoMoneyMap">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> Money Map</h2>
+      <p class="of-ajuda">
+        De onde o dinheiro veio e para onde foi. Transferência entre contas suas
+        fica de fora — ela move saldo, mas não é ganho nem gasto.
+      </p>
+      <div class="mm-periodos" id="mmPeriodos">
+        <button type="button" data-p="30d">30 dias</button>
+        <button type="button" data-p="3m">3 meses</button>
+        <button type="button" data-p="6m" class="ativo">6 meses</button>
+        <button type="button" data-p="ano">Este ano</button>
+        <button type="button" data-p="1a">12 meses</button>
+      </div>
+      <div class="mm-resumo" id="mmResumo"></div>
+      <div class="mm-svg-wrap"><div id="mmGrafico"></div></div>
+    </div>
+
     <div class="panorama-card" id="panoramaCard"></div>
 
     <div class="destaque" id="destaqueSaldoContas"></div>
@@ -3428,6 +3473,148 @@ async function carregarTudo(){
 }
 
 // ---------- Contas ----------
+// ---------- Money Map ----------
+// Sankey desenhado à mão em SVG. Não usa plugin: o Chart.js do app não traz
+// Sankey, e uma biblioteca a mais só para um gráfico não se paga.
+let mmPeriodo = "6m";
+let mmDados = null;
+
+async function carregarMoneyMap(){
+  try {
+    const res = await apiFetch(`${API}/money-map?periodo=${mmPeriodo}`, undefined,
+                               {silencioso:true});
+    mmDados = await res.json();
+  } catch (e) { mmDados = null; }
+  renderizarMoneyMap();
+}
+
+function renderizarMoneyMap(){
+  const resumo = document.getElementById("mmResumo");
+  const alvo = document.getElementById("mmGrafico");
+  if (!resumo || !alvo) return;
+
+  if (!mmDados || (!mmDados.receitas.length && !mmDados.despesas.length)){
+    resumo.innerHTML = "";
+    alvo.innerHTML = `<div class="mm-vazio">Sem lançamentos efetivados nesse período.</div>`;
+    return;
+  }
+
+  const cor = getComputedStyle(document.getElementById("secaoMoneyMap"));
+  const entra = cor.getPropertyValue("--mm-entra").trim() || "#00a76f";
+  const sai = cor.getPropertyValue("--mm-sai").trim() || "#cf3d21";
+  const saldo = mmDados.saldo;
+
+  resumo.innerHTML = `
+    <div>
+      <div class="rot"><span class="mm-ponto" style="background:${entra}"></span> Entrou</div>
+      <div class="val" style="color:${entra}">${formatMoeda(mmDados.total_receita)}</div>
+    </div>
+    <div>
+      <div class="rot"><span class="mm-ponto" style="background:${sai}"></span> Saiu</div>
+      <div class="val" style="color:${sai}">${formatMoeda(mmDados.total_despesa)}</div>
+    </div>
+    <div>
+      <div class="rot">Sobrou</div>
+      <div class="val" style="color:${saldo >= 0 ? entra : sai}">${formatMoeda(saldo)}</div>
+    </div>`;
+
+  alvo.innerHTML = desenharSankey(mmDados, entra, sai);
+}
+
+function desenharSankey(d, corEntra, corSai){
+  const receitas = d.receitas, despesas = d.despesas;
+  const totalR = d.total_receita || 0, totalD = d.total_despesa || 0;
+  const maior = Math.max(totalR, totalD) || 1;
+
+  const noL = 14;          // espessura das barras
+  const calha = 210;       // espaço dos rótulos de cada lado
+  const vaoLinha = 30;     // altura mínima por linha, para o rótulo caber
+  const gap = 10;
+  const xEsq = calha;
+  const xCentro = calha + 190;
+  const xDir = xCentro + 190;
+  const largura = xDir + noL + calha;
+
+  // Altura de cada lado = soma das linhas, e cada linha é a maior entre a
+  // faixa proporcional e o vão que o rótulo exige.
+  function alturas(lista, escala){
+    return lista.map(x => ({
+      item: x,
+      faixa: Math.max(x.valor * escala, 3),
+      linha: Math.max(x.valor * escala, vaoLinha),
+    }));
+  }
+  // Escala provisória, depois ajustada para o lado mais alto caber.
+  let escala = 300 / maior;
+  let ladoR = alturas(receitas, escala), ladoD = alturas(despesas, escala);
+  const altura = Math.max(
+    ladoR.reduce((a, b) => a + b.linha + gap, 0),
+    ladoD.reduce((a, b) => a + b.linha + gap, 0),
+    200) + gap;
+
+  const hR = totalR * escala, hD = totalD * escala;
+
+  let svg = `<svg class="mm-svg" viewBox="0 0 ${largura} ${altura}" role="img"
+    aria-label="Fluxo do período: entrou ${formatMoeda(totalR)}, saiu ${formatMoeda(totalD)}.">`;
+
+  // barras do meio
+  const yR = (altura - hR) / 2, yD = (altura - hD) / 2;
+  svg += `<rect x="${xCentro}" y="${yR}" width="${noL}" height="${Math.max(hR,3)}" rx="3"
+            fill="${corEntra}"><title>Entrou ${formatMoeda(totalR)}</title></rect>`;
+  svg += `<rect x="${xDir}" y="${yD}" width="${noL}" height="${Math.max(hD,3)}" rx="3"
+            fill="${corSai}"><title>Saiu ${formatMoeda(totalD)}</title></rect>`;
+  svg += fluxo(xCentro + noL, yR, xDir, yD, Math.min(hR, hD), corSai,
+               `Do que entrou, ${formatMoeda(Math.min(totalR, totalD))} virou despesa`);
+
+  // ---- origens (esquerda)
+  let y = gap, yc = yR;
+  for (const r of ladoR){
+    const cy = y + r.linha / 2;
+    svg += fluxo(xEsq + noL, cy - r.faixa / 2, xCentro, yc, r.faixa, corEntra,
+                 `${r.item.nome}: ${formatMoeda(r.item.valor)}`);
+    svg += `<rect x="${xEsq}" y="${cy - r.faixa / 2}" width="${noL}" height="${r.faixa}" rx="3" fill="${corEntra}"/>`;
+    svg += rotulo(xEsq - 12, cy, r.item, "end");
+    y += r.linha + gap; yc += r.faixa;
+  }
+
+  // ---- destinos (direita)
+  y = gap; yc = yD;
+  for (const g of ladoD){
+    const cy = y + g.linha / 2;
+    svg += fluxo(xDir + noL, yc, xDir + noL + 60, cy - g.faixa / 2, g.faixa, corSai,
+                 `${g.item.nome}: ${formatMoeda(g.item.valor)}`);
+    svg += rotulo(xDir + noL + 70, cy, g.item, "start");
+    y += g.linha + gap; yc += g.faixa;
+  }
+
+  return svg + "</svg>";
+
+  function rotulo(x, cy, item, ancora){
+    const nome = item.nome.length > 22 ? item.nome.slice(0, 21) + "…" : item.nome;
+    const extra = item.agrupado ? ` (${item.agrupado})` : "";
+    return `<text class="mm-rot" x="${x}" y="${cy - 2}" text-anchor="${ancora}">${escapeHtml(nome + extra)}</text>`
+         + `<text class="mm-val" x="${x}" y="${cy + 13}" text-anchor="${ancora}">${formatMoeda(item.valor)}</text>`;
+  }
+
+  // Curva ligando duas alturas. O <title> dentro do path dá o tooltip nativo,
+  // sem precisar de biblioteca.
+  function fluxo(x1, y1, x2, y2, h, cor, texto){
+    const cx = (x1 + x2) / 2;
+    const dd = `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}
+                L ${x2} ${y2 + h} C ${cx} ${y2 + h}, ${cx} ${y1 + h}, ${x1} ${y1 + h} Z`;
+    return `<path class="mm-fluxo" d="${dd}" fill="${cor}"><title>${escapeHtml(texto)}</title></path>`;
+  }
+}
+
+document.getElementById("mmPeriodos").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-p]");
+  if (!b) return;
+  document.querySelectorAll("#mmPeriodos button").forEach(x => x.classList.remove("ativo"));
+  b.classList.add("ativo");
+  mmPeriodo = b.dataset.p;
+  carregarMoneyMap();
+});
+
 // ---------- Classificar: não categorizados e regras ----------
 let naoCatCache = null;
 let regrasCache = [];
@@ -3829,6 +4016,7 @@ async function carregarContas(){
     carregarOpenFinance();
     conferirVersaoApp();
     carregarClassificar();
+    carregarMoneyMap();
   } catch (e) {
     document.getElementById("listaContas").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
   }
