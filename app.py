@@ -5945,7 +5945,15 @@ def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None
             relatorio["conciliadas"] += 1
         elif criar:
             eh_transf = 1 if categoria_pluggy in PLUGGY_CATEGORIAS_TRANSFERENCIA else 0
-            categoria = categoria_do_pluggy(categoria_pluggy, tipo)
+            # Regra primeiro: ela olha a descrição, onde está o nome do
+            # estabelecimento. A categoria da Pluggy é genérica e entra só
+            # quando nenhuma regra casou.
+            categoria, transf_regra, _ = aplicar_regras(
+                conn, casa_id, descricao, valor, tipo)
+            if transf_regra:
+                eh_transf = 1
+            if not categoria:
+                categoria = categoria_do_pluggy(categoria_pluggy, tipo)
             if eh_transf:
                 relatorio["transferencias"] += 1
             elif not categoria:
@@ -6409,6 +6417,301 @@ def pluggy_webhook_registrar():
         except PluggyErro as e:
             return jsonify({"erro": str(e)}), 400
         return jsonify({"ok": True, "id": criado.get("id")})
+    finally:
+        conn.close()
+
+
+# ---------------- Regras de categorização ----------------
+#
+# A categoria que a Pluggy manda é genérica ("Services", "Transfers"). A regra
+# olha a DESCRIÇÃO, que é onde está o nome do estabelecimento — é assim que
+# "UBER *TRIP 8829" vira Transporte. Regra primeiro, categoria da Pluggy como
+# reserva.
+
+# Operadores aceitos numa condição. Deliberadamente poucos: cobre o que
+# aparece de verdade em descrição de banco, e cada um a mais é mais tela para
+# a pessoa entender.
+OPERADORES_REGRA = {
+    "comeca_com": lambda valor, alvo: valor.startswith(alvo),
+    "contem": lambda valor, alvo: alvo in valor,
+    "igual": lambda valor, alvo: valor == alvo,
+    "termina_com": lambda valor, alvo: valor.endswith(alvo),
+    # Palavra inteira. Existe porque "contem" com uma sigla curta morde dentro
+    # de outra palavra: a condicao "TIM" pegava "EMPRESTIMO" e mandava
+    # emprestimo do Itau para a categoria Internet. Tentar resolver pondo
+    # espaco no fim ("TIM ") nao funciona — a normalizacao tira espaco das
+    # pontas, e o espaco sumia justamente onde ele importava.
+    "palavra": lambda valor, alvo: re.search(
+        r"\b" + re.escape(alvo) + r"\b", valor) is not None,
+}
+
+
+def _texto_normalizado(t):
+    """Descrição de banco vem em caixa alta, com acento inconsistente e espaço
+    sobrando. Comparar cru faria a mesma regra pegar num mês e falhar no outro."""
+    import unicodedata
+
+    t = unicodedata.normalize("NFKD", str(t or ""))
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return " ".join(t.upper().split())
+
+
+def regra_casa(regra, descricao, valor, tipo):
+    """Se a regra se aplica. Condições da mesma regra são OU: "Uber OU 99" é
+    uma regra só, não duas."""
+    try:
+        condicoes = json.loads(regra["condicoes"])
+    except (TypeError, ValueError):
+        return False
+    if not condicoes:
+        return False
+
+    desc = _texto_normalizado(descricao)
+    for c in condicoes:
+        campo = c.get("campo", "descricao")
+        if campo == "tipo":
+            if c.get("valor") == tipo:
+                return True
+            continue
+        if campo == "valor_min":
+            try:
+                if abs(valor) >= float(c.get("valor")):
+                    return True
+            except (TypeError, ValueError):
+                pass
+            continue
+        op = OPERADORES_REGRA.get(c.get("operador", "contem"))
+        if op and op(desc, _texto_normalizado(c.get("valor"))):
+            return True
+    return False
+
+
+def aplicar_regras(conn, casa_id, descricao, valor, tipo):
+    """Primeira regra que casar decide. Devolve (categoria, transferencia,
+    regra_id) ou (None, False, None)."""
+    for r in conn.execute(
+        "SELECT * FROM regras_categoria WHERE casa_id = ? AND ativa = 1 "
+        "ORDER BY prioridade, id", (casa_id,)
+    ).fetchall():
+        if regra_casa(r, descricao, valor, tipo):
+            conn.execute(
+                "UPDATE regras_categoria SET vezes_aplicada = COALESCE(vezes_aplicada,0) + 1, "
+                "ultima_aplicacao = ? WHERE id = ?",
+                (datetime.now().isoformat(), r["id"]),
+            )
+            return r["categoria"], bool(r["marca_transferencia"]), r["id"]
+    return None, False, None
+
+
+# Regras que toda casa ganha na primeira vez. São os estabelecimentos que
+# aparecem em quase todo extrato brasileiro — sem elas a pessoa começa com uma
+# tela vazia e não entende para que serve.
+REGRAS_INICIAIS = [
+    ("Uber e 99 → Transporte", 10, "Transporte", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "UBER"},
+        {"campo": "descricao", "operador": "contem", "valor": "99APP"},
+        {"campo": "descricao", "operador": "contem", "valor": "99 TECNOLOGIA"},
+        {"campo": "descricao", "operador": "contem", "valor": "CABIFY"},
+    ]),
+    ("iFood e delivery → Alimentação", 10, "Alimentação", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "IFOOD"},
+        {"campo": "descricao", "operador": "contem", "valor": "RAPPI"},
+        {"campo": "descricao", "operador": "contem", "valor": "AIQFOME"},
+    ]),
+    ("Streaming → Lazer", 10, "Lazer", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "NETFLIX"},
+        {"campo": "descricao", "operador": "contem", "valor": "SPOTIFY"},
+        {"campo": "descricao", "operador": "contem", "valor": "DISNEY"},
+        {"campo": "descricao", "operador": "contem", "valor": "PRIME VIDEO"},
+        {"campo": "descricao", "operador": "contem", "valor": "HBO"},
+        {"campo": "descricao", "operador": "contem", "valor": "STEAM"},
+    ]),
+    ("Mercados → Mercado", 10, "Mercado", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "CARREFOUR"},
+        {"campo": "descricao", "operador": "contem", "valor": "ASSAI"},
+        {"campo": "descricao", "operador": "contem", "valor": "ATACADAO"},
+        {"campo": "descricao", "operador": "contem", "valor": "PAO DE ACUCAR"},
+        {"campo": "descricao", "operador": "contem", "valor": "SUPERMERCADO"},
+    ]),
+    ("Postos → Combustível", 10, "Combustível", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "POSTO"},
+        {"campo": "descricao", "operador": "contem", "valor": "IPIRANGA"},
+        {"campo": "descricao", "operador": "palavra", "valor": "SHELL"},
+        {"campo": "descricao", "operador": "contem", "valor": "PETROBRAS"},
+    ]),
+    ("Farmácias → Saúde", 10, "Saúde", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "DROGARIA"},
+        {"campo": "descricao", "operador": "contem", "valor": "DROGASIL"},
+        {"campo": "descricao", "operador": "contem", "valor": "PACHECO"},
+        {"campo": "descricao", "operador": "palavra", "valor": "RAIA"},
+        {"campo": "descricao", "operador": "contem", "valor": "FARMACIA"},
+    ]),
+    ("Telefone e internet → Internet", 10, "Internet", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "VIVO"},
+        {"campo": "descricao", "operador": "contem", "valor": "CLARO"},
+        {"campo": "descricao", "operador": "palavra", "valor": "TIM"},
+        {"campo": "descricao", "operador": "contem", "valor": "OI FIBRA"},
+    ]),
+    ("Energia → Energia", 10, "Energia", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "ENEL"},
+        {"campo": "descricao", "operador": "contem", "valor": "CEMIG"},
+        {"campo": "descricao", "operador": "contem", "valor": "COPEL"},
+        {"campo": "descricao", "operador": "contem", "valor": "LIGHT SERV"},
+        {"campo": "descricao", "operador": "contem", "valor": "CPFL"},
+    ]),
+    # Prioridade menor: precisa vencer as genéricas de "pagamento".
+    ("Salário → Salário", 5, "Salário", 0, [
+        {"campo": "descricao", "operador": "contem", "valor": "FOLHA PAGAMENTO"},
+        {"campo": "descricao", "operador": "contem", "valor": "SALARIO"},
+        {"campo": "descricao", "operador": "contem", "valor": "PAGAMENTO SALARIO"},
+    ]),
+]
+
+
+def garantir_regras_iniciais(conn, casa_id):
+    """Cria as regras de partida uma única vez por casa. Se a pessoa apagar
+    uma delas, não volta — apagar é uma decisão, e recriar seria teimosia."""
+    ja = conn.execute(
+        "SELECT COUNT(*) c FROM regras_categoria WHERE casa_id = ?", (casa_id,)
+    ).fetchone()["c"]
+    if ja:
+        return 0
+    garantir_categorias_do_open_finance(conn, casa_id)
+    for nome, prioridade, categoria, transf, condicoes in REGRAS_INICIAIS:
+        conn.execute(
+            "INSERT INTO regras_categoria (casa_id, nome, prioridade, condicoes, "
+            "categoria, marca_transferencia, ativa, criado_em) VALUES (?, ?, ?, ?, ?, ?, 1, ?)",
+            (casa_id, nome, prioridade, json.dumps(condicoes, ensure_ascii=False),
+             categoria, transf, datetime.now().isoformat()),
+        )
+    conn.commit()
+    return len(REGRAS_INICIAIS)
+
+
+@app.route("/api/regras", methods=["GET"])
+def listar_regras():
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        garantir_regras_iniciais(conn, casa_id)
+        regras = []
+        for r in conn.execute(
+            "SELECT * FROM regras_categoria WHERE casa_id = ? ORDER BY prioridade, id",
+            (casa_id,)
+        ).fetchall():
+            d = dict(r)
+            try:
+                d["condicoes"] = json.loads(d["condicoes"])
+            except (TypeError, ValueError):
+                d["condicoes"] = []
+            d["ativa"] = bool(d["ativa"])
+            d["marca_transferencia"] = bool(d["marca_transferencia"])
+            regras.append(d)
+        return jsonify(regras)
+    finally:
+        conn.close()
+
+
+@app.route("/api/regras", methods=["POST"])
+def criar_regra():
+    dados = request.get_json(silent=True) or {}
+    nome = (dados.get("nome") or "").strip()
+    categoria = (dados.get("categoria") or "").strip()
+    condicoes = dados.get("condicoes") or []
+    if not nome or not categoria or not condicoes:
+        return jsonify({"erro": "informe nome, categoria e ao menos uma condição"}), 400
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO regras_categoria (casa_id, nome, prioridade, condicoes, "
+            "categoria, marca_transferencia, ativa, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (minha_casa_id(conn), nome, int(dados.get("prioridade") or 10),
+             json.dumps(condicoes, ensure_ascii=False), categoria,
+             int(bool(dados.get("marca_transferencia"))),
+             int(bool(dados.get("ativa", True))), datetime.now().isoformat()),
+        )
+        conn.commit()
+        return jsonify({"ok": True}), 201
+    finally:
+        conn.close()
+
+
+@app.route("/api/regras/<int:item_id>", methods=["PUT"])
+def editar_regra(item_id):
+    dados = request.get_json(silent=True) or {}
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        dona = conn.execute("SELECT casa_id FROM regras_categoria WHERE id = ?",
+                            (item_id,)).fetchone()
+        if not dona or dona["casa_id"] != casa_id:
+            return jsonify({"erro": "regra não encontrada"}), 404
+        conn.execute(
+            "UPDATE regras_categoria SET nome = ?, prioridade = ?, condicoes = ?, "
+            "categoria = ?, marca_transferencia = ?, ativa = ? WHERE id = ?",
+            ((dados.get("nome") or "").strip(), int(dados.get("prioridade") or 10),
+             json.dumps(dados.get("condicoes") or [], ensure_ascii=False),
+             (dados.get("categoria") or "").strip(),
+             int(bool(dados.get("marca_transferencia"))),
+             int(bool(dados.get("ativa", True))), item_id),
+        )
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/regras/<int:item_id>", methods=["DELETE"])
+def apagar_regra(item_id):
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        dona = conn.execute("SELECT casa_id FROM regras_categoria WHERE id = ?",
+                            (item_id,)).fetchone()
+        if not dona or dona["casa_id"] != casa_id:
+            return jsonify({"erro": "regra não encontrada"}), 404
+        conn.execute("DELETE FROM regras_categoria WHERE id = ?", (item_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/regras/aplicar", methods=["POST"])
+def aplicar_regras_no_historico():
+    """Roda as regras no que já existe.
+
+    Só toca em lançamento SEM categoria, a não ser que `sobrescrever` venha
+    ligado: reclassificar o que a pessoa categorizou à mão apagaria trabalho
+    dela sem pedir licença.
+    """
+    dados = request.get_json(silent=True) or {}
+    sobrescrever = bool(dados.get("sobrescrever"))
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        garantir_regras_iniciais(conn, casa_id)
+
+        filtro = "" if sobrescrever else " AND (l.categoria IS NULL OR l.categoria = '')"
+        alvo = conn.execute(
+            "SELECT l.id, l.descricao, l.valor, l.tipo FROM lancamentos l "
+            "JOIN usuarios u ON u.id = l.usuario_id "
+            "WHERE u.casa_id = ? AND l.eh_transferencia = 0" + filtro,
+            (casa_id,)
+        ).fetchall()
+
+        mudados = 0
+        for l in alvo:
+            categoria, transf, _ = aplicar_regras(conn, casa_id, l["descricao"],
+                                                  l["valor"], l["tipo"])
+            if categoria:
+                conn.execute(
+                    "UPDATE lancamentos SET categoria = ?, eh_transferencia = ? WHERE id = ?",
+                    (categoria, int(transf), l["id"]),
+                )
+                mudados += 1
+        conn.commit()
+        return jsonify({"ok": True, "avaliados": len(alvo), "classificados": mudados})
     finally:
         conn.close()
 
