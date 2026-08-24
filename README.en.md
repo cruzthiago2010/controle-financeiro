@@ -5,8 +5,8 @@
 <h1 align="center">FinanCerto</h1>
 
 <p align="center">
-  <a href="https://github.com/cruzthiago2010/controle-financeiro/actions/workflows/ci.yml"><img src="https://github.com/cruzthiago2010/controle-financeiro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/cruzthiago2010/controle-financeiro/actions/workflows/codeql.yml"><img src="https://github.com/cruzthiago2010/controle-financeiro/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+  <a href="https://github.com/financerto/controle-financeiro/actions/workflows/ci.yml"><img src="https://github.com/financerto/controle-financeiro/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/financerto/controle-financeiro/actions/workflows/codeql.yml"><img src="https://github.com/financerto/controle-financeiro/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
   <br>
   <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11">
@@ -44,7 +44,7 @@ leaves it. No subscription, no cloud account, no telemetry.
 **Linux and macOS** — one command (installs Docker if it isn't there yet):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cruzthiago2010/controle-financeiro/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/financerto/controle-financeiro/main/install.sh | bash
 ```
 
 The script clones the repository, generates a random admin password and session
@@ -53,7 +53,7 @@ key, starts the container, and prints the address and password at the end.
 **Windows** — install [Docker Desktop](https://www.docker.com/products/docker-desktop/), then:
 
 ```bash
-git clone https://github.com/cruzthiago2010/controle-financeiro.git
+git clone https://github.com/financerto/controle-financeiro.git
 cd controle-financeiro
 copy .env.example .env
 docker compose up -d --build
@@ -160,7 +160,7 @@ If you'd rather not run the install script, or want to see what it does:
 1. Connect over SSH (or open the terminal).
 2. Clone the repository and start the container:
    ```bash
-   git clone https://github.com/cruzthiago2010/controle-financeiro.git
+   git clone https://github.com/financerto/controle-financeiro.git
    cd controle-financeiro
    docker compose up -d --build
    ```
@@ -402,7 +402,7 @@ understand this screen". The guide is in [CONTRIBUTING.en.md](CONTRIBUTING.en.md
 and the [Code of Conduct](CODE_OF_CONDUCT.md) applies in every project space.
 
 Found a security flaw? **Don't open a public issue** — use the
-[private channel](https://github.com/cruzthiago2010/controle-financeiro/security/advisories/new).
+[private channel](https://github.com/financerto/controle-financeiro/security/advisories/new).
 Details in [SECURITY.en.md](SECURITY.en.md).
 
 ## Built with AI assistance

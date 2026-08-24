@@ -33,7 +33,7 @@ quem quiser usar a falha antes de ela ser corrigida.
 
 Use o canal privado do próprio GitHub:
 
-1. Vá em **[Security → Report a vulnerability](https://github.com/cruzthiago2010/controle-financeiro/security/advisories/new)**.
+1. Vá em **[Security → Report a vulnerability](https://github.com/financerto/controle-financeiro/security/advisories/new)**.
 2. Descreva o problema. O relato fica visível só para você e para o mantenedor.
 
 Ajuda muito incluir:

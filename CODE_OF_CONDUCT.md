@@ -37,7 +37,7 @@ espaço em que alguém esteja representando o projeto.
 ## Como reportar
 
 Se algo assim acontecer, avise o mantenedor em privado, pelo
-[canal privado de segurança do repositório](https://github.com/cruzthiago2010/controle-financeiro/security/advisories/new)
+[canal privado de segurança do repositório](https://github.com/financerto/controle-financeiro/security/advisories/new)
 — serve também para isso, e o relato não fica público. Todo relato é lido, e a
 identidade de quem relata não é divulgada.
 

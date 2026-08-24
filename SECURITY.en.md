@@ -32,7 +32,7 @@ who would rather use the flaw than see it fixed.
 
 Use GitHub's private channel:
 
-1. Go to **[Security → Report a vulnerability](https://github.com/cruzthiago2010/controle-financeiro/security/advisories/new)**.
+1. Go to **[Security → Report a vulnerability](https://github.com/financerto/controle-financeiro/security/advisories/new)**.
 2. Describe the problem. The report is visible only to you and the maintainer.
 
 It helps a lot to include:

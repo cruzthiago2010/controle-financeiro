@@ -10,7 +10,7 @@ didn't understand this screen", which is often worth more than code.
 
 ## Before writing code
 
-Open an [issue](https://github.com/cruzthiago2010/controle-financeiro/issues)
+Open an [issue](https://github.com/financerto/controle-financeiro/issues)
 describing what you intend to do. It avoids duplicated work and settles whether
 the idea fits the project. For a small, obvious fix (typo, broken link, wrong
 arithmetic), send the pull request directly.
@@ -20,7 +20,7 @@ arithmetic), send the pull request directly.
 ## Running the project
 
 ```bash
-git clone https://github.com/cruzthiago2010/controle-financeiro.git
+git clone https://github.com/financerto/controle-financeiro.git
 cd controle-financeiro
 cp .env.example .env      # fill in ADMIN_PASSWORD and SECRET_KEY
 docker compose up -d --build
