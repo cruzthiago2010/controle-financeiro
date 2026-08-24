@@ -1379,12 +1379,20 @@ def listar_meses():
         "SELECT DISTINCT mes FROM lancamentos WHERE usuario_id = ? ORDER BY mes DESC", (uid(),)
     ).fetchall()
     conn.close()
-    meses = [r["mes"] for r in rows]
-    mes_atual = datetime.now().strftime("%Y-%m")
-    if mes_atual not in meses:
-        meses.insert(0, mes_atual)
-    meses = sorted(set(meses), reverse=True)
-    return jsonify(meses)
+    meses = {r["mes"] for r in rows}
+
+    # Além dos meses que já têm lançamento, oferece uma janela ao redor de hoje.
+    # Sem isso, quem acabou de entrar recebia UM mês só — e no celular as setas
+    # de navegação são escondidas justamente porque "dá pra usar o seletor",
+    # então a pessoa ficava sem nenhuma forma de sair do mês atual. Vale também
+    # para quem já usa: dá pra abrir um mês futuro antes de lançar algo nele.
+    hoje = datetime.now()
+    for delta in range(-12, 13):
+        ano = hoje.year + (hoje.month - 1 + delta) // 12
+        mes = (hoje.month - 1 + delta) % 12 + 1
+        meses.add(f"{ano:04d}-{mes:02d}")
+
+    return jsonify(sorted(meses, reverse=True))
 
 
 @app.route("/api/lancamentos", methods=["GET"])
