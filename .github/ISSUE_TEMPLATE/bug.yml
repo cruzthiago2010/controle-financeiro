@@ -1,0 +1,70 @@
+name: Reportar um problema
+description: Algo não funciona, some, ou mostra um valor errado
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar. Antes de continuar:
+
+        - **Falha de segurança não vai aqui.** Use o
+          [canal privado](https://github.com/cruzthiago2010/controle-financeiro/security/advisories/new).
+        - **Não cole print com o seu saldo, extrato, CPF ou holerite.** Tarje antes.
+
+  - type: textarea
+    id: descricao
+    attributes:
+      label: O que aconteceu
+      description: Descreva o problema e o que você esperava que acontecesse.
+    validations:
+      required: true
+
+  - type: textarea
+    id: passos
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. Entrei em Investimentos
+        2. Cliquei em "Adicionar provento"
+        3. Salvei e o valor apareceu dobrado
+    validations:
+      required: true
+
+  - type: input
+    id: versao
+    attributes:
+      label: Versão instalada
+      description: "Rode dentro da pasta do projeto: `git rev-parse --short HEAD`"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: onde
+    attributes:
+      label: Onde você estava usando
+      multiple: true
+      options:
+        - Navegador no computador
+        - Navegador no celular (Android)
+        - Navegador no celular (iPhone)
+        - App Android instalado
+        - PWA instalado na tela de início
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log do container
+      description: "Saída de `docker compose logs --tail=50` na hora do erro. Confira se não há senha ou token antes de colar."
+      render: text
+
+  - type: checkboxes
+    id: confirmacoes
+    attributes:
+      label: Confirmações
+      options:
+        - label: Atualizei para a última versão da `main` e o problema continua
+          required: true
+        - label: Não há dado pessoal meu (saldo, CPF, token, senha) neste relato
+          required: true

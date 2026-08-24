@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Reportar falha de segurança (privado)
+    url: https://github.com/cruzthiago2010/controle-financeiro/security/advisories/new
+    about: Falha que exponha dado financeiro, login ou o servidor. Nunca abra issue pública para isso.
+  - name: Como instalar e configurar
+    url: https://github.com/cruzthiago2010/controle-financeiro#como-rodar-mais-fácil--via-terminalssh
+    about: Passo a passo de instalação, login, Google, Open Finance e app Android.
