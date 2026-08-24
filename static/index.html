@@ -628,6 +628,11 @@
   .atualiza-banner{background:linear-gradient(135deg, #3a2f10, #241d0c);
     border-color:rgba(255,171,0,0.42);}
   .atualiza-banner .ico.xl{color:var(--yellow);}
+  .dropdown-versao{
+    border-top:1px solid var(--border-soft); margin-top:4px; padding:9px 14px;
+    font-size:0.73rem; color:var(--muted-soft); text-align:center;
+  }
+  .dropdown-versao .desatualizada{color:var(--yellow); font-weight:600;}
   .install-banner .texto-inst{flex:1; min-width:0; font-size:0.85rem;}
   .install-banner .texto-inst small{display:block; color:var(--muted); margin-top:2px; font-size:0.75rem;}
   .install-banner button{padding:8px 14px; font-size:0.82rem; flex:none;}
@@ -1275,6 +1280,9 @@
             <button class="dropdown-item perigo" id="menuSair">
               <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sair"/></svg> Sair
             </button>
+            <!-- Sempre presente: dá pra conferir a versão sem depender de haver
+                 uma atualização pendente. No navegador mostra que é a web. -->
+            <div class="dropdown-versao" id="menuVersao">—</div>
           </div>
         </div>
       </div>
@@ -7130,7 +7138,13 @@ function salvarNotifConfig(c){
 // A comparação é feita no servidor: assim uma versão nova é anunciada sem
 // depender de publicar um APK novo só para avisar do APK novo.
 async function conferirVersaoApp(){
-  if (!dentroDoApp()) return;
+  if (!dentroDoApp()){
+    // No navegador não há APK: dizer isso é melhor que deixar um traço solto,
+    // porque explica por que não há número de versão para mostrar.
+    const linha = document.getElementById("menuVersao");
+    if (linha) linha.textContent = "Aberto pelo navegador";
+    return;
+  }
   // `versao()` foi adicionada à ponte depois do primeiro APK; num app antigo
   // ela não existe, e aí a versão instalada é desconhecida — o que já é sinal
   // de estar atrasado.
@@ -7143,6 +7157,19 @@ async function conferirVersaoApp(){
                                undefined, {silencioso:true});
     dados = await res.json();
   } catch (e) { return; }
+
+  // A linha do menu é preenchida sempre — é ela que responde "em que versão eu
+  // estou?" independentemente de haver atualização.
+  const linha = document.getElementById("menuVersao");
+  if (linha){
+    if (instalada){
+      linha.innerHTML = dados.desatualizado
+        ? `App ${escapeHtml(instalada)} · <span class="desatualizada">a ${escapeHtml(dados.versao_atual)} já saiu</span>`
+        : `App ${escapeHtml(instalada)} · em dia`;
+    } else {
+      linha.textContent = `App instalado · versão desconhecida (publicada: ${dados.versao_atual})`;
+    }
+  }
 
   const desatualizado = dados.desatualizado || (!instalada && dados.versao_atual);
   if (!desatualizado) return;
