@@ -1784,6 +1784,17 @@ def baixar_comprovante(nome_arquivo):
 
 # ---------------- Contas ----------------
 
+def conta_sincronizada(conn, conta_id):
+    """(sincronizada, ultimo_sync) de uma conta ligada ao Open Finance."""
+    row = conn.execute(
+        "SELECT i.ultimo_sync FROM pluggy_contas pc "
+        "JOIN pluggy_itens i ON i.item_id = pc.item_id "
+        "WHERE pc.conta_id = ? AND pc.ignorada = 0 LIMIT 1",
+        (conta_id,),
+    ).fetchone()
+    return (True, row["ultimo_sync"]) if row else (False, None)
+
+
 def contas_com_saldo(conn, mes, usuario_id=None):
     contas = conn.execute(
         "SELECT contas.*, usuarios.nome as usuario_nome FROM contas "
@@ -1809,6 +1820,7 @@ def contas_com_saldo(conn, mes, usuario_id=None):
 
         saldo_atual = c["saldo_inicial"] + soma(1, "renda") - soma(1, "despesa")
         pendente_liquido = soma(0, "renda") - soma(0, "despesa")
+        sincronizada, ultimo_sync = conta_sincronizada(conn, c["id"])
         resultado.append({
             "id": c["id"],
             "nome": c["nome"],
@@ -1819,6 +1831,10 @@ def contas_com_saldo(conn, mes, usuario_id=None):
             "despesas_mes": soma_mes("despesa"),
             "usuario_id": c["usuario_id"],
             "usuario_nome": c["usuario_nome"],
+            # A tela usa para esconder o campo de saldo inicial e dizer de
+            # quando é o último extrato.
+            "sincronizada": sincronizada,
+            "ultimo_sync": ultimo_sync,
         })
     return resultado
 
@@ -1863,11 +1879,26 @@ def editar_conta(item_id):
     if not pertence_ao_usuario(conn, "contas", item_id):
         conn.close()
         return jsonify({"erro": "conta não encontrada"}), 404
+    sincronizada, _ = conta_sincronizada(conn, item_id)
     try:
-        conn.execute(
-            "UPDATE contas SET nome = ?, saldo_inicial = ? WHERE id = ?",
-            (nome, float(data.get("saldo_inicial", 0) or 0), item_id),
-        )
+        if sincronizada:
+            # O saldo_inicial dessa conta é calculado a partir do extrato: ele
+            # é a diferença entre o que o banco reporta e a soma dos
+            # lançamentos. Deixar editar faria o saldo parar de bater sem
+            # ninguém perceber. O nome continua livre.
+            if "saldo_inicial" in data:
+                atual = conn.execute("SELECT saldo_inicial FROM contas WHERE id = ?",
+                                     (item_id,)).fetchone()["saldo_inicial"]
+                if abs(float(data.get("saldo_inicial") or 0) - atual) > 0.005:
+                    conn.close()
+                    return jsonify({"erro": "essa conta é sincronizada pelo Open Finance — "
+                                            "o saldo inicial é calculado a partir do extrato"}), 400
+            conn.execute("UPDATE contas SET nome = ? WHERE id = ?", (nome, item_id))
+        else:
+            conn.execute(
+                "UPDATE contas SET nome = ?, saldo_inicial = ? WHERE id = ?",
+                (nome, float(data.get("saldo_inicial", 0) or 0), item_id),
+            )
         conn.execute("UPDATE lancamentos SET conta = ? WHERE conta_id = ?", (nome, item_id))
         conn.commit()
     except sqlite3.IntegrityError:
@@ -5702,7 +5733,87 @@ PLUGGY_CATEGORIAS = {
     "Gyms and fitness centers": "Lazer",
     "Cinema, theater and concerts": "Lazer",
     "Office supplies": "Negócios",
+    "Pharmacy": "Saúde",
+    "Healthcare": "Saúde",
+    "University": "Educação",
+    "Education": "Educação",
+    "Bookstore": "Educação",
+    "Interests charged": "Tarifas e juros",
+    "Tax on financial operations": "Tarifas e juros",
+    "Mutual funds": "Investimentos",
+    "Investments": "Investimentos",
+    "Pet supplies and vet": "Pets",
+    "Mobile": "Internet",
+    "Electricity": "Energia",
+    "Houseware": "Moradia",
+    "Leisure": "Lazer",
+    "Services": "Serviços",
+    "Digital services": "Serviços",
+    "Credit card payment": "Fatura de cartão",
+    "Public transportation": "Transporte",
+    "Vehicle ownership taxes and fees": "Transporte",
+    "Tickets": "Lazer",
+    "Water": "Água",
 }
+
+# Estas dependem do sentido: o mesmo rótulo da Pluggy vira coisas diferentes
+# conforme o dinheiro entra ou sai. Sobrepõem o mapa acima.
+PLUGGY_CATEGORIAS_CREDITO = {
+    "Transfer - PIX": "Pix recebido",
+    "Transfers": "Transferência recebida",
+    "Transfer - TED": "Transferência recebida",
+    "Transfer - Bank Slip": "Transferência recebida",
+    "Cashback": "Rendimentos",
+}
+
+PLUGGY_CATEGORIAS_DEBITO = {
+    "Transfer - PIX": "Pix enviado",
+    "Transfers": "Transferência enviada",
+    "Transfer - TED": "Transferência enviada",
+    "Transfer - Bank Slip": "Transferência enviada",
+}
+
+
+def categoria_do_pluggy(categoria_pluggy, tipo):
+    """Categoria da casa para uma categoria da Pluggy. `tipo` é renda ou
+    despesa. Devolve None quando não há correspondência — sem categoria é
+    melhor que "Outros" no chute, porque deixa visível o que precisa de olho."""
+    if not categoria_pluggy:
+        return None
+    especifico = (PLUGGY_CATEGORIAS_CREDITO if tipo == "renda"
+                  else PLUGGY_CATEGORIAS_DEBITO)
+    return especifico.get(categoria_pluggy) or PLUGGY_CATEGORIAS.get(categoria_pluggy)
+
+
+# Categorias que o mapa acima usa e que não existem no conjunto padrão do app.
+# São criadas na primeira sincronização de cada casa, para o lançamento
+# importado não apontar para uma categoria inexistente.
+CATEGORIAS_DO_OPEN_FINANCE = [
+    ("Saúde", "despesa", "#f97066"),
+    ("Educação", "despesa", "#7a5af8"),
+    ("Tarifas e juros", "despesa", "#f79009"),
+    ("Investimentos", "despesa", "#12b76a"),
+    ("Pets", "despesa", "#f670c7"),
+    ("Serviços", "despesa", "#06aed4"),
+    ("Fatura de cartão", "despesa", "#ee46bc"),
+    ("Pix enviado", "despesa", "#6172f3"),
+    ("Transferência enviada", "despesa", "#8098f9"),
+    ("Transferência recebida", "receita", "#32d583"),
+]
+
+
+def garantir_categorias_do_open_finance(conn, casa_id):
+    for nome, tipo, cor in CATEGORIAS_DO_OPEN_FINANCE:
+        existe = conn.execute(
+            "SELECT 1 FROM categorias WHERE casa_id = ? AND nome = ? AND tipo = ?",
+            (casa_id, nome, tipo),
+        ).fetchone()
+        if not existe:
+            conn.execute(
+                "INSERT INTO categorias (nome, tipo, cor, casa_id) VALUES (?, ?, ?, ?)",
+                (nome, tipo, cor, casa_id),
+            )
+    conn.commit()
 
 # Transferência entre contas do próprio titular: move saldo mas não é ganho
 # nem gasto, então não pode entrar nos totais do mês. É a mesma marcação que a
@@ -5781,6 +5892,8 @@ def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None
     if not conta_id:
         raise PluggyErro("essa conta da Pluggy ainda não foi vinculada a uma conta do app")
 
+    garantir_categorias_do_open_finance(conn, casa_id)
+
     relatorio = {"vistas": 0, "fora_do_periodo": 0, "ja_importadas": 0,
                  "conciliadas": 0, "criadas": 0, "transferencias": 0, "sem_categoria": 0}
 
@@ -5814,7 +5927,7 @@ def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None
             relatorio["conciliadas"] += 1
         elif criar:
             eh_transf = 1 if categoria_pluggy in PLUGGY_CATEGORIAS_TRANSFERENCIA else 0
-            categoria = PLUGGY_CATEGORIAS.get(categoria_pluggy or "")
+            categoria = categoria_do_pluggy(categoria_pluggy, tipo)
             if eh_transf:
                 relatorio["transferencias"] += 1
             elif not categoria:
@@ -5850,6 +5963,123 @@ def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None
     return relatorio
 
 
+# ---- Sincronização automática do Open Finance ----
+#
+# Sem isto o saldo do app congela no valor da última importação e vai se
+# afastando do banco em silêncio — foi o que aconteceu com o C6, que ficou
+# marcando 513,85 quando o real já era 158,47.
+
+
+def pluggy_sincronizar_tudo(conn, casa_id, criar=True):
+    """Atualiza itens e contas pela Pluggy, importa o que chegou de novo e
+    recalibra o saldo inicial de cada conta vinculada.
+
+    O recálculo é o que mantém o saldo do app igual ao do banco. Ele é um
+    tampão: absorve qualquer diferença, inclusive a que vier de transação que
+    a Pluggy ainda não reportou. Por isso `descompasso` volta no relatório —
+    diferença grande é sinal de extrato incompleto, não de conta certa.
+    """
+    resumo = {"itens": 0, "contas": 0, "criadas": 0, "descompasso": {}}
+
+    for it in conn.execute(
+        "SELECT item_id FROM pluggy_itens WHERE casa_id = ?", (casa_id,)
+    ).fetchall():
+        try:
+            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{it['item_id']}")
+            conn.execute(
+                "UPDATE pluggy_itens SET status = ?, ultimo_sync = ? WHERE item_id = ?",
+                (item.get("status"), item.get("lastUpdatedAt"), it["item_id"]),
+            )
+            dados = pluggy_pedir(conn, casa_id, "GET", f"/accounts?itemId={it['item_id']}")
+            for c in dados.get("results", []):
+                conn.execute(
+                    "UPDATE pluggy_contas SET saldo = ?, nome = ? WHERE account_id = ?",
+                    (c.get("balance"), c.get("name"), c.get("id")),
+                )
+            conn.commit()
+            resumo["itens"] += 1
+        except PluggyErro:
+            # Um banco fora do ar não pode impedir os outros de sincronizar.
+            continue
+
+    for pc in conn.execute(
+        "SELECT * FROM pluggy_contas WHERE casa_id = ? AND conta_id IS NOT NULL AND ignorada = 0",
+        (casa_id,),
+    ).fetchall():
+        try:
+            rel = pluggy_importar_conta(conn, casa_id, pc, criar=criar)
+        except PluggyErro:
+            continue
+        resumo["contas"] += 1
+        resumo["criadas"] += rel["criadas"]
+
+        alvo = pc["saldo"]
+        if alvo is None:
+            continue
+        atual = _saldo_calculado(conn, pc["conta_id"])
+        ini = conn.execute(
+            "SELECT saldo_inicial FROM contas WHERE id = ?", (pc["conta_id"],)
+        ).fetchone()["saldo_inicial"]
+        ajuste = alvo - atual
+        if abs(ajuste) > 0.005:
+            conn.execute(
+                "UPDATE contas SET saldo_inicial = ? WHERE id = ?",
+                (ini + ajuste, pc["conta_id"]),
+            )
+            nome = conn.execute(
+                "SELECT nome FROM contas WHERE id = ?", (pc["conta_id"],)
+            ).fetchone()["nome"]
+            resumo["descompasso"][nome] = round(ajuste, 2)
+        conn.commit()
+
+    return resumo
+
+
+def _saldo_calculado(conn, conta_id):
+    ini = conn.execute("SELECT saldo_inicial FROM contas WHERE id = ?",
+                       (conta_id,)).fetchone()["saldo_inicial"]
+    r = conn.execute("SELECT COALESCE(SUM(valor),0) t FROM lancamentos "
+                     "WHERE conta_id = ? AND tipo='renda' AND pago=1", (conta_id,)).fetchone()["t"]
+    d = conn.execute("SELECT COALESCE(SUM(valor),0) t FROM lancamentos "
+                     "WHERE conta_id = ? AND tipo='despesa' AND pago=1", (conta_id,)).fetchone()["t"]
+    return ini + r - d
+
+
+@app.route("/api/pluggy/sincronizar", methods=["POST"])
+def pluggy_sincronizar_agora():
+    if em_demo():
+        return jsonify({"erro": "o modo demonstração não conecta em banco de verdade"}), 400
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        return jsonify(pluggy_sincronizar_tudo(conn, casa_id))
+    finally:
+        conn.close()
+
+
+def _loop_pluggy():
+    """Uma vez por dia. O banco não publica extrato de minuto em minuto, e
+    consentimento do Open Finance tem limite de chamadas."""
+    while True:
+        time.sleep(86400)
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            conn.row_factory = sqlite3.Row
+            for casa in conn.execute("SELECT DISTINCT casa_id FROM pluggy_credenciais").fetchall():
+                try:
+                    pluggy_sincronizar_tudo(conn, casa["casa_id"])
+                except Exception as e:
+                    print(f"[pluggy] casa {casa['casa_id']}: {e}", flush=True)
+            conn.close()
+        except Exception as e:
+            print(f"[pluggy] ciclo falhou: {e}", flush=True)
+
+
+def iniciar_agendador_pluggy():
+    t = threading.Thread(target=_loop_pluggy, daemon=True)
+    t.start()
+
+
 if __name__ == "__main__":
     init_db()
     # O banco demo só é recriado do zero quando alguém liga o modo demonstração
@@ -5862,4 +6092,5 @@ if __name__ == "__main__":
     iniciar_agendador_backup()
     iniciar_agendador_cotacoes()
     iniciar_agendador_catalogo()
+    iniciar_agendador_pluggy()
     app.run(host="0.0.0.0", port=5000)
