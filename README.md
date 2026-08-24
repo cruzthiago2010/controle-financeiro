@@ -383,6 +383,8 @@ Open Finance, nada do que já entrou se perde.
   `.env` com senha sorteada e sobe o container)
 - `testes/teste_anexos.py` — confere a leitura do holerite em PDF e do cupom
   fiscal por OCR, com arquivos montados na hora; roda de dentro do container
+- `testes/teste_seguranca.py` — tenta fazer o ticker virar outro endereço e o
+  nome de anexo virar outro caminho, e confere que as duas coisas são recusadas
 - `.github/workflows/` — CI (ruff, migrations, build da imagem e o teste dos
   anexos) e CodeQL
 - `umbrel-app.yml` — manifesto opcional, caso queira publicar como app

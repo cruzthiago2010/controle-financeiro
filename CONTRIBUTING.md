@@ -46,7 +46,7 @@ python app.py            # precisa de tesseract-ocr e libzbar0 no sistema
 | `static/login.html`, `static/registro.html` | telas de entrada e de cadastro público |
 | `migrations/*.sql` | mudanças de schema, aplicadas em ordem no start |
 | `android/` | app Android (WebView com digital, notificação e widget) |
-| `testes/` | teste de fumaça das rotas que abrem arquivo enviado |
+| `testes/` | teste de fumaça dos anexos e das tentativas de fuga de ticker e caminho |
 | `docs/screenshots/` | capturas usadas no README |
 
 Não há etapa de build no frontend: é HTML, CSS e JavaScript servidos direto.

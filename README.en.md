@@ -378,6 +378,8 @@ Finance off, nothing that already came in is lost.
   `.env` with a random password, and starts the container)
 - `testes/teste_anexos.py` — checks payslip-PDF reading and receipt OCR with
   files generated on the fly; runs from inside the container
+- `testes/teste_seguranca.py` — tries to turn a ticker into another URL and an
+  attachment name into another path, and checks both are refused
 - `.github/workflows/` — CI (ruff, migrations, image build, attachment tests)
   and CodeQL
 - `umbrel-app.yml` — optional manifest, in case you want to publish it as a

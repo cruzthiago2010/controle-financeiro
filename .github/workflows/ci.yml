@@ -81,6 +81,12 @@ jobs:
           docker exec -e SENHA=senha-de-teste-do-ci financerto-ci \
             python /app/teste_anexos.py
 
+      - name: Ticker em URL externa e nome de anexo em caminho
+        run: |
+          docker cp testes/teste_seguranca.py financerto-ci:/app/teste_seguranca.py
+          docker exec -e SENHA=senha-de-teste-do-ci financerto-ci \
+            python /app/teste_seguranca.py
+
       - name: Log do container
         if: always()
         run: docker logs financerto-ci || true

@@ -46,7 +46,7 @@ python app.py            # needs tesseract-ocr and libzbar0 on the system
 | `static/login.html`, `static/registro.html` | login and public sign-up screens |
 | `migrations/*.sql` | schema changes, applied in order at startup |
 | `android/` | Android app (WebView with fingerprint, notifications, widget) |
-| `testes/` | smoke test for the routes that open uploaded files |
+| `testes/` | smoke tests for uploads, plus ticker/path escape attempts |
 | `docs/screenshots/` | captures used in the README |
 
 There is no frontend build step: plain HTML, CSS and JavaScript, served as-is.

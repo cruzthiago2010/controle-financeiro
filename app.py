@@ -31,6 +31,7 @@ import tempfile
 import threading
 import unicodedata
 import requests
+from urllib.parse import quote, urlparse
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -52,6 +53,27 @@ DEMO_DB_PATH = os.environ.get("DEMO_DB_PATH", "/data/orcamento-demo.db")
 BRAPI_TOKEN = os.environ.get("BRAPI_TOKEN", "")
 
 EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def caminho_em(pasta, nome):
+    """Devolve o caminho de `nome` dentro de `pasta`, ou None se ele escapar.
+
+    Todo arquivo que o app grava ou serve — comprovante, foto, holerite,
+    backup — tem o nome montado a partir de algo que veio de fora. O
+    basename já corta o "../", mas ele sozinho é uma regra espalhada por
+    vários pontos do código, e basta um esquecer. Aqui a conferência é
+    posicional: resolve o caminho e só aceita se ele continuar debaixo da
+    pasta, o que também pega link simbólico apontando para fora.
+    """
+    nome = os.path.basename(nome or "")
+    if not nome or nome in (".", ".."):
+        return None
+    base = os.path.realpath(pasta)
+    alvo = os.path.realpath(os.path.join(base, nome))
+    if alvo == base or os.path.commonpath([base, alvo]) != base:
+        return None
+    return alvo
+
 TAMANHO_MAX_UPLOAD = 8 * 1024 * 1024  # 8 MB
 
 app = Flask(__name__, static_folder="static")
@@ -1317,7 +1339,10 @@ def enviar_foto_perfil(item_id):
     os.makedirs(FOTOS_DIR, exist_ok=True)
     os.makedirs(BACKUPS_DIR, exist_ok=True)
     nome_final = f"u{item_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}{extensao}"
-    arquivo.save(os.path.join(FOTOS_DIR, nome_final))
+    destino = caminho_em(FOTOS_DIR, nome_final)
+    if not destino:
+        return jsonify({"erro": msg("nome de arquivo inválido")}), 400
+    arquivo.save(destino)
 
     conn = get_db()
     antiga = conn.execute("SELECT foto FROM usuarios WHERE id = ?", (item_id,)).fetchone()
@@ -1870,11 +1895,15 @@ def enviar_comprovante(item_id):
     nome_seguro = secure_filename(arquivo.filename)
     nome_final = f"{item_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{nome_seguro}"
     os.makedirs(COMPROVANTES_DIR, exist_ok=True)
-    arquivo.save(os.path.join(COMPROVANTES_DIR, nome_final))
+    destino = caminho_em(COMPROVANTES_DIR, nome_final)
+    if not destino:
+        conn.close()
+        return jsonify({"erro": msg("nome de arquivo inválido")}), 400
+    arquivo.save(destino)
     row = conn.execute("SELECT comprovante FROM lancamentos WHERE id = ?", (item_id,)).fetchone()
     if row and row["comprovante"]:
-        antigo = os.path.join(COMPROVANTES_DIR, row["comprovante"])
-        if os.path.exists(antigo):
+        antigo = caminho_em(COMPROVANTES_DIR, row["comprovante"])
+        if antigo and os.path.exists(antigo):
             os.remove(antigo)
     conn.execute("UPDATE lancamentos SET comprovante = ? WHERE id = ?", (nome_final, item_id))
     conn.commit()
@@ -2469,6 +2498,19 @@ def deletar_consignado(item_id):
 # ---------------- Investimentos ----------------
 
 CLASSES_COM_TICKER = {"acao", "fii", "etf", "bdr", "cripto", "stock", "reit", "etf_internacional"}
+
+# O ticker é escolhido por quem cadastra o investimento e vai parar dentro da
+# URL da brapi, do Yahoo e da CoinGecko. Um valor com barra, dois-pontos ou
+# interrogação deixa de ser um trecho do caminho e vira outro endereço, então
+# ele é restrito na entrada e não só escapado na saída. O formato cobre o que
+# as fontes usam: B3 (PETR4, MXRF11), CoinGecko (bitcoin, usd-coin) e
+# americanos com ponto ou hífen (BRK.B, BRK-B).
+RE_TICKER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
+
+
+def ticker_valido(ticker):
+    return bool(ticker) and bool(RE_TICKER.match(ticker))
+
 CLASSES_VALIDAS = CLASSES_COM_TICKER | {"renda_fixa", "fundo", "outro"}
 CLASSES_YAHOO = {"stock", "reit", "etf_internacional"}  # tickers americanos, cotados em USD
 TIPOS_OPERACAO_INVESTIMENTO = {"aporte", "resgate", "provento", "reavaliacao"}
@@ -2480,7 +2522,7 @@ def normalizar_ticker(classe, valor):
     com ticker usam maiúsculas. Usado sempre que um ticker é salvo, pra não
     gravar cripto de um jeito que a cotação nunca mais vai encontrar."""
     valor = (valor or "").strip()
-    if not valor:
+    if not ticker_valido(valor):
         return None
     return valor.lower() if classe == "cripto" else valor.upper()
 
@@ -2573,8 +2615,12 @@ def buscar_cotacoes_brapi(tickers):
     params = {"token": BRAPI_TOKEN} if BRAPI_TOKEN else {}
     resultado = {}
     for ticker in tickers:
+        if not ticker_valido(ticker):
+            continue
         try:
-            resp = requests.get(f"https://brapi.dev/api/quote/{ticker}", params=params, timeout=15)
+            resp = requests.get(
+                f"https://brapi.dev/api/quote/{quote(ticker, safe='')}", params=params, timeout=15
+            )
             resp.raise_for_status()
             for item in resp.json().get("results", []):
                 preco = item.get("regularMarketPrice")
@@ -2606,9 +2652,11 @@ def buscar_cotacoes_yahoo(tickers):
     complicação de tentar buscar em lote."""
     resultado = {}
     for ticker in tickers:
+        if not ticker_valido(ticker):
+            continue
         try:
             resp = requests.get(
-                f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}",
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{quote(ticker, safe='')}",
                 headers={"User-Agent": "Mozilla/5.0"}, timeout=15,
             )
             resp.raise_for_status()
@@ -3055,7 +3103,21 @@ LOGO_TAMANHO_MAXIMO = 512 * 1024
 RE_CHAVE_LOGO = re.compile(r"^[A-Za-z0-9._-]{1,32}$")
 
 
+# A logo só pode vir destes lugares. A do CDN da brapi é montada aqui com o
+# ticker; a de cripto vem da coluna logo_url do catálogo, que é preenchida com o
+# que a CoinGecko responde — dado de fora, e portanto não é destino confiável só
+# por já estar gravado no banco.
+HOSTS_LOGO = {"icons.brapi.dev", "assets.coingecko.com", "coin-images.coingecko.com"}
+
+
+def _origem_de_logo_permitida(url):
+    partes = urlparse(url or "")
+    return partes.scheme == "https" and partes.hostname in HOSTS_LOGO
+
+
 def _baixar_logo(url):
+    if not _origem_de_logo_permitida(url):
+        return None, None
     resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
     resp.raise_for_status()
     tipo = (resp.headers.get("Content-Type") or "").split(";")[0].strip()
@@ -3077,8 +3139,8 @@ def buscar_e_cachear_logo(conn, classe, ticker):
             "SELECT logo_url FROM ativo_catalogo WHERE classe = 'cripto' AND ticker = ?", (ticker,)
         ).fetchone()
         url = row["logo_url"] if row else None
-    elif classe in CLASSES_COM_TICKER:
-        url = f"https://icons.brapi.dev/icons/{ticker.upper()}.svg"
+    elif classe in CLASSES_COM_TICKER and ticker_valido(ticker):
+        url = f"https://icons.brapi.dev/icons/{quote(ticker.upper(), safe='')}.svg"
 
     conteudo = tipo = None
     if url:
@@ -3120,10 +3182,10 @@ def buscar_dividendos_brapi(ticker):
     """Histórico de proventos já declarados de um ticker B3 — mesma API da
     cotação, só pedindo o módulo de dividendos a mais. Só funciona com
     BRAPI_TOKEN configurado (o teste gratuito sem token não libera esse módulo)."""
-    if not BRAPI_TOKEN:
+    if not BRAPI_TOKEN or not ticker_valido(ticker):
         return []
     resp = requests.get(
-        f"https://brapi.dev/api/quote/{ticker}",
+        f"https://brapi.dev/api/quote/{quote(ticker, safe='')}",
         params={"token": BRAPI_TOKEN, "dividends": "true"}, timeout=20,
     )
     resp.raise_for_status()
@@ -4101,7 +4163,10 @@ def cotacao_ativo_avulsa():
     ainda não é), busca ao vivo agora em vez de deixar o campo em branco."""
     classe = request.args.get("classe", "")
     ticker_bruto = (request.args.get("ticker") or "").strip()
-    if classe not in CLASSES_COM_TICKER or not ticker_bruto:
+    # Esta rota busca a cotação ao vivo, então o ticker vai direto da query
+    # string para a URL da fonte externa — é o caminho mais curto entre o
+    # cliente e uma requisição de saída, e o que mais precisa da conferência.
+    if classe not in CLASSES_COM_TICKER or not ticker_valido(ticker_bruto):
         return jsonify({"preco": None})
     # CoinGecko exige o id em minúsculas (ex: "bitcoin") — as outras classes
     # usam o ticker em maiúsculas, convenção já seguida no resto do módulo.
@@ -4206,7 +4271,9 @@ def enviar_holerite():
     nome_seguro = secure_filename(arquivo.filename)
     nome_final = f"{uid()}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{nome_seguro}"
     os.makedirs(HOLERITES_DIR, exist_ok=True)
-    caminho = os.path.join(HOLERITES_DIR, nome_final)
+    caminho = caminho_em(HOLERITES_DIR, nome_final)
+    if not caminho:
+        return jsonify({"erro": msg("nome de arquivo inválido")}), 400
     arquivo.save(caminho)
 
     try:
@@ -4357,8 +4424,8 @@ def analisar_nota_fiscal():
             if m:
                 chave_acesso_qr = m.group(1)
                 break
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[nota-fiscal] não deu para ler o QR code: {e}", flush=True)
 
     # Cupons térmicos fotografados saem com contraste baixo — preto e branco puro
     # (com um leve realce de nitidez) ajuda bastante o OCR a acertar os dígitos.
@@ -5102,11 +5169,11 @@ def gerar_backup_agora():
 
 def caminho_backup_valido(nome_arquivo):
     """Impede que o nome escape da pasta de backups."""
-    nome = os.path.basename(nome_arquivo)
+    nome = os.path.basename(nome_arquivo or "")
     if not nome.endswith(".zip"):
         return None
-    caminho = os.path.join(BACKUPS_DIR, nome)
-    if not os.path.isfile(caminho):
+    caminho = caminho_em(BACKUPS_DIR, nome)
+    if not caminho or not os.path.isfile(caminho):
         return None
     return caminho
 
@@ -5347,7 +5414,8 @@ def pluggy_api_key(conn, casa_id):
             timeout=20,
         )
     except requests.RequestException as e:
-        raise PluggyErro(f"não foi possível falar com a Pluggy: {e}")
+        print(f"[pluggy] falha de rede ao autenticar: {e}", flush=True)
+        raise PluggyErro("não foi possível falar com a Pluggy — tente de novo em instantes")
 
     # Credencial errada volta como 400 (foi o que a Pluggy respondeu em teste),
     # e 403 aparece quando a credencial existe mas não tem acesso — os dois
@@ -5367,11 +5435,28 @@ def pluggy_api_key(conn, casa_id):
     return api_key
 
 
+def _caminho_pluggy_seguro(caminho):
+    """O caminho da chamada é montado com id vindo do banco. Um id que trouxesse
+    "://", "//" ou uma quebra de linha faria a URL final apontar para outro
+    lugar, e a chave da Pluggy iria junto no cabeçalho — então o caminho é
+    conferido antes de ser concatenado, e não depois."""
+    if (
+        not caminho.startswith("/")
+        or caminho.startswith("//")
+        or "://" in caminho
+        or any(c in caminho for c in "\r\n \t")
+    ):
+        raise PluggyErro("caminho inválido na chamada à Pluggy")
+    return caminho
+
+
 def pluggy_pedir(conn, casa_id, metodo, caminho, **kwargs):
     """Chamada autenticada na Pluggy. Se a apiKey em cache tiver sido
     invalidada do outro lado, tenta uma vez com uma chave nova antes de
     desistir — senão o app ficaria travado até o cache vencer sozinho."""
     kwargs.setdefault("timeout", 30)
+
+    caminho = _caminho_pluggy_seguro(caminho)
 
     def _chamar(api_key):
         return requests.request(
@@ -5388,10 +5473,12 @@ def pluggy_pedir(conn, casa_id, metodo, caminho, **kwargs):
                 _pluggy_api_keys.pop(casa_id, None)
             resp = _chamar(pluggy_api_key(conn, casa_id))
     except requests.RequestException as e:
-        raise PluggyErro(f"não foi possível falar com a Pluggy: {e}")
+        print(f"[pluggy] falha de rede em {caminho}: {e}", flush=True)
+        raise PluggyErro("não foi possível falar com a Pluggy — tente de novo em instantes")
 
     if resp.status_code >= 400:
-        raise PluggyErro(f"a Pluggy respondeu {resp.status_code} em {caminho}")
+        print(f"[pluggy] resposta {resp.status_code} em {caminho}", flush=True)
+        raise PluggyErro(f"a Pluggy respondeu {resp.status_code}")
     return resp.json() if resp.content else {}
 
 
@@ -5522,7 +5609,7 @@ def pluggy_connect_token():
 def _pluggy_sincronizar_contas(conn, casa_id, usuario_id, item_id):
     """Traz as contas do Item e guarda em pluggy_contas, preservando o vínculo
     já escolhido. Devolve quantas viu."""
-    dados = pluggy_pedir(conn, casa_id, "GET", f"/accounts?itemId={item_id}")
+    dados = pluggy_pedir(conn, casa_id, "GET", "/accounts", params={"itemId": item_id})
     vistas = 0
     for c in dados.get("results", []):
         credito = c.get("creditData") or {}
@@ -5577,7 +5664,7 @@ def pluggy_registrar_item():
             return jsonify({"erro": msg("esse Item já está registrado em outra casa")}), 409
 
         try:
-            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{item_id}")
+            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{quote(str(item_id), safe='')}")
         except PluggyErro as e:
             return jsonify({"erro": str(e)}), 400
         if not item.get("id"):
@@ -5653,7 +5740,7 @@ def pluggy_sincronizar_item(item_id):
         if not dono or dono["casa_id"] != casa_id:
             return jsonify({"erro": msg("conexão não encontrada nesta casa")}), 404
         try:
-            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{item_id}")
+            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{quote(str(item_id), safe='')}")
             conn.execute(
                 "UPDATE pluggy_itens SET status = ?, ultimo_sync = ? WHERE item_id = ?",
                 (item.get("status"), item.get("lastUpdatedAt"), item_id),
@@ -5965,16 +6052,16 @@ def _pluggy_extrato(conn, casa_id, account_id, desde=None):
     aconteceu, e filtrar por ele perde silenciosamente o que a Pluggy ingere
     depois mas data para trás (fatura de cartão, lojista que liquida tarde).
     """
-    from urllib.parse import urlparse, parse_qs
+    from urllib.parse import parse_qs
 
     tudo, depois = [], None
     while True:
-        caminho = f"/v2/transactions?accountId={account_id}"
+        parametros = {"accountId": account_id}
         if desde:
-            caminho += f"&createdAtFrom={desde}"
+            parametros["createdAtFrom"] = desde
         if depois:
-            caminho += f"&after={depois}"
-        dados = pluggy_pedir(conn, casa_id, "GET", caminho)
+            parametros["after"] = depois
+        dados = pluggy_pedir(conn, casa_id, "GET", "/v2/transactions", params=parametros)
         resultados = dados.get("results", [])
         if not resultados:
             break
@@ -6127,12 +6214,13 @@ def pluggy_sincronizar_tudo(conn, casa_id, criar=True):
         "SELECT item_id FROM pluggy_itens WHERE casa_id = ?", (casa_id,)
     ).fetchall():
         try:
-            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{it['item_id']}")
+            item = pluggy_pedir(conn, casa_id, "GET", f"/items/{quote(str(it['item_id']), safe='')}")
             conn.execute(
                 "UPDATE pluggy_itens SET status = ?, ultimo_sync = ? WHERE item_id = ?",
                 (item.get("status"), item.get("lastUpdatedAt"), it["item_id"]),
             )
-            dados = pluggy_pedir(conn, casa_id, "GET", f"/accounts?itemId={it['item_id']}")
+            dados = pluggy_pedir(conn, casa_id, "GET", "/accounts",
+                                 params={"itemId": it["item_id"]})
             for c in dados.get("results", []):
                 conn.execute(
                     "UPDATE pluggy_contas SET saldo = ?, nome = ? WHERE account_id = ?",
@@ -6372,8 +6460,8 @@ def pluggy_atualizar_cartao(conn, casa_id, pluggy_conta):
     if not cartao_id:
         return {}
 
-    dados = pluggy_pedir(conn, casa_id, "GET",
-                         f"/accounts?itemId={pluggy_conta['item_id']}")
+    dados = pluggy_pedir(conn, casa_id, "GET", "/accounts",
+                         params={"itemId": pluggy_conta["item_id"]})
     credito = {}
     for c in dados.get("results", []):
         if c.get("id") == account_id:
@@ -6391,7 +6479,7 @@ def pluggy_atualizar_cartao(conn, casa_id, pluggy_conta):
                      (int(str(vence)[8:10]), cartao_id))
 
     try:
-        resposta = pluggy_pedir(conn, casa_id, "GET", f"/bills?accountId={account_id}")
+        resposta = pluggy_pedir(conn, casa_id, "GET", "/bills", params={"accountId": account_id})
     except PluggyErro:
         resposta = {}
 
@@ -6615,7 +6703,7 @@ def pluggy_webhook_registrar():
             # deixaria a Pluggy mandando o mesmo aviso várias vezes.
             for w in pluggy_pedir(conn, casa_id, "GET", "/webhooks").get("results", []):
                 if (w.get("url") or "").startswith(PLUGGY_WEBHOOK_URL.rstrip("/")):
-                    pluggy_pedir(conn, casa_id, "DELETE", f"/webhooks/{w['id']}")
+                    pluggy_pedir(conn, casa_id, "DELETE", f"/webhooks/{quote(str(w['id']), safe='')}")
             criado = pluggy_pedir(conn, casa_id, "POST", "/webhooks",
                                   json={"event": "all", "url": url})
         except PluggyErro as e:
