@@ -256,6 +256,24 @@
      As cores não são as do app: o --red (#ff5630) é claro demais para o fundo
      escuro do gráfico e reprovou na faixa de luminosidade. Estes tons passaram
      nas seis checagens (inclusive separação para daltonismo) em cada tema. */
+  .faturas-box{margin:10px 0 4px; border-top:1px dashed var(--border); padding-top:10px;}
+  .faturas-box[hidden]{display:none;}
+  .fatura-linha{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    font-size:0.79rem; padding:6px 0; border-bottom:1px dashed var(--border-soft);
+  }
+  .fatura-linha:last-child{border-bottom:none;}
+  .fatura-venc{min-width:78px; color:var(--muted);}
+  .fatura-total{font-weight:600; min-width:88px;}
+  .fatura-selo{font-size:0.67rem; font-weight:700; padding:1px 7px; border-radius:999px;}
+  .fatura-selo.paga{background:rgba(0,167,111,0.15); color:var(--green);}
+  .fatura-selo.aberta{background:rgba(255,86,48,0.13); color:var(--red);}
+  /* Encargo em âmbar: é dinheiro perdido, e some se ficar na cor do texto. */
+  .fatura-encargo{color:var(--yellow); font-size:0.75rem;}
+  .fatura-modo{color:var(--muted-soft); font-size:0.72rem;}
+  .fatura-total-encargos{
+    margin-top:10px; font-size:0.79rem; color:var(--yellow); font-weight:600;
+  }
   .metas-filtros{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
   .metas-filtros button{
     background:var(--card2); color:var(--muted); border:1px solid var(--border-soft);
@@ -2728,6 +2746,8 @@ const TRADUCOES = {"en": {
 "Editar lançamento": "Edit entry",
 "Emissor": "Issuer",
 "Empréstimos": "Loans",
+"Encargos": "Charges",
+"Encerramento de dívida": "Debt closure",
 "Entrou": "Money in",
 "Escanear nota fiscal": "Scan receipt",
 "Escolha a categoria...": "Choose the category...",
@@ -2748,6 +2768,7 @@ const TRADUCOES = {"en": {
 "Exportar CSV do mês": "Export this month as CSV",
 "Exportar lançamentos": "Export entries",
 "Fatura atual (R$)": "Current bill (R$)",
+"Faturas": "Bills",
 "Fazer backup agora": "Back up now",
 "Fechar": "Close",
 "FinanCerto": "FinanCerto",
@@ -2763,6 +2784,8 @@ const TRADUCOES = {"en": {
 "Histórico mensal": "Monthly history",
 "Holerite": "Payslip",
 "Holerites importados": "Imported payslips",
+"IOF de atraso": "Overdue tax (IOF)",
+"IOF de rotativo": "Revolving tax (IOF)",
 "IPCA + taxa": "IPCA + rate",
 "Ignorar esta conta": "Ignore this account",
 "Importar comprovante": "Import receipt",
@@ -2777,6 +2800,8 @@ const TRADUCOES = {"en": {
 "Item ID do banco (UUID do painel da Pluggy)": "Bank Item ID (UUID from the Pluggy dashboard)",
 "Itens": "Items",
 "JSCP (15% de IR na fonte)": "JCP (15% withholding tax)",
+"Juros de dívida encerrada": "Interest on closed debt",
+"Juros de rotativo": "Revolving interest",
 "Já caiu na conta": "Already in the account",
 "Já gastou (pago)": "Already spent (paid)",
 "Já paga": "Already paid",
@@ -2810,6 +2835,7 @@ const TRADUCOES = {"en": {
 "Modo demonstração": "Demo mode",
 "Modo demonstração desligado": "Demo mode off",
 "Money Map": "Money Map",
+"Multa de atraso": "Late fee",
 "Média mensal (últ. 12 meses)": "Monthly average (last 12 months)",
 "Mês anterior": "Previous month",
 "Mês no vermelho": "Month in the red",
@@ -2823,6 +2849,7 @@ const TRADUCOES = {"en": {
 "Nenhum orçamento definido pra esse mês ainda.": "No budget set for this month yet.",
 "Nenhum resultado para os filtros aplicados.": "No results for the filters applied.",
 "Nenhuma conta cadastrada. Adicione a primeira abaixo.": "No accounts yet. Add the first one below.",
+"Nenhuma fatura ainda.": "No bills yet.",
 "Nenhuma meta aqui.": "No goals here.",
 "Nenhuma parcela futura cadastrada.": "No upcoming instalments.",
 "Nenhuma regra ainda.": "No rules yet.",
@@ -2918,6 +2945,8 @@ const TRADUCOES = {"en": {
 "Sair do demo": "Leave demo",
 "Saiu": "Money out",
 "Saldo do mês (recebido − pago)": "Month balance (received − paid)",
+"Saldo em atraso": "Overdue balance",
+"Saldo em rotativo": "Revolving balance",
 "Saldo inicial (R$)": "Starting balance (R$)",
 "Saldo inicial:": "Starting balance:",
 "Saldo negativo em alguma conta": "Negative balance in some account",
@@ -2965,6 +2994,7 @@ const TRADUCOES = {"en": {
 "Total da carteira": "Portfolio total",
 "Total de 12 meses": "12-month total",
 "Total de parcelas (ex: 12)": "Total instalments (e.g. 12)",
+"Total em encargos no período": "Total charges in the period",
 "Transferir": "Transfer",
 "Transferência": "Transfer",
 "Transferência entre contas": "Transfer between accounts",
@@ -2984,6 +3014,7 @@ const TRADUCOES = {"en": {
 "Valor total da despesa (R$)": "Total expense amount (R$)",
 "Vencimento / data": "Due date",
 "Venda": "Sell",
+"Ver faturas": "See bills",
 "Ver lançamentos do cartão": "See card entries",
 "Ver minhas contas": "See my accounts",
 "Ver o código-fonte no GitHub — software livre sob AGPL-3.0": "View the source on GitHub — free software under AGPL-3.0",
@@ -3007,6 +3038,7 @@ const TRADUCOES = {"en": {
 "do banco": "from the bank",
 "do banco. Por isso não dá para editar aqui — se editasse, o saldo do app deixaria de bater com o do banco.": "from the bank. That is why it cannot be edited here — if it were, the app balance would stop matching the bank.",
 "do limite.": "of the limit.",
+"em aberto": "open",
 "em dia": "up to date",
 "em relação ao mês anterior": "compared with last month",
 "está a": "is at",
@@ -3014,12 +3046,14 @@ const TRADUCOES = {"en": {
 "ex: 6": "e.g. 6",
 "ex: esposa": "e.g. partner",
 "faltam": "still need",
+"juros, multa e IOF": "interest, fees and tax",
 "lançamento": "entry",
 "lançamentos": "entries",
 "meses": "months",
 "mês": "month",
 "mínimo 4 caracteres": "at least 4 characters",
 "ou": "or",
+"paga": "paid",
 "recebido no fim do mês": "received at month end",
 "repita a nova senha": "repeat the new password",
 "sincronizada": "synced",
@@ -5451,10 +5485,12 @@ async function carregarCartoes(){
           <div class="cartao-sub">${c.conta_nome ? "Conta: " + escapeHtml(c.conta_nome) : "Sem conta vinculada"}</div>
         </div>
         <div class="cartao-acoes">
+          <button class="icon" onclick="carregarFaturas(${c.id})" title="${t("Ver faturas")}">${ICO.recibo}</button>
           <button class="icon" onclick="abrirEdicaoCartao(${c.id})" title="Editar">${ICO.lapis}</button>
           <button class="icon danger" onclick="excluirCartao(${c.id})" title="Excluir">${ICO.x}</button>
         </div>
       </div>
+      <div id="faturas-${c.id}" class="faturas-box" hidden></div>
       <div class="cartao-grid">
         <div class="item-info"><div class="rotulo">Limite</div><div class="valor-info">${formatMoeda(c.limite)}</div></div>
         <div class="item-info"><div class="rotulo">Fatura atual</div><div class="valor-info">${formatMoeda(c.fatura_atual)}</div></div>
@@ -5614,6 +5650,54 @@ async function excluirCartao(id){
 }
 
 // ---------- Metas de economia ----------
+// ---------- Faturas do cartão ----------
+// Juros, multa e IOF hoje somem no meio das transações. Aqui é o único lugar
+// onde dá para ver quanto custou ter rolado a fatura.
+async function carregarFaturas(cartaoId){
+  const box = document.getElementById(`faturas-${cartaoId}`);
+  if (!box) return;
+  if (!box.hidden){ box.hidden = true; return; }
+
+  box.hidden = false;
+  box.innerHTML = `<div class="loading-msg">${t("Carregando...")}</div>`;
+  let faturas;
+  try {
+    const res = await apiFetch(`${API}/cartoes/${cartaoId}/faturas`, undefined,
+                               {erro:"Não foi possível carregar as faturas"});
+    faturas = await res.json();
+  } catch (e) { box.hidden = true; return; }
+
+  if (!faturas.length){
+    box.innerHTML = `<div class="empty">${t("Nenhuma fatura ainda.")}</div>`;
+    return;
+  }
+
+  // Encargo é o que a fatura cobrou de juros, multa e IOF — o "saldo em
+  // rotativo" que vem junto é dívida rolada, não taxa, então fica no detalhe
+  // e não entra na soma que a tela chama de encargo.
+  const soTaxa = d => (d || []).filter(x =>
+    !/saldo em (rotativo|atraso)/i.test(x.info || ""));
+  const somaTaxa = d => soTaxa(d).reduce((a, x) => a + (x.valor || 0), 0);
+  const totalTaxas = faturas.reduce((a, f) => a + somaTaxa(f.encargos_detalhe), 0);
+
+  box.innerHTML = faturas.map(f => {
+    const taxas = somaTaxa(f.encargos_detalhe);
+    const detalhe = soTaxa(f.encargos_detalhe)
+      .map(x => `${t(x.info || "") || escapeHtml(x.info || "")}: ${formatMoeda(x.valor)}`)
+      .join(" · ");
+    return `
+      <div class="fatura-linha">
+        <span class="fatura-venc">${f.vencimento ? formatData(f.vencimento) : "-"}</span>
+        <span class="fatura-total">${formatMoeda(f.total)}</span>
+        <span class="fatura-selo ${f.pago ? "paga" : "aberta"}">${f.pago ? t("paga") : t("em aberto")}</span>
+        ${f.pago && f.pago_em ? `<span class="fatura-modo">${formatData(f.pago_em)}${f.pago_modo ? " · " + f.pago_modo : ""}</span>` : ""}
+        ${taxas > 0.005 ? `<span class="fatura-encargo" title="${escapeHtml(detalhe)}">+ ${formatMoeda(taxas)} ${t("Encargos").toLowerCase()}</span>` : ""}
+      </div>`;
+  }).join("") + (totalTaxas > 0.005
+    ? `<div class="fatura-total-encargos">${t("Total em encargos no período")}: ${formatMoeda(totalTaxas)}</div>`
+    : "");
+}
+
 let metasCache = [];
 let metasEstado = "ativa";
 

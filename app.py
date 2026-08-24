@@ -6211,8 +6211,54 @@ def pluggy_importar_cartao(conn, casa_id, pluggy_conta, criar=True):
     return relatorio
 
 
+def _resumo_pagamento_fatura(bruto):
+    """Lê `payments[]` da fatura e diz se ela foi paga, quando e como.
+
+    Quitar não é a mesma coisa que pagar o mínimo: a Pluggy distingue
+    FULL_PAYMENT de INSTALLMENT_PAYMENT, e chamar as duas de "paga" faria o
+    app dizer que está tudo certo enquanto a dívida rolou para o mês seguinte.
+
+    Por isso só conta como paga quando há um FULL_PAYMENT, ou quando a soma dos
+    pagamentos cobre o total — um centavo de folga porque arredondamento de
+    juros costuma deixar diferença mínima.
+    """
+    pagamentos = bruto.get("payments") or []
+    if not pagamentos:
+        return {"pago": 0, "pago_em": None, "pago_valor": None,
+                "pago_modo": None, "pago_tipo": None}
+
+    total = bruto.get("totalAmount") or 0
+    somado = sum(p.get("amount") or 0 for p in pagamentos)
+    integral = next((p for p in pagamentos if p.get("valueType") == "FULL_PAYMENT"), None)
+    quitou = bool(integral) or (total and somado >= total - 0.01)
+
+    # O último pagamento é o que descreve o desfecho da fatura.
+    ultimo = integral or max(
+        pagamentos, key=lambda p: (p.get("paymentDate") or ""))
+    return {
+        "pago": 1 if quitou else 0,
+        "pago_em": (ultimo.get("paymentDate") or "")[:10] or None,
+        "pago_valor": round(somado, 2),
+        "pago_modo": ultimo.get("paymentMode"),
+        "pago_tipo": ultimo.get("valueType"),
+    }
+
+
+def _encargos_fatura(bruto):
+    """Juros, multa e IOF da fatura: total e detalhe.
+
+    Ficam guardados porque hoje esses valores somem no meio das transações e
+    ninguém vê quanto custou ter atrasado.
+    """
+    encargos = bruto.get("financeCharges") or []
+    total = sum(e.get("amount") or 0 for e in encargos)
+    detalhe = [{"tipo": e.get("type"), "valor": e.get("amount"),
+                "info": e.get("additionalInfo")} for e in encargos]
+    return round(total, 2), (json.dumps(detalhe, ensure_ascii=False) if detalhe else None)
+
+
 def pluggy_atualizar_cartao(conn, casa_id, pluggy_conta):
-    """Traz limite, vencimento e faturas do cartão."""
+    """Traz limite, vencimento e faturas do cartão, com pagamento e encargos."""
     cartao_id = pluggy_conta["cartao_id"]
     account_id = pluggy_conta["account_id"]
     if not cartao_id:
@@ -6224,7 +6270,6 @@ def pluggy_atualizar_cartao(conn, casa_id, pluggy_conta):
     for c in dados.get("results", []):
         if c.get("id") == account_id:
             credito = c.get("creditData") or {}
-            # `balance` do cartão é o que se deve hoje.
             conn.execute("UPDATE cartoes SET fatura_atual = ? WHERE id = ?",
                          (c.get("balance") or 0, cartao_id))
             break
@@ -6234,36 +6279,79 @@ def pluggy_atualizar_cartao(conn, casa_id, pluggy_conta):
                      (credito["creditLimit"], cartao_id))
     vence = credito.get("balanceDueDate")
     if vence and len(str(vence)) >= 10:
-        # O app guarda só o dia do vencimento, que é o que se repete todo mês.
         conn.execute("UPDATE cartoes SET dia_vencimento = ? WHERE id = ?",
                      (int(str(vence)[8:10]), cartao_id))
 
-    faturas = 0
     try:
         resposta = pluggy_pedir(conn, casa_id, "GET", f"/bills?accountId={account_id}")
     except PluggyErro:
         resposta = {}
+
+    faturas, pagas = 0, 0
     for b in resposta.get("results", []):
+        pg = _resumo_pagamento_fatura(b)
+        total_encargos, detalhe = _encargos_fatura(b)
         conn.execute(
             """INSERT INTO cartao_faturas
                    (fatura_id, cartao_id, account_id, vencimento, fechamento,
-                    total, minimo, criado_em)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    total, minimo, criado_em, pago, pago_em, pago_valor,
+                    pago_modo, pago_tipo, encargos, encargos_detalhe, permite_parcelar)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(fatura_id) DO UPDATE SET
-                   total = excluded.total,
-                   minimo = excluded.minimo,
-                   vencimento = excluded.vencimento,
-                   fechamento = excluded.fechamento""",
+                   total = excluded.total, minimo = excluded.minimo,
+                   vencimento = excluded.vencimento, fechamento = excluded.fechamento,
+                   pago = excluded.pago, pago_em = excluded.pago_em,
+                   pago_valor = excluded.pago_valor, pago_modo = excluded.pago_modo,
+                   pago_tipo = excluded.pago_tipo, encargos = excluded.encargos,
+                   encargos_detalhe = excluded.encargos_detalhe,
+                   permite_parcelar = excluded.permite_parcelar""",
             (b.get("id"), cartao_id, account_id,
              (b.get("dueDate") or "")[:10] or None,
              (b.get("billClosingDate") or "")[:10] or None,
              b.get("totalAmount"), b.get("minimumPaymentAmount"),
-             datetime.now().isoformat()),
+             datetime.now().isoformat(), pg["pago"], pg["pago_em"], pg["pago_valor"],
+             pg["pago_modo"], pg["pago_tipo"], total_encargos, detalhe,
+             1 if b.get("allowsInstallments") else 0),
         )
         faturas += 1
+        pagas += pg["pago"]
+
+    # O `fatura_paga` do cartão passa a vir da fatura mais recente. É dado
+    # observado no banco, não marcação manual — e é o único jeito de ele não
+    # depender de alguém lembrar de marcar.
+    recente = conn.execute(
+        "SELECT pago FROM cartao_faturas WHERE cartao_id = ? "
+        "ORDER BY vencimento DESC LIMIT 1", (cartao_id,)).fetchone()
+    if recente is not None:
+        conn.execute("UPDATE cartoes SET fatura_paga = ? WHERE id = ?",
+                     (recente["pago"], cartao_id))
 
     conn.commit()
-    return {"faturas": faturas, "limite": credito.get("creditLimit")}
+    return {"faturas": faturas, "pagas": pagas, "limite": credito.get("creditLimit")}
+
+
+@app.route("/api/cartoes/<int:item_id>/faturas", methods=["GET"])
+def listar_faturas_cartao(item_id):
+    """Histórico de faturas do cartão, com pagamento e encargos."""
+    conn = get_db()
+    try:
+        if not pertence_ao_usuario(conn, "cartoes", item_id):
+            return jsonify({"erro": "cartão não encontrado"}), 404
+        faturas = []
+        for r in conn.execute(
+            "SELECT * FROM cartao_faturas WHERE cartao_id = ? ORDER BY vencimento DESC",
+            (item_id,)
+        ).fetchall():
+            d = dict(r)
+            d["pago"] = bool(d["pago"])
+            try:
+                d["encargos_detalhe"] = json.loads(d["encargos_detalhe"]) if d["encargos_detalhe"] else []
+            except (TypeError, ValueError):
+                d["encargos_detalhe"] = []
+            faturas.append(d)
+        return jsonify(faturas)
+    finally:
+        conn.close()
 
 
 # ---- Webhook da Pluggy ----
