@@ -1785,14 +1785,27 @@ def baixar_comprovante(nome_arquivo):
 # ---------------- Contas ----------------
 
 def conta_sincronizada(conn, conta_id):
-    """(sincronizada, ultimo_sync) de uma conta ligada ao Open Finance."""
+    """(sincronizada, ultimo_sync, extrato_ate) de uma conta do Open Finance.
+
+    `ultimo_sync` é quando NÓS lemos a Pluggy. `extrato_ate` é a data da
+    transação mais recente que chegou — e é essa que responde "meus dados
+    estão atualizados?". O conector do Meu Pluggy sincroniza com os bancos por
+    conta própria, então o primeiro carimbo pode ser de agora enquanto o
+    extrato ainda para dias atrás.
+    """
     row = conn.execute(
-        "SELECT i.ultimo_sync FROM pluggy_contas pc "
+        "SELECT i.ultimo_sync, pc.account_id FROM pluggy_contas pc "
         "JOIN pluggy_itens i ON i.item_id = pc.item_id "
         "WHERE pc.conta_id = ? AND pc.ignorada = 0 LIMIT 1",
         (conta_id,),
     ).fetchone()
-    return (True, row["ultimo_sync"]) if row else (False, None)
+    if not row:
+        return (False, None, None)
+    ate = conn.execute(
+        "SELECT MAX(data) d FROM pluggy_transacoes WHERE account_id = ?",
+        (row["account_id"],),
+    ).fetchone()["d"]
+    return (True, row["ultimo_sync"], ate)
 
 
 def contas_com_saldo(conn, mes, usuario_id=None):
@@ -1820,7 +1833,7 @@ def contas_com_saldo(conn, mes, usuario_id=None):
 
         saldo_atual = c["saldo_inicial"] + soma(1, "renda") - soma(1, "despesa")
         pendente_liquido = soma(0, "renda") - soma(0, "despesa")
-        sincronizada, ultimo_sync = conta_sincronizada(conn, c["id"])
+        sincronizada, ultimo_sync, extrato_ate = conta_sincronizada(conn, c["id"])
         resultado.append({
             "id": c["id"],
             "nome": c["nome"],
@@ -1835,6 +1848,7 @@ def contas_com_saldo(conn, mes, usuario_id=None):
             # quando é o último extrato.
             "sincronizada": sincronizada,
             "ultimo_sync": ultimo_sync,
+            "extrato_ate": extrato_ate,
         })
     return resultado
 
@@ -1879,7 +1893,7 @@ def editar_conta(item_id):
     if not pertence_ao_usuario(conn, "contas", item_id):
         conn.close()
         return jsonify({"erro": "conta não encontrada"}), 404
-    sincronizada, _ = conta_sincronizada(conn, item_id)
+    sincronizada, _, _ = conta_sincronizada(conn, item_id)
     try:
         if sincronizada:
             # O saldo_inicial dessa conta é calculado a partir do extrato: ele

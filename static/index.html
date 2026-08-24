@@ -264,6 +264,7 @@
     display:inline-flex; align-items:center; gap:4px; white-space:nowrap;
   }
   .selo-sinc svg{width:11px; height:11px;}
+  .extrato-velho{color:var(--yellow);}
   .of-cartao{border:1px solid var(--border-soft); border-radius:var(--radius-sm);
     padding:12px 14px; margin-bottom:10px; background:var(--card2);}
   .of-cartao-topo{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
@@ -2621,6 +2622,14 @@ function formatMes(m){
   const nomes = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   return `${nomes[parseInt(mes,10)-1]}/${ano}`;
 }
+// Mais de 3 dias sem transação nova costuma ser feriado ou conta parada, mas
+// acima disso vale destacar: o banco pode ter parado de mandar sem avisar.
+function extratoAtrasado(data){
+  try {
+    const d = new Date(data + "T12:00:00");
+    return (Date.now() - d.getTime()) / 86400000 > 5;
+  } catch (e) { return false; }
+}
 function formatDataHora(iso){
   // A Pluggy devolve em UTC com Z; sem converter, um extrato do fim da noite
   // apareceria como do dia seguinte.
@@ -3579,8 +3588,8 @@ function renderizarContas(){
         <div class="conta-identidade">
           <div class="conta-nome">${escapeHtml(c.nome)}</div>
           <div class="conta-sub">${c.sincronizada
-              ? `<span class="selo-sinc" title="Atualizada pelo Open Finance"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>sincronizada</span>`
-                + (c.ultimo_sync ? " · extrato de " + formatDataHora(c.ultimo_sync) : "")
+              ? `<span class="selo-sinc" title="Atualizada pelo Open Finance — última leitura da Pluggy em ${c.ultimo_sync ? escapeHtml(formatDataHora(c.ultimo_sync)) : "?"}"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>sincronizada</span>`
+                + (c.extrato_ate ? ` · <span class="${extratoAtrasado(c.extrato_ate) ? "extrato-velho" : ""}">extrato até ${formatData(c.extrato_ate)}</span>` : "")
               : "Saldo inicial: " + formatMoeda(c.saldo_inicial)}${usuariosCache.length > 1 && c.usuario_nome ? " · " + escapeHtml(c.usuario_nome) : ""}</div>
         </div>
       </div>
