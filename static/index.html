@@ -3481,6 +3481,10 @@ function renderizarOpenFinance(){
   }).join("") + `<div class="of-aviso">
       Remover a conexão apaga só o vínculo aqui. Para <b>revogar de verdade</b> o
       compartilhamento, use o aplicativo do seu banco — é lá que o consentimento vive.
+      <div style="margin-top:9px;">
+        <button type="button" class="secondary" onclick="ativarWebhookOF()">Ativar avisos na hora</button>
+        <span id="ofWebhookEstado" style="margin-left:8px;"></span>
+      </div>
     </div>`;
 
   // Marca a opção certa em cada select depois de montar (o selected inline não
@@ -3492,6 +3496,20 @@ function renderizarOpenFinance(){
     const sel = elCon.querySelector(`select[onchange*="vincularContaOF(${c.id},"]`);
     if (sel) sel.value = valor;
   }));
+}
+
+// Sem webhook a novidade aparece no ciclo diário; com ele, em minutos. Exige
+// endereço público HTTPS, então nem toda instalação consegue — por isso é um
+// botão, e não algo ligado sozinho.
+async function ativarWebhookOF(){
+  const estado = document.getElementById("ofWebhookEstado");
+  try {
+    const res = await apiFetch(`${API}/pluggy/webhook-registrar`, {method:"POST"},
+                               {erro:"Não foi possível ativar os avisos"});
+    await res.json();
+    if (estado) estado.textContent = "ativado";
+    showToast("Avisos na hora ativados", "ok");
+  } catch (e) {}
 }
 
 async function salvarCredencialOF(ev){

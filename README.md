@@ -192,6 +192,116 @@ O que o app faz além de abrir o site:
 Sem instalar nada: acesse pelo Chrome e use "Adicionar à tela inicial". Abre em
 tela cheia, mas sem digital, widget nem notificações.
 
+## Open Finance: puxar o extrato do banco automaticamente
+
+O FinanCerto se conecta aos seus bancos pela [Pluggy](https://pluggy.ai), que é
+uma instituição de pagamento autorizada pelo Banco Central. Feita a conexão, o
+extrato vira lançamento sozinho e o saldo do app passa a bater com o do banco.
+
+**É opcional.** Sem configurar nada, o app funciona normalmente com lançamento
+manual — e continua sendo o modo mais privado, porque nenhum dado sai do seu
+servidor.
+
+### O que isso custa
+
+O plano comercial da Pluggy custa a partir de R$ 2.500/mês e não serve para uso
+pessoal. O caminho aqui é o **Meu Pluggy**, gratuito por tempo indeterminado
+para você acessar **os seus próprios dados**, nas contas do seu nome.
+
+O Dashboard abre com um teste de 15 dias, mas isso vale só para recursos
+comerciais: **depois dos 15 dias você continua puxando os seus dados de graça**,
+pelo conector MeuPluggy.
+
+### Antes de começar, entenda o que você está autorizando
+
+- A senha do seu banco **nunca passa pelo FinanCerto nem pela Pluggy**: você faz
+  login na página do próprio banco, pelo Open Finance.
+- O consentimento é **somente leitura** — extrato e saldo. Movimentar dinheiro é
+  outro consentimento, que você teria que autorizar separadamente.
+- Dura no máximo **12 meses** e você **revoga quando quiser**, pelo app do seu
+  banco, com efeito imediato.
+- Em troca, o seu histórico de transações passa a existir também nos servidores
+  da Pluggy. É uma troca real: pese antes de decidir.
+
+### Passo a passo
+
+**1. Conecte seus bancos no Meu Pluggy**
+
+Crie a conta em [meu.pluggy.ai](https://meu.pluggy.ai) e conecte cada banco.
+Confira que o fluxo te leva para a **página do próprio banco** para o login —
+é o sinal de que você está no conector regulado do Open Finance.
+
+**2. Pegue suas credenciais de desenvolvedor**
+
+Crie a conta em [dashboard.pluggy.ai](https://dashboard.pluggy.ai). Em
+**Dados Financeiros → Customização → Conectores**, procure por "MeuPluggy" e
+deixe o conector **(200) MeuPluggy** ligado. Salve.
+
+Em **Aplicações**, crie uma aplicação e copie o **Client ID** e o **Client
+Secret** — o secret costuma aparecer uma vez só.
+
+> Não faça a etapa de *due diligence*, que pede dados de empresa: é o caminho
+> comercial pago e não serve para uso pessoal.
+
+**3. Ligue a sua conta do Meu Pluggy à aplicação**
+
+Ainda no Dashboard, abra o widget e escolha o conector **MeuPluggy**. Ele
+redireciona para o `meu.pluggy.ai` e você autoriza — **não pede senha nenhuma**,
+é OAuth.
+
+Repita **uma vez por banco** conectado. Cada banco vira uma conexão com um
+**Item ID** próprio (um UUID). Copie os Item IDs; a Pluggy não tem endpoint que
+liste isso, então é você quem guarda.
+
+**4. Configure no FinanCerto**
+
+Na aba **Contas**, seção **Open Finance**, cole o Client ID e o Client Secret.
+Depois cole cada **Item ID** no campo "Conectar banco".
+
+**5. Vincule cada conta**
+
+Para cada conta que aparecer, escolha no seletor se ela é uma **conta** do
+FinanCerto, um **cartão**, ou se deve ser **ignorada**. Enquanto não houver
+vínculo, nada é importado — isso é proposital.
+
+### O que acontece depois
+
+- Uma sincronização diária traz o que chegou e mantém o saldo igual ao do banco.
+- Todo lançamento vindo do banco leva o selo **Open Finance**, para você
+  distinguir do que digitou.
+- Transação que já existe como lançamento seu é **reconhecida, não duplicada**
+  (mesmo valor, data com três dias de folga).
+- Numa conta sincronizada o **saldo inicial deixa de ser editável**: ele passa a
+  ser calculado a partir do extrato, e mexer nele faria o saldo parar de bater.
+
+### Avisos na hora (webhook, opcional)
+
+Sem isso, a novidade aparece em até 24 horas. Com o webhook, a Pluggy avisa
+assim que chega transação nova ou a conexão quebra.
+
+Exige que o seu servidor tenha **endereço público HTTPS** (a Pluggy recusa
+`localhost`). Defina no `.env`:
+
+```
+PLUGGY_WEBHOOK_URL=https://seu-dominio.com.br
+```
+
+Reinicie e, na aba Contas, use **Ativar avisos na hora**. O endpoint se protege
+com um segredo gerado sozinho em `data/.pluggy_webhook` — ele vai embutido na
+URL registrada na Pluggy e não precisa ser digitado em lugar nenhum.
+
+### Se algo der errado
+
+| Sintoma | O que costuma ser |
+|---|---|
+| "a Pluggy recusou as credenciais" | Client ID/Secret trocados, ou o conector MeuPluggy não foi habilitado em Customização |
+| "a Pluggy não encontrou esse Item ID" | O Item é de outra aplicação, ou o passo 3 não foi feito para aquele banco |
+| Conectou mas não aparece conta | Falta vincular a conta ao seu equivalente no FinanCerto |
+| A data de sincronização não anda | O consentimento pode ter expirado — reconecte pelo `meu.pluggy.ai` |
+
+Seus dados importados ficam no **seu** banco SQLite. Se um dia você desligar o
+Open Finance, nada do que já entrou se perde.
+
 ## Estrutura
 
 - `app.py` — backend Flask (API REST + serve o site + autenticação)

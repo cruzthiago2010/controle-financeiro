@@ -124,6 +124,10 @@ def escrita_liberada_para_leitura(caminho):
 def exigir_login():
     if request.path.startswith("/static/") or request.path in ROTAS_PUBLICAS:
         return None
+    # O webhook é chamado pela Pluggy, que não tem sessão. Ele não fica aberto:
+    # a própria URL carrega um segredo, conferido na rota em tempo constante.
+    if request.path.startswith("/api/pluggy/webhook/"):
+        return None
     if request.path == "/":
         if not session.get("usuario_id"):
             return redirect("/login")
@@ -6046,6 +6050,20 @@ def pluggy_sincronizar_tudo(conn, casa_id, criar=True):
             resumo["descompasso"][nome] = round(ajuste, 2)
         conn.commit()
 
+    # Cartões: extrato próprio, que não mexe em saldo de conta nenhuma. O que
+    # sai da conta é o pagamento da fatura, e esse vem pelo extrato bancário.
+    for pc in conn.execute(
+        "SELECT * FROM pluggy_contas WHERE casa_id = ? AND cartao_id IS NOT NULL AND ignorada = 0",
+        (casa_id,),
+    ).fetchall():
+        try:
+            rel = pluggy_importar_cartao(conn, casa_id, pc, criar=criar)
+            pluggy_atualizar_cartao(conn, casa_id, pc)
+        except PluggyErro:
+            continue
+        resumo["cartoes"] = resumo.get("cartoes", 0) + 1
+        resumo["compras"] = resumo.get("compras", 0) + rel["criadas"]
+
     return resumo
 
 
@@ -6094,6 +6112,307 @@ def iniciar_agendador_pluggy():
     t.start()
 
 
+# ---- Importação de cartão de crédito ----
+#
+# Cartão não é conta: o extrato dele não muda saldo de conta nenhuma. O que sai
+# da conta é o pagamento da fatura, que aparece no extrato bancário e é
+# importado por lá. Importar as compras do cartão como despesa de conta
+# contaria a fatura duas vezes — uma na compra, outra no pagamento.
+#
+# Atenção ao sentido, que é invertido em relação à conta: num cartão, DEBIT é
+# compra (aumenta o que você deve) e CREDIT é pagamento ou estorno (diminui).
+
+
+def _mes_da_fatura(transacao):
+    """Em qual fatura a compra cai (AAAA-MM).
+
+    O cartão fecha antes do fim do mês, então uma compra do dia 12 pode entrar
+    na fatura do mês seguinte. A Pluggy diz isso em `billForecastDate`; sem
+    ele, o mês da própria transação é a melhor aproximação.
+    """
+    cc = transacao.get("creditCardMetadata") or {}
+    previsto = cc.get("billForecastDate")
+    if previsto and len(str(previsto)) >= 7:
+        return str(previsto)[:7]
+    return (transacao.get("date") or "")[:7]
+
+
+def pluggy_importar_cartao(conn, casa_id, pluggy_conta, criar=True):
+    """Importa o extrato de um cartão vinculado para `cartao_transacoes`."""
+    cartao_id = pluggy_conta["cartao_id"]
+    if not cartao_id:
+        raise PluggyErro("essa conta da Pluggy não está vinculada a um cartão")
+
+    account_id = pluggy_conta["account_id"]
+    usuario_id = pluggy_conta["usuario_id"]
+    garantir_categorias_do_open_finance(conn, casa_id)
+
+    relatorio = {"vistas": 0, "ja_importadas": 0, "criadas": 0,
+                 "pagamentos": 0, "parceladas": 0}
+
+    for t in _pluggy_extrato(conn, casa_id, account_id):
+        relatorio["vistas"] += 1
+        transacao_id = t.get("id")
+        if conn.execute("SELECT 1 FROM cartao_transacoes WHERE transacao_id = ?",
+                        (transacao_id,)).fetchone():
+            relatorio["ja_importadas"] += 1
+            continue
+        if not criar:
+            continue
+
+        cc = t.get("creditCardMetadata") or {}
+        pluggy_tipo = (t.get("type") or "").upper()
+        tipo = "pagamento" if pluggy_tipo == "CREDIT" else "compra"
+        valor = abs(t.get("amount") or 0)
+        data = (t.get("date") or "")[:10]
+
+        # Categoria só faz sentido em compra: rotular um pagamento de fatura
+        # como "Fatura de cartão" dentro do próprio cartão seria circular.
+        categoria = None if tipo == "pagamento" else categoria_do_pluggy(
+            t.get("category"), "despesa")
+
+        parcela_num = cc.get("installmentNumber")
+        parcela_total = cc.get("totalInstallments")
+        if parcela_total:
+            relatorio["parceladas"] += 1
+        if tipo == "pagamento":
+            relatorio["pagamentos"] += 1
+
+        conn.execute(
+            """INSERT INTO cartao_transacoes
+                   (cartao_id, descricao, valor, data, categoria, usuario_id, criado_em,
+                    transacao_id, origem, parcela_num, parcela_total, fatura_mes, tipo)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open_finance', ?, ?, ?, ?)""",
+            (cartao_id, (t.get("description") or "Sem descrição").strip(), valor, data,
+             categoria, usuario_id, datetime.now().isoformat(), transacao_id,
+             parcela_num if isinstance(parcela_num, int) else None,
+             parcela_total if isinstance(parcela_total, int) else None,
+             _mes_da_fatura(t), tipo),
+        )
+        relatorio["criadas"] += 1
+
+    conn.commit()
+    return relatorio
+
+
+def pluggy_atualizar_cartao(conn, casa_id, pluggy_conta):
+    """Traz limite, vencimento e faturas do cartão."""
+    cartao_id = pluggy_conta["cartao_id"]
+    account_id = pluggy_conta["account_id"]
+    if not cartao_id:
+        return {}
+
+    dados = pluggy_pedir(conn, casa_id, "GET",
+                         f"/accounts?itemId={pluggy_conta['item_id']}")
+    credito = {}
+    for c in dados.get("results", []):
+        if c.get("id") == account_id:
+            credito = c.get("creditData") or {}
+            # `balance` do cartão é o que se deve hoje.
+            conn.execute("UPDATE cartoes SET fatura_atual = ? WHERE id = ?",
+                         (c.get("balance") or 0, cartao_id))
+            break
+
+    if credito.get("creditLimit") is not None:
+        conn.execute("UPDATE cartoes SET limite = ? WHERE id = ?",
+                     (credito["creditLimit"], cartao_id))
+    vence = credito.get("balanceDueDate")
+    if vence and len(str(vence)) >= 10:
+        # O app guarda só o dia do vencimento, que é o que se repete todo mês.
+        conn.execute("UPDATE cartoes SET dia_vencimento = ? WHERE id = ?",
+                     (int(str(vence)[8:10]), cartao_id))
+
+    faturas = 0
+    try:
+        resposta = pluggy_pedir(conn, casa_id, "GET", f"/bills?accountId={account_id}")
+    except PluggyErro:
+        resposta = {}
+    for b in resposta.get("results", []):
+        conn.execute(
+            """INSERT INTO cartao_faturas
+                   (fatura_id, cartao_id, account_id, vencimento, fechamento,
+                    total, minimo, criado_em)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(fatura_id) DO UPDATE SET
+                   total = excluded.total,
+                   minimo = excluded.minimo,
+                   vencimento = excluded.vencimento,
+                   fechamento = excluded.fechamento""",
+            (b.get("id"), cartao_id, account_id,
+             (b.get("dueDate") or "")[:10] or None,
+             (b.get("billClosingDate") or "")[:10] or None,
+             b.get("totalAmount"), b.get("minimumPaymentAmount"),
+             datetime.now().isoformat()),
+        )
+        faturas += 1
+
+    conn.commit()
+    return {"faturas": faturas, "limite": credito.get("creditLimit")}
+
+
+# ---- Webhook da Pluggy ----
+#
+# O ciclo diário só descobre novidade uma vez por dia. Com o webhook, a Pluggy
+# avisa quando chega transação nova ou quando a conexão quebra, e a coisa
+# aparece em minutos.
+#
+# A URL é por instalação (`PLUGGY_WEBHOOK_URL`), e não fixa no código: o app é
+# genérico e cada pessoa hospeda o seu. Sem essa variável o webhook fica
+# desligado e o ciclo diário continua dando conta.
+PLUGGY_WEBHOOK_URL = os.environ.get("PLUGGY_WEBHOOK_URL") or ""
+
+# O endpoint não pode exigir sessão — quem chama é a Pluggy, que não tem login.
+# Então ele se protege por um segredo na própria URL. Guardado em /data junto
+# das outras chaves, para sobreviver a `docker compose up`.
+PLUGGY_WEBHOOK_SEGREDO_PATH = os.path.join(os.path.dirname(DB_PATH), ".pluggy_webhook")
+
+
+def pluggy_webhook_segredo():
+    if os.path.exists(PLUGGY_WEBHOOK_SEGREDO_PATH):
+        with open(PLUGGY_WEBHOOK_SEGREDO_PATH) as f:
+            s = f.read().strip()
+            if s:
+                return s
+    s = secrets.token_urlsafe(32)
+    os.makedirs(os.path.dirname(PLUGGY_WEBHOOK_SEGREDO_PATH), exist_ok=True)
+    with open(PLUGGY_WEBHOOK_SEGREDO_PATH, "w") as f:
+        f.write(s)
+    os.chmod(PLUGGY_WEBHOOK_SEGREDO_PATH, 0o600)
+    return s
+
+
+def pluggy_webhook_url_completa():
+    """A URL que a Pluggy vai chamar, com o segredo. Vazia se não configurada."""
+    if not PLUGGY_WEBHOOK_URL:
+        return ""
+    base = PLUGGY_WEBHOOK_URL.rstrip("/")
+    return f"{base}/api/pluggy/webhook/{pluggy_webhook_segredo()}"
+
+
+# Fila do que o webhook mandou processar. O endpoint responde na hora e o
+# trabalho acontece aqui: a Pluggy exige resposta em menos de 5 segundos e
+# tenta de novo 9 vezes se demorar — sincronizar durante a requisição
+# garantiria timeout e avisos repetidos.
+_pluggy_fila = []
+_pluggy_fila_lock = threading.Lock()
+
+
+@app.route("/api/pluggy/webhook/<segredo>", methods=["POST"])
+def pluggy_webhook(segredo):
+    # Comparação em tempo constante: com `==`, o tempo de resposta vazaria
+    # quantos caracteres do segredo o atacante já acertou.
+    if not secrets.compare_digest(segredo, pluggy_webhook_segredo()):
+        return jsonify({"erro": "não autorizado"}), 401
+
+    dados = request.get_json(silent=True) or {}
+    evento = dados.get("event") or ""
+    item_id = dados.get("itemId")
+
+    # Só enfileira o que muda dado nosso. `connector/status_updated` e os
+    # eventos de pagamento não mexem em nada aqui.
+    interessa = evento.startswith("transactions/") or evento in (
+        "item/updated", "item/created", "item/error", "item/waiting_user_input",
+        "item/login_succeeded", "item/deleted",
+    )
+    if interessa and item_id:
+        with _pluggy_fila_lock:
+            if item_id not in _pluggy_fila:
+                _pluggy_fila.append(item_id)
+
+    # 2xx imediato. A Pluggy recomenda não confiar no corpo do aviso e
+    # consultar o item depois — é o que o processador faz.
+    return jsonify({"ok": True}), 200
+
+
+def _loop_webhook():
+    """Processa a fila do webhook. Confere a cada 20s em vez de reagir na
+    hora: vários avisos do mesmo item chegam em rajada, e agrupar evita
+    sincronizar a mesma coisa cinco vezes seguidas."""
+    while True:
+        time.sleep(20)
+        with _pluggy_fila_lock:
+            pendentes, _pluggy_fila[:] = list(_pluggy_fila), []
+        if not pendentes:
+            continue
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            conn.row_factory = sqlite3.Row
+            casas = set()
+            for item_id in pendentes:
+                row = conn.execute("SELECT casa_id FROM pluggy_itens WHERE item_id = ?",
+                                   (item_id,)).fetchone()
+                if row:
+                    casas.add(row["casa_id"])
+            for casa_id in casas:
+                try:
+                    pluggy_sincronizar_tudo(conn, casa_id)
+                except Exception as e:
+                    print(f"[webhook] casa {casa_id}: {e}", flush=True)
+            conn.close()
+        except Exception as e:
+            print(f"[webhook] falhou: {e}", flush=True)
+
+
+def iniciar_processador_webhook():
+    t = threading.Thread(target=_loop_webhook, daemon=True)
+    t.start()
+
+
+@app.route("/api/pluggy/webhook-status", methods=["GET"])
+def pluggy_webhook_status():
+    """O que a tela precisa para explicar o estado do webhook."""
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        url = pluggy_webhook_url_completa()
+        registrados = []
+        if url:
+            try:
+                for w in pluggy_pedir(conn, casa_id, "GET", "/webhooks").get("results", []):
+                    registrados.append({"id": w.get("id"), "url": w.get("url"),
+                                        "evento": w.get("event")})
+            except PluggyErro:
+                pass
+        return jsonify({
+            "configurado": bool(PLUGGY_WEBHOOK_URL),
+            # O segredo nunca sai daqui; a tela só precisa saber se existe URL.
+            "url_publica": PLUGGY_WEBHOOK_URL or None,
+            "registrados": registrados,
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/pluggy/webhook-registrar", methods=["POST"])
+def pluggy_webhook_registrar():
+    """Cadastra (ou recadastra) o webhook na Pluggy."""
+    conn = get_db()
+    try:
+        if not eh_administrador(conn):
+            return jsonify({"erro": "só o administrador da casa pode configurar o webhook"}), 403
+        url = pluggy_webhook_url_completa()
+        if not url:
+            return jsonify({"erro": "defina PLUGGY_WEBHOOK_URL no .env com o endereço "
+                                    "público do seu servidor"}), 400
+        if not url.startswith("https://"):
+            return jsonify({"erro": "a Pluggy só aceita HTTPS e recusa localhost"}), 400
+
+        casa_id = minha_casa_id(conn)
+        try:
+            # Remove os antigos desta instalação: recadastrar sem limpar
+            # deixaria a Pluggy mandando o mesmo aviso várias vezes.
+            for w in pluggy_pedir(conn, casa_id, "GET", "/webhooks").get("results", []):
+                if (w.get("url") or "").startswith(PLUGGY_WEBHOOK_URL.rstrip("/")):
+                    pluggy_pedir(conn, casa_id, "DELETE", f"/webhooks/{w['id']}")
+            criado = pluggy_pedir(conn, casa_id, "POST", "/webhooks",
+                                  json={"event": "all", "url": url})
+        except PluggyErro as e:
+            return jsonify({"erro": str(e)}), 400
+        return jsonify({"ok": True, "id": criado.get("id")})
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     init_db()
     # O banco demo só é recriado do zero quando alguém liga o modo demonstração
@@ -6107,4 +6426,5 @@ if __name__ == "__main__":
     iniciar_agendador_cotacoes()
     iniciar_agendador_catalogo()
     iniciar_agendador_pluggy()
+    iniciar_processador_webhook()
     app.run(host="0.0.0.0", port=5000)
