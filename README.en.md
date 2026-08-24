@@ -56,10 +56,20 @@ key, starts the container, and prints the address and password at the end.
 git clone https://github.com/financerto/controle-financeiro.git
 cd controle-financeiro
 copy .env.example .env
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Open `http://localhost:8420` and sign in as `admin`. That's it.
+
+> **The image is prebuilt.** Both paths above pull
+> `ghcr.io/financerto/controle-financeiro:latest`, published for **amd64 and
+> arm64** — so on a Raspberry Pi installing takes seconds instead of the
+> several minutes it takes to compile the dependencies on the device itself.
+> The `latest` tag follows `main`, which is exactly what the installer used
+> to give you by cloning and building; to pin a version, use the release tag,
+> e.g. `:3.3`. To build locally anyway — what you want when developing or
+> after changing the code — use `docker compose up -d --build`.
 
 > To use a different port: `PORTA=8421 curl -fsSL ... | bash`.
 > The manual walkthrough, with every variable, is under

@@ -53,10 +53,21 @@ sessão, sobe o container e imprime o endereço e a senha no fim.
 git clone https://github.com/financerto/controle-financeiro.git
 cd controle-financeiro
 copy .env.example .env
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Abra `http://localhost:8420` e entre com o usuário `admin`. Pronto.
+
+> **A imagem vem pronta.** Os dois caminhos acima baixam
+> `ghcr.io/financerto/controle-financeiro:latest`, publicada para **amd64 e
+> arm64** — então num Raspberry Pi a instalação são segundos, e não os vários
+> minutos de compilar as dependências no próprio aparelho. A etiqueta
+> `latest` acompanha o `main`, que é exatamente o que a instalação entregava
+> antes clonando e construindo; quem prefere fixar uma versão usa a etiqueta
+> da release, por exemplo `:3.3`. Para construir localmente mesmo assim —
+> é o que fazem quem desenvolve e quem mudou o código — use
+> `docker compose up -d --build`.
 
 > Para instalar numa porta diferente: `PORTA=8421 curl -fsSL ... | bash`.
 > O passo a passo manual, com todas as variáveis, está em

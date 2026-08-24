@@ -147,8 +147,20 @@ ajustar_porta() {
 
 # ── Subir ────────────────────────────────────────────────────────────────────
 subir() {
-  info "Construindo a imagem e subindo o container (pode demorar alguns minutos na primeira vez)."
-  ( cd "$DESTINO" && $COMPOSE up -d --build )
+  # A imagem pronta primeiro: num Raspberry Pi o build passa de vários
+  # minutos, e o pull resolve em segundos. Se o registro não responder —
+  # rede sem saída, arquitetura fora das duas publicadas, pacote fora do ar
+  # — cai no build, que funciona em qualquer máquina que rode Docker. Por
+  # isso o pull não pode ser fatal: ele é o atalho, não o caminho.
+  info "Baixando a imagem pronta (ghcr.io) ..."
+  if ( cd "$DESTINO" && $COMPOSE pull --quiet >/dev/null 2>&1 ); then
+    ok "Imagem baixada."
+    info "Subindo o container."
+    ( cd "$DESTINO" && $COMPOSE up -d )
+  else
+    aviso "Não consegui baixar a imagem pronta; vou construir aqui mesmo (pode demorar alguns minutos)."
+    ( cd "$DESTINO" && $COMPOSE up -d --build )
+  fi
 }
 
 esperar() {

@@ -1,0 +1,103 @@
+name: Imagem
+
+# Publica a imagem pronta no GitHub Container Registry, para quem hospeda não
+# precisar construir. No servidor de quem publica o build leva 15 segundos, mas
+# num Raspberry Pi passa de vários minutos — e é justamente nessa máquina que o
+# app costuma acabar.
+#
+# São duas arquiteturas de propósito: amd64 é o servidor comum, e arm64 é o
+# Raspberry Pi e o Mac com chip da Apple. Publicar só amd64 deixaria de fora
+# quem mais ganha com isto.
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  # Dois pushes seguidos no main não precisam construir arm64 duas vezes.
+  group: imagem-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    name: Construir e publicar
+    runs-on: ubuntu-latest
+    # O build de arm64 roda emulado por QEMU e é bem mais lento que o nativo.
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: QEMU (para construir arm64 numa máquina amd64)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Entrar no registro
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          # Token da própria execução: não há segredo para cadastrar nem para
+          # rodar atrás de. Quem der fork publica no próprio namespace.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Decidir as etiquetas
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          # `latest` acompanha o main, que é o mesmo que o install.sh já
+          # entregava clonando e construindo — não é uma promessa nova de
+          # estabilidade. Release ganha a etiqueta da versão, para quem
+          # prefere fixar.
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=main-,format=short,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+          labels: |
+            org.opencontainers.image.title=FinanCerto
+            org.opencontainers.image.description=Controle financeiro pessoal e familiar, self-hosted
+            org.opencontainers.image.licenses=AGPL-3.0
+
+      - name: Construir e enviar
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Sem cache, cada execução recompila as dependências emuladas do zero.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Conferir que a imagem publicada sobe e responde
+        # O CI já testa a imagem construída localmente; isto aqui confere a que
+        # de fato foi parar no registro, que é a que as pessoas vão baixar.
+        run: |
+          IMAGEM=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          echo "Conferindo $IMAGEM"
+          docker run -d --name financerto-publicada -p 8420:5000 \
+            -e ADMIN_PASSWORD=senha-de-teste-do-ci \
+            -e SECRET_KEY=chave-de-teste-do-ci-com-tamanho-suficiente \
+            "$IMAGEM"
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://localhost:8420/; then
+              echo "A imagem publicada respondeu."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::A imagem publicada não respondeu em 60s."
+          docker logs financerto-publicada
+          exit 1
