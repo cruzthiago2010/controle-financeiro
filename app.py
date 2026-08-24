@@ -6716,6 +6716,154 @@ def aplicar_regras_no_historico():
         conn.close()
 
 
+# ---------------- Não categorizados ----------------
+#
+# Agrupa por descrição em vez de listar um a um. Nos dados reais, 14 lançamentos
+# sem categoria eram só 3 descrições repetidas — pedir para classificar 14 vezes
+# a mesma coisa seria trabalho inventado.
+#
+# Ao classificar um grupo, a pessoa pode criar a regra junto. É isso que faz o
+# sistema aprender: da próxima vez que aquele estabelecimento aparecer, já vem
+# categorizado.
+
+# Prefixos que o banco põe antes do nome do estabelecimento. Eles atrapalham a
+# regra: "Compra débito CARREFOUR" e "CARREFOUR" são o mesmo lugar, e uma
+# condição com o prefixo deixaria de casar quando o banco mudasse o texto.
+PREFIXOS_BANCARIOS = [
+    "COMPRA DEBITO", "COMPRA CARTAO", "COMPRA CREDITO", "PAGAMENTO DE",
+    "PAGAMENTO", "SAIDA", "ENTRADA", "PIX ENVIADO", "PIX RECEBIDO",
+    "TED ENVIADA", "TED RECEBIDA", "DEBITO AUTOMATICO", "TRANSFERENCIA",
+    "COMPRA", "DEBITO", "CREDITO",
+]
+
+
+def sugerir_condicao_regra(descricao):
+    """Um trecho da descrição que sirva de condição.
+
+    Tira o prefixo do banco e os números do fim (data, parcela, código da
+    maquininha), que mudam a cada compra e fariam a regra pegar uma vez só.
+    """
+    texto = _texto_normalizado(descricao)
+    for p in PREFIXOS_BANCARIOS:
+        if texto.startswith(p + " "):
+            texto = texto[len(p) + 1:]
+            break
+
+    # Corta no primeiro pedaço que parece código: sequência com dígito, ou
+    # data entre parênteses.
+    palavras = []
+    for palavra in texto.split():
+        if any(c.isdigit() for c in palavra):
+            break
+        palavras.append(palavra)
+        if len(palavras) >= 3:
+            break
+    sugestao = " ".join(palavras).strip(" -*/()")
+    # Curto demais não distingue nada; aí é melhor a descrição inteira.
+    return sugestao if len(sugestao) >= 4 else texto[:40].strip()
+
+
+@app.route("/api/nao-categorizados", methods=["GET"])
+def listar_nao_categorizados():
+    """Grupos de lançamentos sem categoria, do mais frequente para o menos."""
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        linhas = conn.execute(
+            """SELECT l.id, l.descricao, l.valor, l.tipo,
+                      COALESCE(l.data_pagamento, l.vencimento, l.mes) AS quando,
+                      l.conta, l.origem
+               FROM lancamentos l JOIN usuarios u ON u.id = l.usuario_id
+               WHERE u.casa_id = ? AND l.eh_transferencia = 0
+                 AND (l.categoria IS NULL OR l.categoria = '')
+               ORDER BY quando DESC""",
+            (casa_id,),
+        ).fetchall()
+
+        grupos = {}
+        for l in linhas:
+            chave = _texto_normalizado(l["descricao"])
+            g = grupos.setdefault(chave, {
+                "descricao": l["descricao"],
+                "chave": chave,
+                "quantidade": 0,
+                "total": 0.0,
+                "tipo": l["tipo"],
+                "primeira": l["quando"],
+                "ultima": l["quando"],
+                "ids": [],
+                "sugestao": sugerir_condicao_regra(l["descricao"]),
+                "do_banco": False,
+            })
+            g["quantidade"] += 1
+            g["total"] += l["valor"] or 0
+            g["ids"].append(l["id"])
+            if l["quando"] and (not g["primeira"] or l["quando"] < g["primeira"]):
+                g["primeira"] = l["quando"]
+            if l["quando"] and (not g["ultima"] or l["quando"] > g["ultima"]):
+                g["ultima"] = l["quando"]
+            if l["origem"] == "open_finance":
+                g["do_banco"] = True
+
+        ordenados = sorted(grupos.values(),
+                           key=lambda g: (-g["quantidade"], -abs(g["total"])))
+        return jsonify({"total": len(linhas), "grupos": ordenados})
+    finally:
+        conn.close()
+
+
+@app.route("/api/nao-categorizados/classificar", methods=["POST"])
+def classificar_nao_categorizados():
+    """Classifica um grupo inteiro e, se pedido, cria a regra para o futuro."""
+    dados = request.get_json(silent=True) or {}
+    ids = dados.get("ids") or []
+    categoria = (dados.get("categoria") or "").strip()
+    transferencia = bool(dados.get("transferencia"))
+    criar_regra = bool(dados.get("criar_regra"))
+    condicao = (dados.get("condicao") or "").strip()
+
+    if not ids:
+        return jsonify({"erro": "nada para classificar"}), 400
+    if not categoria and not transferencia:
+        return jsonify({"erro": "escolha uma categoria, ou marque como transferência"}), 400
+
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        # Só mexe no que é da casa: o id vem da tela e não pode ser confiado.
+        marcadores = ",".join("?" for _ in ids)
+        proprios = [r["id"] for r in conn.execute(
+            f"SELECT l.id FROM lancamentos l JOIN usuarios u ON u.id = l.usuario_id "
+            f"WHERE u.casa_id = ? AND l.id IN ({marcadores})",
+            [casa_id] + list(ids)).fetchall()]
+        if not proprios:
+            return jsonify({"erro": "nenhum desses lançamentos é desta casa"}), 404
+
+        marcadores2 = ",".join("?" for _ in proprios)
+        conn.execute(
+            f"UPDATE lancamentos SET categoria = ?, eh_transferencia = ? "
+            f"WHERE id IN ({marcadores2})",
+            [categoria or None, int(transferencia)] + proprios)
+
+        regra_id = None
+        if criar_regra and condicao:
+            cur = conn.execute(
+                "INSERT INTO regras_categoria (casa_id, nome, prioridade, condicoes, "
+                "categoria, marca_transferencia, ativa, criado_em) "
+                "VALUES (?, ?, 10, ?, ?, ?, 1, ?)",
+                (casa_id, f"{condicao} → {categoria or 'transferência'}",
+                 json.dumps([{"campo": "descricao", "operador": "contem",
+                              "valor": condicao}], ensure_ascii=False),
+                 categoria or "", int(transferencia), datetime.now().isoformat()),
+            )
+            regra_id = cur.lastrowid
+        conn.commit()
+
+        return jsonify({"ok": True, "classificados": len(proprios), "regra_id": regra_id})
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     init_db()
     # O banco demo só é recriado do zero quando alguém liga o modo demonstração
