@@ -5572,6 +5572,73 @@ def pluggy_vincular_conta(item_id):
         conn.close()
 
 
+# ---------------- Versão do app Android ----------------
+#
+# Quem decide qual é a versão atual é o SERVIDOR, não o app. Assim dá para
+# anunciar uma versão nova sem precisar publicar um APK novo só para avisar que
+# existe um APK novo — que seria o problema do ovo e da galinha.
+#
+# Os valores são variáveis de ambiente porque o repositório é público: cada
+# instalação aponta para o próprio APK, e ninguém herda o endereço de release
+# de outra pessoa.
+APP_ANDROID_VERSAO = os.environ.get("APP_ANDROID_VERSAO", "3.1")
+APP_ANDROID_MINIMA = os.environ.get("APP_ANDROID_MINIMA", "")
+APP_ANDROID_URL = os.environ.get(
+    "APP_ANDROID_URL",
+    "https://github.com/cruzthiago2010/controle-financeiro/releases/latest",
+)
+APP_ANDROID_NOTAS = os.environ.get("APP_ANDROID_NOTAS", "")
+
+
+def _versao_como_lista(texto):
+    """"3.10.2" -> [3, 10, 2]. Comparar como texto diria que "3.9" > "3.10",
+    que é errado; comparar número a número resolve. Pedaço não numérico
+    (ex.: "3.1-beta") vira 0 em vez de explodir."""
+    partes = []
+    for pedaco in str(texto or "").strip().split("."):
+        digitos = "".join(c for c in pedaco if c.isdigit())
+        partes.append(int(digitos) if digitos else 0)
+    return partes or [0]
+
+
+def versao_menor_que(a, b):
+    """a < b, comparando por posição e tratando ausência como zero
+    (ex.: "3.1" < "3.1.1")."""
+    la, lb = _versao_como_lista(a), _versao_como_lista(b)
+    for i in range(max(len(la), len(lb))):
+        va = la[i] if i < len(la) else 0
+        vb = lb[i] if i < len(lb) else 0
+        if va != vb:
+            return va < vb
+    return False
+
+
+@app.route("/api/versao-app", methods=["GET"])
+def versao_app():
+    """Diz qual é a versão publicada do app Android e, se a instalada foi
+    informada, se ela está atrasada."""
+    instalada = (request.args.get("instalada") or "").strip()
+
+    # Sem `instalada` a rota ainda serve: a tela usa para mostrar qual é a
+    # versão publicada mesmo fora do app.
+    desatualizado = bool(instalada) and versao_menor_que(instalada, APP_ANDROID_VERSAO)
+    # "Obrigatória" existe para o caso de uma versão quebrada ou insegura: aí o
+    # aviso não é dispensável. Fica desligado enquanto a variável estiver vazia.
+    obrigatorio = bool(
+        instalada and APP_ANDROID_MINIMA and versao_menor_que(instalada, APP_ANDROID_MINIMA)
+    )
+
+    return jsonify({
+        "versao_atual": APP_ANDROID_VERSAO,
+        "versao_minima": APP_ANDROID_MINIMA or None,
+        "instalada": instalada or None,
+        "desatualizado": desatualizado,
+        "obrigatorio": obrigatorio,
+        "url": APP_ANDROID_URL,
+        "notas": APP_ANDROID_NOTAS or None,
+    })
+
+
 if __name__ == "__main__":
     init_db()
     # O banco demo só é recriado do zero quando alguém liga o modo demonstração

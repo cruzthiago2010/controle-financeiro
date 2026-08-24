@@ -624,6 +624,10 @@
     border-radius:var(--radius-md); padding:12px 14px;
   }
   .install-banner.ativo{display:flex;}
+  /* Âmbar em vez de verde: instalar é convite, atualizar é pendência. */
+  .atualiza-banner{background:linear-gradient(135deg, #3a2f10, #241d0c);
+    border-color:rgba(255,171,0,0.42);}
+  .atualiza-banner .ico.xl{color:var(--yellow);}
   .install-banner .texto-inst{flex:1; min-width:0; font-size:0.85rem;}
   .install-banner .texto-inst small{display:block; color:var(--muted); margin-top:2px; font-size:0.75rem;}
   .install-banner button{padding:8px 14px; font-size:0.82rem; flex:none;}
@@ -1322,6 +1326,18 @@
     </div>
     <button type="button" id="installBtn">Instalar</button>
     <button type="button" class="secondary" id="installFechar" title="Dispensar"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
+  </div>
+
+  <!-- Só aparece dentro do app Android, e só quando a versão instalada está
+       atrás da publicada. Quem decide isso é o servidor. -->
+  <div class="install-banner atualiza-banner" id="updateBanner">
+    <svg class="ico xl" viewBox="0 0 24 24"><use href="#i-baixar"/></svg>
+    <div class="texto-inst">
+      <strong id="updateTitulo">Atualização disponível</strong>
+      <small id="updateDica">Você está na versão — e já existe a —.</small>
+    </div>
+    <button type="button" id="updateBtn">Baixar</button>
+    <button type="button" class="secondary" id="updateFechar" title="Agora não"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-x"/></svg></button>
   </div>
 
   <!-- ===================== DASHBOARD ===================== -->
@@ -3505,6 +3521,7 @@ async function carregarContas(){
     renderizarContas();
     popularSelectsConta();
     carregarOpenFinance();
+    conferirVersaoApp();
   } catch (e) {
     document.getElementById("listaContas").innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
   }
@@ -7107,6 +7124,51 @@ function notifConfig(){
 }
 function salvarNotifConfig(c){
   try { localStorage.setItem("notificacoes", JSON.stringify(c)); } catch (e) {}
+}
+
+// ---------- Versão do app Android ----------
+// A comparação é feita no servidor: assim uma versão nova é anunciada sem
+// depender de publicar um APK novo só para avisar do APK novo.
+async function conferirVersaoApp(){
+  if (!dentroDoApp()) return;
+  // `versao()` foi adicionada à ponte depois do primeiro APK; num app antigo
+  // ela não existe, e aí a versão instalada é desconhecida — o que já é sinal
+  // de estar atrasado.
+  let instalada = "";
+  try { instalada = window.FinanCertoApp.versao() || ""; } catch (e) { instalada = ""; }
+
+  let dados;
+  try {
+    const res = await apiFetch(`${API}/versao-app?instalada=${encodeURIComponent(instalada)}`,
+                               undefined, {silencioso:true});
+    dados = await res.json();
+  } catch (e) { return; }
+
+  const desatualizado = dados.desatualizado || (!instalada && dados.versao_atual);
+  if (!desatualizado) return;
+
+  // Dispensar vale por versão: some agora, volta quando sair outra.
+  const dispensada = (() => {
+    try { return localStorage.getItem("updateDispensado"); } catch (e) { return null; }
+  })();
+  if (!dados.obrigatorio && dispensada === dados.versao_atual) return;
+
+  const banner = document.getElementById("updateBanner");
+  document.getElementById("updateTitulo").textContent =
+    dados.obrigatorio ? "Atualização necessária" : "Atualização disponível";
+  document.getElementById("updateDica").textContent = instalada
+    ? `Você está na ${instalada} e já existe a ${dados.versao_atual}.`
+      + (dados.notas ? " " + dados.notas : "")
+    : `Já existe a versão ${dados.versao_atual} do app.`;
+  document.getElementById("updateBtn").onclick = () => window.open(dados.url, "_blank");
+  const fechar = document.getElementById("updateFechar");
+  // Versão obrigatória não é dispensável — é o caso de uma versão quebrada.
+  fechar.style.display = dados.obrigatorio ? "none" : "";
+  fechar.onclick = () => {
+    try { localStorage.setItem("updateDispensado", dados.versao_atual); } catch (e) {}
+    banner.classList.remove("ativo");
+  };
+  banner.classList.add("ativo");
 }
 
 // Dentro do app Android existe a ponte FinanCertoApp; ali quem notifica é o
