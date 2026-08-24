@@ -1843,8 +1843,8 @@
     <form class="add-form" id="holeriteForm" enctype="multipart/form-data">
       <input type="file" id="holeriteArquivo" accept="application/pdf" required>
       <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; color:var(--muted);">
-        <input type="checkbox" id="holeriteLancarReceita" checked style="width:auto;" data-i18n="Lançar automaticamente como receita">
-        Lançar automaticamente como receita
+        <input type="checkbox" id="holeriteLancarReceita" checked style="width:auto;">
+        <span id="holeriteLancarReceitaTexto" data-i18n="Lançar automaticamente como receita">Lançar automaticamente como receita</span>
       </label>
       <button type="submit" data-i18n="Importar holerite">Importar holerite</button>
     </form>
@@ -2051,8 +2051,8 @@
     <label data-i18n="Observação">Observação</label>
     <textarea id="editObs"></textarea>
     <label class="modal-rec">
-      <input type="checkbox" id="editRec" data-i18n="Repetir todo mês (recorrente)">
-      Repetir todo mês (recorrente)
+      <input type="checkbox" id="editRec">
+      <span data-i18n="Repetir todo mês (recorrente)">Repetir todo mês (recorrente)</span>
     </label>
     <div class="modal-acoes">
       <button class="secondary" type="button" id="editCancelar" data-i18n="Cancelar">Cancelar</button>
@@ -2617,6 +2617,7 @@ const TRADUCOES = {"en": {
 "6 meses": "6 months",
 "7 dias antes": "7 days before",
 "A conta": "Account",
+"A conta {0} está negativa em {1}.": "Account {0} is {1} overdrawn.",
 "A leitura é automática e pode errar alguns dígitos — confira tudo antes de lançar.": "Scanning is automatic and may misread digits — check everything before saving.",
 "A receber": "Expected",
 "Aberto pelo navegador": "Opened in the browser",
@@ -2632,6 +2633,7 @@ const TRADUCOES = {"en": {
 "Administrador": "Administrator",
 "Agora não": "Not now",
 "Ainda pode gastar": "Still can spend",
+"Ainda sem lançamentos neste mês": "No entries this month yet",
 "Alternar tema": "Switch theme",
 "Anual": "Yearly",
 "Ao passar do limite, o backup mais antigo é apagado automaticamente.": "Past the limit, the oldest backup is deleted automatically.",
@@ -2668,6 +2670,7 @@ const TRADUCOES = {"en": {
 "CDB": "CDB",
 "CRA": "CRA",
 "CRI": "CRI",
+"Cadastre suas receitas e despesas do mês pra eu conseguir te dizer como você está indo.": "Add this month's income and expenses so I can tell you how you're doing.",
 "Calendário": "Calendar",
 "Cancelar": "Cancel",
 "Carregando...": "Loading...",
@@ -2874,6 +2877,7 @@ const TRADUCOES = {"en": {
 "Não é preciso saber a senha atual — só o administrador acessa esta tela.": "No need to know the current password — only the administrator can open this screen.",
 "Número de parcelas": "Number of instalments",
 "O cartão": "Card",
+"O cartão {0} está a {1}% do limite.": "Card {0} is at {1}% of its limit.",
 "O que avisar": "What to warn about",
 "O que o banco mandou e ninguém soube classificar. Estão agrupados por descrição: você resolve o grupo inteiro de uma vez e, marcando": "What the bank sent and nobody could classify. They are grouped by description: you handle the whole group at once and, by ticking",
 "O saldo inicial desta conta é": "The starting balance of this account is",
@@ -2903,6 +2907,7 @@ const TRADUCOES = {"en": {
 "Permitir notificações": "Allow notifications",
 "Perto do limite": "Near the limit",
 "Por quantos meses?": "For how many months?",
+"Positivo, mas apertado": "Positive, but tight",
 "Posições": "Holdings",
 "Prazo": "Deadline",
 "Prazo (opcional)": "Deadline (optional)",
@@ -2921,11 +2926,13 @@ const TRADUCOES = {"en": {
 "Receitas &amp; Despesas": "Income &amp; Expenses",
 "Receitas do mês": "Income this month",
 "Recolher menu": "Collapse menu",
+"Referência": "Reference",
 "Referência não identificada": "Reference not identified",
 "Registrar compra": "Record purchase",
 "Registrar provento": "Record income",
 "Regras": "Rules",
 "Reit (EUA)": "REIT (US)",
+"Remover a conexão apaga só o vínculo aqui. Para": "Removing the connection only erases the link here. To",
 "Remover foto": "Remove photo",
 "Renda": "Income",
 "Renda e descontos por mês": "Earnings and deductions by month",
@@ -2963,12 +2970,14 @@ const TRADUCOES = {"en": {
 "Sempre": "Always",
 "Senha": "Password",
 "Senha atual": "Current password",
+"Sobra confortável": "Comfortable surplus",
 "Sobrou": "Left over",
 "Soma dos itens": "Sum of items",
 "Somente leitura": "Read-only",
 "Somente leitura (não pode editar, só ver)": "Read-only (can view, cannot edit)",
 "Stock (EUA)": "Stock (US)",
 "Sua conta": "Your account",
+"Suas despesas do mês ({0}) já passam a renda ({1}) em {2}. Nesse ritmo o mês fecha negativo — vale rever o que dá pra cortar ou adiar antes de virar dívida.": "Your expenses this month ({0}) already exceed your income ({1}) by {2}. At this pace the month closes negative — worth reviewing what can be cut or postponed before it becomes debt.",
 "Só o administrador (primeiro usuário criado) vê e altera isso. Quando ligado, a aba Empréstimos aparece pra todos os usuários.": "Only the administrator (the first user created) sees and changes this. When on, the Loans tab appears for every user.",
 "Taxa (ex: 110 ou 6)": "Rate (e.g. 110 or 6)",
 "Tendência (últimos 6 meses)": "Trend (last 6 months)",
@@ -3020,7 +3029,10 @@ const TRADUCOES = {"en": {
 "Ver o código-fonte no GitHub — software livre sob AGPL-3.0": "View the source on GitHub — free software under AGPL-3.0",
 "Ver todas as contas": "See all accounts",
 "Verificando…": "Checking…",
+"Você": "You",
 "Você está na versão — e já existe a —.": "You are on version — and — is already out.",
+"Você fecha o mês com {0} de sobra depois de pagar tudo — isso é {1}% da sua renda. Dá pra guardar uma parte ou usar pra adiantar alguma dívida.": "You end the month with {0} left after paying everything — that's {1}% of your income. You could save some of it or pay down debt.",
+"Você fecha o mês no positivo, com {0} de sobra ({1}% da renda) — mas é pouca margem pra imprevisto. Vale ficar de olho nos gastos variáveis.": "You end the month positive, with {0} left ({1}% of income) — but that's thin margin for surprises. Worth watching the variable spending.",
 "Você negou antes. Para liberar, toque no cadeado ao lado do endereço e permita as notificações deste site.": "You denied it before. To allow, tap the padlock next to the address and permit notifications for this site.",
 "Voltar para hoje": "Back to today",
 "agora há pouco": "just now",
@@ -3052,10 +3064,12 @@ const TRADUCOES = {"en": {
 "meses": "months",
 "mês": "month",
 "mínimo 4 caracteres": "at least 4 characters",
+"o compartilhamento, use o aplicativo do seu banco — é lá que o consentimento vive.": "the sharing, use your bank's app — that is where the consent lives.",
 "ou": "or",
 "paga": "paid",
 "recebido no fim do mês": "received at month end",
 "repita a nova senha": "repeat the new password",
+"revogar de verdade": "actually revoke",
 "sincronizada": "synced",
 "tem a palavra": "has the word",
 "termina com": "ends with",
@@ -3073,6 +3087,13 @@ const TRADUCOES = {"en": {
 let idiomaAtual = (() => {
   try { return localStorage.getItem("idioma") || "pt"; } catch (e) { return "pt"; }
 })();
+
+// Traduz um molde e preenche os marcadores {0}, {1}... Existe porque frase
+// com número no meio não pode ser quebrada em pedaços: em inglês a ordem às
+// vezes muda, e concatenar daria frase torta.
+function tf(molde, ...valores){
+  return valores.reduce((txt, v, i) => txt.split("{" + i + "}").join(v), t(molde));
+}
 
 function t(texto){
   if (idiomaAtual === "pt") return texto;
@@ -3264,6 +3285,10 @@ function showToast(msg, tipo){
 async function apiFetch(url, options, opts){
   opts = opts || {};
   try {
+    // O servidor precisa saber o idioma para devolver a mensagem de erro
+    // já traduzida — ele não tem acesso ao localStorage.
+    options = options || {};
+    options.headers = {...(options.headers || {}), "X-Idioma": idiomaAtual};
     const res = await fetch(url, options);
     if (res.status === 401){
       window.location.href = "/login";
@@ -4467,8 +4492,8 @@ function renderizarOpenFinance(){
         ${contas || `<div class="of-conta-sub" style="padding-top:8px;">Sem contas nesta conexão.</div>`}
       </div>`;
   }).join("") + `<div class="of-aviso">
-      Remover a conexão apaga só o vínculo aqui. Para <b>revogar de verdade</b> o
-      compartilhamento, use o aplicativo do seu banco — é lá que o consentimento vive.
+      ${t("Remover a conexão apaga só o vínculo aqui. Para")} <b>${t("revogar de verdade")}</b>
+      ${t("o compartilhamento, use o aplicativo do seu banco — é lá que o consentimento vive.")}
       <div style="margin-top:9px;">
         <button type="button" class="secondary" onclick="ativarWebhookOF()">${t("Ativar avisos na hora")}</button>
         <span id="ofWebhookEstado" style="margin-left:8px;"></span>
@@ -4624,7 +4649,7 @@ function renderizarContas(){
 }
 
 function popularSelectsConta(){
-  const opcoesComVazio = `<option value="">Sem conta</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+  const opcoesComVazio = `<option value="">${t("Sem conta")}</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
 
   const selContaInput = document.getElementById("contaInput");
   const valorAtual1 = selContaInput.value;
@@ -4638,7 +4663,7 @@ function popularSelectsConta(){
   selFiltroConta.innerHTML = `<option value="">${t("Todas contas")}</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
   selFiltroConta.value = valorAtual2;
 
-  const opcoesCartaoConta = `<option value="">Sem conta vinculada</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+  const opcoesCartaoConta = `<option value="">${t("Sem conta vinculada")}</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
   const selCartaoConta = document.getElementById("cartaoConta");
   const valorAtual3 = selCartaoConta.value;
   selCartaoConta.innerHTML = opcoesCartaoConta;
@@ -4996,21 +5021,21 @@ function calcularPanorama(d){
   let tom, icone, titulo, texto;
   if (sobra < 0){
     tom = "critical"; icone = "✕"; titulo = t("Mês no vermelho");
-    texto = `Suas despesas do mês (${formatMoeda(despesa)}) já passam a renda (${formatMoeda(receita)}) em ${formatMoeda(Math.abs(sobra))}. Nesse ritmo o mês fecha negativo — vale rever o que dá pra cortar ou adiar antes de virar dívida.`;
+    texto = tf("Suas despesas do mês ({0}) já passam a renda ({1}) em {2}. Nesse ritmo o mês fecha negativo — vale rever o que dá pra cortar ou adiar antes de virar dívida.", formatMoeda(despesa), formatMoeda(receita), formatMoeda(Math.abs(sobra)));
   } else if (receita === 0 && despesa === 0){
-    tom = "warn"; icone = "•"; titulo = "Ainda sem lançamentos neste mês";
-    texto = "Cadastre suas receitas e despesas do mês pra eu conseguir te dizer como você está indo.";
+    tom = "warn"; icone = "•"; titulo = t("Ainda sem lançamentos neste mês");
+    texto = t("Cadastre suas receitas e despesas do mês pra eu conseguir te dizer como você está indo.");
   } else if (pct >= 0.25){
-    tom = "good"; icone = "✓"; titulo = "Sobra confortável";
-    texto = `Você fecha o mês com ${formatMoeda(sobra)} de sobra depois de pagar tudo — isso é ${Math.round(pct * 100)}% da sua renda. Dá pra guardar uma parte ou usar pra adiantar alguma dívida.`;
+    tom = "good"; icone = "✓"; titulo = t("Sobra confortável");
+    texto = tf("Você fecha o mês com {0} de sobra depois de pagar tudo — isso é {1}% da sua renda. Dá pra guardar uma parte ou usar pra adiantar alguma dívida.", formatMoeda(sobra), Math.round(pct * 100));
   } else {
-    tom = "warn"; icone = "⚠"; titulo = "Positivo, mas apertado";
-    texto = `Você fecha o mês no positivo, com ${formatMoeda(sobra)} de sobra (${Math.round(pct * 100)}% da renda) — mas é pouca margem pra imprevisto. Vale ficar de olho nos gastos variáveis.`;
+    tom = "warn"; icone = "⚠"; titulo = t("Positivo, mas apertado");
+    texto = tf("Você fecha o mês no positivo, com {0} de sobra ({1}% da renda) — mas é pouca margem pra imprevisto. Vale ficar de olho nos gastos variáveis.", formatMoeda(sobra), Math.round(pct * 100));
   }
 
   const avisos = [];
-  contasNegativas.forEach(c => avisos.push(`A conta <strong>${escapeHtml(c.nome)}</strong> está negativa em ${formatMoeda(Math.abs(c.saldo_atual))}.`));
-  cartoesCriticos.forEach(c => avisos.push(`O cartão <strong>${escapeHtml(c.nome)}</strong> está a ${Math.round(c.fatura_atual / c.limite * 100)}% do limite.`));
+  contasNegativas.forEach(c => avisos.push(tf("A conta {0} está negativa em {1}.", `<strong>${escapeHtml(c.nome)}</strong>`, formatMoeda(Math.abs(c.saldo_atual)))));
+  cartoesCriticos.forEach(c => avisos.push(tf("O cartão {0} está a {1}% do limite.", `<strong>${escapeHtml(c.nome)}</strong>`, Math.round(c.fatura_atual / c.limite * 100))));
 
   return {tom, icone, titulo, texto, avisos};
 }
@@ -5081,7 +5106,7 @@ async function carregarDashboard(){
       <span class="hero-selo ${dif >= 0 ? 'sobe' : 'desce'}">
         ${svgIco(dif >= 0 ? "sobe" : "desce", "ico")} ${dif >= 0 ? '+' : '−'}${formatMoeda(Math.abs(dif))}
       </span>
-      <span class="hero-selo-ref">em relação ao mês anterior</span>`;
+      <span class="hero-selo-ref">${t("em relação ao mês anterior")}</span>`;
     destaqueContasEl.onclick = null;
     destaqueContasEl.innerHTML = `
       <div class="hero-conteudo">
@@ -7237,7 +7262,7 @@ function criarHoleriteFaltandoHTML(mes){
   div.className = "holerite-card holerite-faltando";
   div.innerHTML = `
     <div class="holerite-topo"><span class="holerite-nome">${formatMes(mes)}</span></div>
-    <p>Nenhum holerite importado para este mês.</p>
+    <p>${t("Nenhum holerite importado para este mês.")}</p>
     <button type="button" class="secondary" style="width:100%;">${t("Importar holerite deste mês")}</button>
   `;
   div.querySelector("button").addEventListener("click", () => {
@@ -7278,7 +7303,7 @@ function criarHoleriteCardHTML(h){
       </span>
     </div>
     <div class="holerite-campos">
-      <label>Referência <input type="month" data-campo="referencia" value="${h.referencia || ""}"></label>
+      <label>${t("Referência")} <input type="month" data-campo="referencia" value="${h.referencia || ""}"></label>
       <label>Recebido em <input type="date" data-campo="recebido_em" value="${h.recebido_em || ""}"></label>
       <label>Proventos <input type="number" step="0.01" data-campo="total_proventos" value="${h.total_proventos ?? ""}"></label>
       <label>Descontos <input type="number" step="0.01" data-campo="total_descontos" value="${h.total_descontos ?? ""}"></label>
@@ -8026,7 +8051,7 @@ function criarMembroCasaHTML(m){
   div.className = "simple-card";
   const badges = [];
   if (m.eh_administrador) badges.push(`<span class="badge paga">Administrador</span>`);
-  if (m.eh_voce) badges.push(`<span class="badge neutro">Você</span>`);
+  if (m.eh_voce) badges.push(`<span class="badge neutro">${t("Você")}</span>`);
   if (m.somente_leitura) badges.push(`<span class="badge leitura">Somente leitura</span>`);
 
   let acoes = "";

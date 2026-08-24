@@ -134,14 +134,14 @@ def exigir_login():
         return None
     if request.path.startswith("/api/"):
         if not session.get("usuario_id"):
-            return jsonify({"erro": "não autenticado"}), 401
+            return jsonify({"erro": msg("não autenticado")}), 401
         if (
             request.method not in ("GET", "HEAD", "OPTIONS")
             and not em_demo()
             and session.get("somente_leitura")
             and not escrita_liberada_para_leitura(request.path)
         ):
-            return jsonify({"erro": "acesso somente leitura — essa conta não pode fazer alterações"}), 403
+            return jsonify({"erro": msg("acesso somente leitura — essa conta não pode fazer alterações")}), 403
         return None
     return None
 
@@ -154,6 +154,114 @@ def em_demo():
     if not has_request_context():
         return False
     return bool(session.get("demo"))
+
+
+# ---------------- Idioma das mensagens do servidor ----------------
+#
+# As mensagens de erro nascem em português no código e chegam à tela como
+# vieram. A tela não pode traduzi-las: ela recebe uma frase pronta, e casar
+# frase por frase no cliente daria uma tabela duplicada que sai de sincronia na
+# primeira vez que alguém mudar o texto aqui.
+#
+# Então quem traduz é o servidor. O cliente manda o idioma no cabeçalho
+# X-Idioma; sem ele, tudo continua em português, que é o padrão.
+
+MENSAGENS_EN = {
+    "não autenticado": "not authenticated",
+    "acesso somente leitura — essa conta não pode fazer alterações":
+        "read-only access — this account cannot make changes",
+    "usuário ou senha inválidos": "wrong username or password",
+    "esse usuário já existe": "that username already exists",
+    "nome, usuário e senha (mín. 4 caracteres) são obrigatórios":
+        "name, username and password (min. 4 characters) are required",
+    "nome da casa, seu nome, usuário e senha (mín. 4 caracteres) são obrigatórios":
+        "household name, your name, username and password (min. 4 characters) are required",
+    "a nova senha precisa ter pelo menos 4 caracteres":
+        "the new password must be at least 4 characters",
+    "só o administrador pode adicionar usuários": "only the administrator can add users",
+    "só o administrador pode redefinir a senha de outro usuário":
+        "only the administrator can reset another user's password",
+    "nome é obrigatório": "name is required",
+    "conta não encontrada": "account not found",
+    "cartão não encontrado": "card not found",
+    "categoria não encontrada": "category not found",
+    "meta não encontrada": "goal not found",
+    "consignado não encontrado": "loan not found",
+    "lançamento não encontrado": "entry not found",
+    "regra não encontrada": "rule not found",
+    "backup não encontrado": "backup not found",
+    "comprovante não encontrado": "receipt not found",
+    "casa não encontrada": "household not found",
+    "já existe uma conta com esse nome": "an account with that name already exists",
+    "as contas de origem e destino devem ser diferentes":
+        "source and destination accounts must be different",
+    "conta de origem e destino são obrigatórias":
+        "source and destination accounts are required",
+    "conta de origem inválida": "invalid source account",
+    "conta de destino inválida": "invalid destination account",
+    "conta inválida": "invalid account",
+    "categoria e limite são obrigatórios": "category and limit are required",
+    "valor alvo inválido": "invalid target amount",
+    "nome e valor alvo são obrigatórios": "name and target amount are required",
+    "informe um valor": "enter an amount",
+    "estado inválido": "invalid status",
+    "arquivo sem nome": "file has no name",
+    # Open Finance
+    "esta casa ainda não cadastrou as credenciais do Meu Pluggy":
+        "this household has not set up its Meu Pluggy credentials yet",
+    "a Pluggy recusou as credenciais — confira o Client ID e o Client Secret":
+        "Pluggy rejected the credentials — check the Client ID and Client Secret",
+    "informe o Client ID e o Client Secret do Meu Pluggy":
+        "enter the Meu Pluggy Client ID and Client Secret",
+    "só o administrador da casa pode configurar o Open Finance":
+        "only the household administrator can set up Open Finance",
+    "só o administrador da casa pode remover o Open Finance":
+        "only the household administrator can remove Open Finance",
+    "só o administrador da casa pode configurar o webhook":
+        "only the household administrator can set up the webhook",
+    "informe o Item ID da conexão": "enter the connection's Item ID",
+    "a Pluggy não encontrou esse Item ID": "Pluggy could not find that Item ID",
+    "esse Item já está registrado em outra casa":
+        "that Item is already registered to another household",
+    "conexão não encontrada nesta casa": "connection not found in this household",
+    "conta não encontrada nesta casa": "account not found in this household",
+    "essa conta não é desta casa": "that account does not belong to this household",
+    "esse cartão não é desta casa": "that card does not belong to this household",
+    "escolha uma conta ou um cartão, não os dois":
+        "choose an account or a card, not both",
+    "essa conta é sincronizada pelo Open Finance — o saldo inicial é calculado a partir do extrato":
+        "this account is synced through Open Finance — the starting balance is calculated from the statement",
+    "o modo demonstração não conecta em banco de verdade":
+        "demo mode does not connect to a real bank",
+    "a Pluggy só aceita HTTPS e recusa localhost":
+        "Pluggy only accepts HTTPS and rejects localhost",
+    "não autorizado": "not authorised",
+    "nada para classificar": "nothing to classify",
+    "escolha uma categoria, ou marque como transferência":
+        "choose a category, or mark it as a transfer",
+    "informe nome, categoria e ao menos uma condição":
+        "enter a name, a category and at least one condition",
+    "nenhum desses lançamentos é desta casa":
+        "none of those entries belong to this household",
+    "desligue o modo demonstração antes de restaurar":
+        "turn demo mode off before restoring",
+}
+
+
+def idioma_da_requisicao():
+    """Idioma pedido pelo cliente. Fora de uma requisição — nos ciclos de
+    segundo plano — não há cabeçalho, e português é o padrão."""
+    if not has_request_context():
+        return "pt"
+    return "en" if (request.headers.get("X-Idioma") or "").lower() == "en" else "pt"
+
+
+def msg(texto):
+    """Traduz uma mensagem do servidor. Sem tradução, devolve o original —
+    mensagem em português é melhor que mensagem faltando."""
+    if idioma_da_requisicao() != "en":
+        return texto
+    return MENSAGENS_EN.get(texto, texto)
 
 
 def caminho_banco_atual():
@@ -833,7 +941,7 @@ def login():
     row = conn.execute("SELECT * FROM usuarios WHERE username = ?", (username,)).fetchone()
     conn.close()
     if not row or not check_password_hash(row["senha_hash"], senha):
-        return jsonify({"erro": "usuário ou senha inválidos"}), 401
+        return jsonify({"erro": msg("usuário ou senha inválidos")}), 401
     session.clear()
     session["usuario_id"] = row["id"]
     session["usuario_nome"] = row["nome"]
@@ -858,7 +966,7 @@ def registro():
     username = (data.get("username") or "").strip().lower()
     senha = data.get("senha") or ""
     if not nome_casa or not nome or not username or len(senha) < 4:
-        return jsonify({"erro": "nome da casa, seu nome, usuário e senha (mín. 4 caracteres) são obrigatórios"}), 400
+        return jsonify({"erro": msg("nome da casa, seu nome, usuário e senha (mín. 4 caracteres) são obrigatórios")}), 400
 
     conn = get_db()
     try:
@@ -874,7 +982,7 @@ def registro():
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()
-        return jsonify({"erro": "esse usuário já existe"}), 400
+        return jsonify({"erro": msg("esse usuário já existe")}), 400
 
     garantir_categorias_padrao(conn)
     usuario_id = cur.lastrowid
@@ -906,7 +1014,7 @@ def auth_google_status():
 @app.route("/api/auth/google/login")
 def auth_google_login():
     if not GOOGLE_LOGIN_HABILITADO:
-        return jsonify({"erro": "login com Google não está configurado nesse servidor"}), 501
+        return jsonify({"erro": msg("login com Google não está configurado nesse servidor")}), 501
     return oauth.google.authorize_redirect(GOOGLE_REDIRECT_URI)
 
 
@@ -1012,7 +1120,7 @@ def usuario_atual():
     if not row:
         conn.close()
         session.clear()
-        return jsonify({"erro": "não autenticado"}), 401
+        return jsonify({"erro": msg("não autenticado")}), 401
     d = dict(row)
     d["somente_leitura"] = bool(d["somente_leitura"])
     d["eh_administrador"] = eh_administrador(conn)
@@ -1043,13 +1151,13 @@ def criar_usuario():
     senha = data.get("senha") or ""
     somente_leitura = bool(data.get("somente_leitura"))
     if not nome or not username or len(senha) < 4:
-        return jsonify({"erro": "nome, usuário e senha (mín. 4 caracteres) são obrigatórios"}), 400
+        return jsonify({"erro": msg("nome, usuário e senha (mín. 4 caracteres) são obrigatórios")}), 400
     conn = get_db()
     # Quem entra na casa decide quem mais entra: sem isso, qualquer conta com
     # escrita podia criar outra pessoa com acesso aos dados da família.
     if not eh_administrador(conn):
         conn.close()
-        return jsonify({"erro": "só o administrador pode adicionar usuários"}), 403
+        return jsonify({"erro": msg("só o administrador pode adicionar usuários")}), 403
     try:
         conn.execute(
             "INSERT INTO usuarios (nome, username, senha_hash, casa_id, criado_em, somente_leitura) "
@@ -1060,7 +1168,7 @@ def criar_usuario():
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()
-        return jsonify({"erro": "esse usuário já existe"}), 400
+        return jsonify({"erro": msg("esse usuário já existe")}), 400
     conn.close()
     return jsonify({"ok": True}), 201
 
@@ -1072,16 +1180,16 @@ def alternar_somente_leitura(item_id):
     conn = get_db()
     if not eh_administrador(conn):
         conn.close()
-        return jsonify({"erro": "só o administrador pode alterar essa configuração"}), 403
+        return jsonify({"erro": msg("só o administrador pode alterar essa configuração")}), 403
     alvo = conn.execute("SELECT casa_id FROM usuarios WHERE id = ?", (item_id,)).fetchone()
     if not alvo or alvo["casa_id"] != minha_casa_id(conn):
         conn.close()
-        return jsonify({"erro": "usuário não encontrado"}), 404
+        return jsonify({"erro": msg("usuário não encontrado")}), 404
     # O administrador não pode se limitar: esta rota é a única forma de desfazer e
     # ela mesma é escrita, então ele ficaria trancado fora da própria casa.
     if item_id == uid():
         conn.close()
-        return jsonify({"erro": "o administrador não pode limitar a própria conta"}), 403
+        return jsonify({"erro": msg("o administrador não pode limitar a própria conta")}), 403
     conn.execute("UPDATE usuarios SET somente_leitura = ? WHERE id = ?", (int(somente_leitura), item_id))
     conn.commit()
     conn.close()
@@ -1091,17 +1199,17 @@ def alternar_somente_leitura(item_id):
 @app.route("/api/usuarios/<int:item_id>/senha", methods=["PUT"])
 def trocar_senha(item_id):
     if item_id != session.get("usuario_id"):
-        return jsonify({"erro": "só é possível trocar a própria senha"}), 403
+        return jsonify({"erro": msg("só é possível trocar a própria senha")}), 403
     data = request.get_json(force=True)
     senha_atual = data.get("senha_atual") or ""
     nova_senha = data.get("nova_senha") or ""
     if len(nova_senha) < 4:
-        return jsonify({"erro": "a nova senha precisa ter pelo menos 4 caracteres"}), 400
+        return jsonify({"erro": msg("a nova senha precisa ter pelo menos 4 caracteres")}), 400
     conn = get_db()
     row = conn.execute("SELECT * FROM usuarios WHERE id = ?", (item_id,)).fetchone()
     if not row or not check_password_hash(row["senha_hash"], senha_atual):
         conn.close()
-        return jsonify({"erro": "senha atual incorreta"}), 400
+        return jsonify({"erro": msg("senha atual incorreta")}), 400
     conn.execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (generate_password_hash(nova_senha), item_id))
     conn.commit()
     conn.close()
@@ -1116,14 +1224,14 @@ def trocar_senha_como_admin(item_id):
     data = request.get_json(force=True)
     nova_senha = data.get("nova_senha") or ""
     if len(nova_senha) < 4:
-        return jsonify({"erro": "a nova senha precisa ter pelo menos 4 caracteres"}), 400
+        return jsonify({"erro": msg("a nova senha precisa ter pelo menos 4 caracteres")}), 400
     conn = get_db()
     if not eh_administrador(conn):
         conn.close()
-        return jsonify({"erro": "só o administrador pode redefinir a senha de outro usuário"}), 403
+        return jsonify({"erro": msg("só o administrador pode redefinir a senha de outro usuário")}), 403
     if not pertence_a_minha_casa(conn, "usuarios", item_id):
         conn.close()
-        return jsonify({"erro": "usuário não encontrado"}), 404
+        return jsonify({"erro": msg("usuário não encontrado")}), 404
     conn.execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (generate_password_hash(nova_senha), item_id))
     conn.commit()
     conn.close()
@@ -1146,7 +1254,7 @@ def minha_casa():
     ).fetchall()
     conn.close()
     if not membros:
-        return jsonify({"erro": "casa não encontrada"}), 404
+        return jsonify({"erro": msg("casa não encontrada")}), 404
     admin_id = membros[0]["id"]
     resultado = {
         "id": casa["id"],
@@ -1174,10 +1282,10 @@ def contas_de_membro_da_casa(item_id):
     conn = get_db()
     if not eh_administrador(conn):
         conn.close()
-        return jsonify({"erro": "só o administrador pode ver as contas de outro usuário"}), 403
+        return jsonify({"erro": msg("só o administrador pode ver as contas de outro usuário")}), 403
     if not pertence_a_minha_casa(conn, "usuarios", item_id):
         conn.close()
-        return jsonify({"erro": "usuário não encontrado"}), 404
+        return jsonify({"erro": msg("usuário não encontrado")}), 404
     mes = request.args.get("mes", datetime.now().strftime("%Y-%m"))
     resultado = contas_com_saldo(conn, mes, usuario_id=item_id)
     conn.close()
@@ -1195,16 +1303,16 @@ def remover_foto_do_disco(nome_arquivo):
 @app.route("/api/usuarios/<int:item_id>/foto", methods=["POST"])
 def enviar_foto_perfil(item_id):
     if item_id != session.get("usuario_id"):
-        return jsonify({"erro": "só é possível trocar a própria foto"}), 403
+        return jsonify({"erro": msg("só é possível trocar a própria foto")}), 403
     if "arquivo" not in request.files:
-        return jsonify({"erro": "nenhum arquivo enviado"}), 400
+        return jsonify({"erro": msg("nenhum arquivo enviado")}), 400
     arquivo = request.files["arquivo"]
     if arquivo.filename == "":
-        return jsonify({"erro": "arquivo sem nome"}), 400
+        return jsonify({"erro": msg("arquivo sem nome")}), 400
 
     extensao = os.path.splitext(arquivo.filename)[1].lower()
     if extensao not in EXTENSOES_IMAGEM:
-        return jsonify({"erro": "envie uma imagem (jpg, png, gif ou webp)"}), 400
+        return jsonify({"erro": msg("envie uma imagem (jpg, png, gif ou webp)")}), 400
 
     os.makedirs(FOTOS_DIR, exist_ok=True)
     os.makedirs(BACKUPS_DIR, exist_ok=True)
@@ -1224,7 +1332,7 @@ def enviar_foto_perfil(item_id):
 @app.route("/api/usuarios/<int:item_id>/foto", methods=["DELETE"])
 def remover_foto_perfil(item_id):
     if item_id != session.get("usuario_id"):
-        return jsonify({"erro": "só é possível remover a própria foto"}), 403
+        return jsonify({"erro": msg("só é possível remover a própria foto")}), 403
     conn = get_db()
     row = conn.execute("SELECT foto FROM usuarios WHERE id = ?", (item_id,)).fetchone()
     if row:
@@ -1241,7 +1349,7 @@ def baixar_foto_perfil(nome_arquivo):
     existe = conn.execute("SELECT id FROM usuarios WHERE foto = ?", (nome_arquivo,)).fetchone()
     conn.close()
     if not existe:
-        return jsonify({"erro": "foto não encontrada"}), 404
+        return jsonify({"erro": msg("foto não encontrada")}), 404
     return send_from_directory(FOTOS_DIR, nome_arquivo)
 
 
@@ -1274,7 +1382,7 @@ def criar_categoria():
     tipo = data.get("tipo")
     cor = data.get("cor") or None
     if not nome or tipo not in ("receita", "despesa"):
-        return jsonify({"erro": "nome e tipo (receita/despesa) são obrigatórios"}), 400
+        return jsonify({"erro": msg("nome e tipo (receita/despesa) são obrigatórios")}), 400
     conn = get_db()
     conn.execute(
         "INSERT OR IGNORE INTO categorias (nome, tipo, cor, casa_id) VALUES (?, ?, ?, ?)",
@@ -1291,17 +1399,17 @@ def editar_categoria(item_id):
     nome = data.get("nome", "").strip()
     cor = data.get("cor") or None
     if not nome:
-        return jsonify({"erro": "nome é obrigatório"}), 400
+        return jsonify({"erro": msg("nome é obrigatório")}), 400
     conn = get_db()
     if not pertence_a_minha_casa(conn, "categorias", item_id):
         conn.close()
-        return jsonify({"erro": "categoria não encontrada"}), 404
+        return jsonify({"erro": msg("categoria não encontrada")}), 404
     try:
         conn.execute("UPDATE categorias SET nome = ?, cor = ? WHERE id = ?", (nome, cor, item_id))
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()
-        return jsonify({"erro": "já existe uma categoria com esse nome"}), 400
+        return jsonify({"erro": msg("já existe uma categoria com esse nome")}), 400
     conn.close()
     return jsonify({"ok": True})
 
@@ -1311,7 +1419,7 @@ def deletar_categoria(item_id):
     conn = get_db()
     if not pertence_a_minha_casa(conn, "categorias", item_id):
         conn.close()
-        return jsonify({"erro": "categoria não encontrada"}), 404
+        return jsonify({"erro": msg("categoria não encontrada")}), 404
     conn.execute("DELETE FROM categorias WHERE id = ?", (item_id,))
     conn.commit()
     conn.close()
@@ -1351,11 +1459,11 @@ def definir_orcamento():
     categoria = (data.get("categoria") or "").strip()
     limite = data.get("limite")
     if not categoria or limite is None:
-        return jsonify({"erro": "categoria e limite são obrigatórios"}), 400
+        return jsonify({"erro": msg("categoria e limite são obrigatórios")}), 400
     try:
         limite = float(limite)
     except (TypeError, ValueError):
-        return jsonify({"erro": "limite inválido"}), 400
+        return jsonify({"erro": msg("limite inválido")}), 400
     conn = get_db()
     conn.execute(
         "INSERT INTO orcamentos (categoria, limite, usuario_id) VALUES (?, ?, ?) "
@@ -1583,9 +1691,9 @@ def criar_lancamento():
     data_pagamento = data.get("data_pagamento") or (datetime.now().strftime("%Y-%m-%d") if pago else "")
 
     if tipo not in ("renda", "despesa"):
-        return jsonify({"erro": "tipo inválido"}), 400
+        return jsonify({"erro": msg("tipo inválido")}), 400
     if not descricao:
-        return jsonify({"erro": "descrição obrigatória"}), 400
+        return jsonify({"erro": msg("descrição obrigatória")}), 400
 
     conn = get_db()
     conta_id, conta = resolver_conta(conn, data.get("conta_id"))
@@ -1657,7 +1765,7 @@ def deletar_lancamento(item_id):
     ).fetchone()
     if not row or row["usuario_id"] != uid():
         conn.close()
-        return jsonify({"erro": "lançamento não encontrado"}), 404
+        return jsonify({"erro": msg("lançamento não encontrado")}), 404
 
     def apagar_comprovante(nome):
         if not nome:
@@ -1712,7 +1820,7 @@ def editar_lancamento(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "lancamentos", item_id):
         conn.close()
-        return jsonify({"erro": "lançamento não encontrado"}), 404
+        return jsonify({"erro": msg("lançamento não encontrado")}), 404
     conta_id, conta = resolver_conta(conn, data.get("conta_id"))
     conn.execute(
         """UPDATE lancamentos SET descricao = ?, valor = ?, vencimento = ?, categoria = ?,
@@ -1740,7 +1848,7 @@ def marcar_pagamento(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "lancamentos", item_id):
         conn.close()
-        return jsonify({"erro": "lançamento não encontrado"}), 404
+        return jsonify({"erro": msg("lançamento não encontrado")}), 404
     conn.execute("UPDATE lancamentos SET pago = ?, data_pagamento = ? WHERE id = ?",
                  (pago, data_pagamento, item_id))
     conn.commit()
@@ -1751,14 +1859,14 @@ def marcar_pagamento(item_id):
 @app.route("/api/lancamentos/<int:item_id>/comprovante", methods=["POST"])
 def enviar_comprovante(item_id):
     if "arquivo" not in request.files:
-        return jsonify({"erro": "nenhum arquivo enviado"}), 400
+        return jsonify({"erro": msg("nenhum arquivo enviado")}), 400
     arquivo = request.files["arquivo"]
     if arquivo.filename == "":
-        return jsonify({"erro": "arquivo sem nome"}), 400
+        return jsonify({"erro": msg("arquivo sem nome")}), 400
     conn = get_db()
     if not pertence_ao_usuario(conn, "lancamentos", item_id):
         conn.close()
-        return jsonify({"erro": "lançamento não encontrado"}), 404
+        return jsonify({"erro": msg("lançamento não encontrado")}), 404
     nome_seguro = secure_filename(arquivo.filename)
     nome_final = f"{item_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{nome_seguro}"
     os.makedirs(COMPROVANTES_DIR, exist_ok=True)
@@ -1782,7 +1890,7 @@ def baixar_comprovante(nome_arquivo):
     ).fetchone()
     conn.close()
     if not dono or dono["usuario_id"] != uid():
-        return jsonify({"erro": "comprovante não encontrado"}), 404
+        return jsonify({"erro": msg("comprovante não encontrado")}), 404
     return send_from_directory(COMPROVANTES_DIR, nome_arquivo)
 
 
@@ -1871,7 +1979,7 @@ def criar_conta():
     data = request.get_json(force=True)
     nome = data.get("nome", "").strip()
     if not nome:
-        return jsonify({"erro": "nome é obrigatório"}), 400
+        return jsonify({"erro": msg("nome é obrigatório")}), 400
     conn = get_db()
     try:
         cur = conn.execute(
@@ -1882,7 +1990,7 @@ def criar_conta():
         novo_id = cur.lastrowid
     except sqlite3.IntegrityError:
         conn.close()
-        return jsonify({"erro": "já existe uma conta com esse nome"}), 400
+        return jsonify({"erro": msg("já existe uma conta com esse nome")}), 400
     conn.close()
     return jsonify({"ok": True, "id": novo_id}), 201
 
@@ -1892,11 +2000,11 @@ def editar_conta(item_id):
     data = request.get_json(force=True)
     nome = data.get("nome", "").strip()
     if not nome:
-        return jsonify({"erro": "nome é obrigatório"}), 400
+        return jsonify({"erro": msg("nome é obrigatório")}), 400
     conn = get_db()
     if not pertence_ao_usuario(conn, "contas", item_id):
         conn.close()
-        return jsonify({"erro": "conta não encontrada"}), 404
+        return jsonify({"erro": msg("conta não encontrada")}), 404
     sincronizada, _, _ = conta_sincronizada(conn, item_id)
     try:
         if sincronizada:
@@ -1921,7 +2029,7 @@ def editar_conta(item_id):
         conn.commit()
     except sqlite3.IntegrityError:
         conn.close()
-        return jsonify({"erro": "já existe uma conta com esse nome"}), 400
+        return jsonify({"erro": msg("já existe uma conta com esse nome")}), 400
     conn.close()
     return jsonify({"ok": True})
 
@@ -1931,7 +2039,7 @@ def deletar_conta(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "contas", item_id):
         conn.close()
-        return jsonify({"erro": "conta não encontrada"}), 404
+        return jsonify({"erro": msg("conta não encontrada")}), 404
     conn.execute("UPDATE lancamentos SET conta_id = NULL, conta = '' WHERE conta_id = ?", (item_id,))
     conn.execute("UPDATE cartoes SET conta_id = NULL WHERE conta_id = ?", (item_id,))
     conn.execute("DELETE FROM contas WHERE id = ?", (item_id,))
@@ -1950,11 +2058,11 @@ def criar_transferencia():
     descricao = data.get("descricao", "").strip() or "Transferência"
 
     if not conta_origem_id or not conta_destino_id:
-        return jsonify({"erro": "conta de origem e destino são obrigatórias"}), 400
+        return jsonify({"erro": msg("conta de origem e destino são obrigatórias")}), 400
     if str(conta_origem_id) == str(conta_destino_id):
-        return jsonify({"erro": "as contas de origem e destino devem ser diferentes"}), 400
+        return jsonify({"erro": msg("as contas de origem e destino devem ser diferentes")}), 400
     if valor <= 0:
-        return jsonify({"erro": "valor deve ser maior que zero"}), 400
+        return jsonify({"erro": msg("valor deve ser maior que zero")}), 400
 
     conn = get_db()
     # A origem tem que ser sua; o destino pode ser a conta de outro usuário,
@@ -1972,10 +2080,10 @@ def criar_transferencia():
     ).fetchone()
     if not origem:
         conn.close()
-        return jsonify({"erro": "conta de origem inválida"}), 400
+        return jsonify({"erro": msg("conta de origem inválida")}), 400
     if not destino:
         conn.close()
-        return jsonify({"erro": "conta de destino inválida"}), 400
+        return jsonify({"erro": msg("conta de destino inválida")}), 400
 
     mes = data_transf[:7]
     grupo = str(uuid.uuid4())
@@ -2061,7 +2169,7 @@ def editar_cartao(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "cartoes", item_id):
         conn.close()
-        return jsonify({"erro": "cartão não encontrado"}), 404
+        return jsonify({"erro": msg("cartão não encontrado")}), 404
     conta_id, _ = resolver_conta(conn, data.get("conta_id"))
     conn.execute(
         "UPDATE cartoes SET nome = ?, limite = ?, fatura_atual = ?, dia_vencimento = ?, conta_id = ? WHERE id = ?",
@@ -2080,7 +2188,7 @@ def marcar_fatura_cartao(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "cartoes", item_id):
         conn.close()
-        return jsonify({"erro": "cartão não encontrado"}), 404
+        return jsonify({"erro": msg("cartão não encontrado")}), 404
     conn.execute("UPDATE cartoes SET fatura_paga = ? WHERE id = ?", (1 if data.get("pago") else 0, item_id))
     conn.commit()
     conn.close()
@@ -2092,7 +2200,7 @@ def deletar_cartao(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "cartoes", item_id):
         conn.close()
-        return jsonify({"erro": "cartão não encontrado"}), 404
+        return jsonify({"erro": msg("cartão não encontrado")}), 404
     conn.execute("DELETE FROM cartoes WHERE id = ?", (item_id,))
     conn.execute("DELETE FROM cartao_transacoes WHERE cartao_id = ?", (item_id,))
     conn.commit()
@@ -2115,7 +2223,7 @@ def listar_transacoes_cartao(cartao_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "cartoes", cartao_id):
         conn.close()
-        return jsonify({"erro": "cartão não encontrado"}), 404
+        return jsonify({"erro": msg("cartão não encontrado")}), 404
     rows = conn.execute(
         "SELECT * FROM cartao_transacoes WHERE cartao_id = ? AND usuario_id = ? ORDER BY data DESC, id DESC",
         (cartao_id, uid()),
@@ -2129,17 +2237,17 @@ def criar_transacao_cartao(cartao_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "cartoes", cartao_id):
         conn.close()
-        return jsonify({"erro": "cartão não encontrado"}), 404
+        return jsonify({"erro": msg("cartão não encontrado")}), 404
     data = request.get_json(force=True)
     descricao = (data.get("descricao") or "").strip()
     if not descricao or data.get("valor") in (None, ""):
         conn.close()
-        return jsonify({"erro": "descrição e valor são obrigatórios"}), 400
+        return jsonify({"erro": msg("descrição e valor são obrigatórios")}), 400
     try:
         valor = float(data.get("valor"))
     except (TypeError, ValueError):
         conn.close()
-        return jsonify({"erro": "valor inválido"}), 400
+        return jsonify({"erro": msg("valor inválido")}), 400
     conn.execute(
         "INSERT INTO cartao_transacoes (cartao_id, descricao, valor, data, categoria, usuario_id, criado_em) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -2157,7 +2265,7 @@ def deletar_transacao_cartao(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "cartao_transacoes", item_id):
         conn.close()
-        return jsonify({"erro": "lançamento não encontrado"}), 404
+        return jsonify({"erro": msg("lançamento não encontrado")}), 404
     row = conn.execute("SELECT cartao_id FROM cartao_transacoes WHERE id = ?", (item_id,)).fetchone()
     conn.execute("DELETE FROM cartao_transacoes WHERE id = ?", (item_id,))
     if row:
@@ -2192,11 +2300,11 @@ def criar_meta():
     valor_alvo = data.get("valor_alvo")
     prazo = data.get("prazo") or None
     if not nome or not valor_alvo:
-        return jsonify({"erro": "nome e valor alvo são obrigatórios"}), 400
+        return jsonify({"erro": msg("nome e valor alvo são obrigatórios")}), 400
     try:
         valor_alvo = float(valor_alvo)
     except (TypeError, ValueError):
-        return jsonify({"erro": "valor alvo inválido"}), 400
+        return jsonify({"erro": msg("valor alvo inválido")}), 400
     conn = get_db()
     conn.execute(
         "INSERT INTO metas (nome, valor_alvo, valor_atual, prazo, criado_em, usuario_id, "
@@ -2216,7 +2324,7 @@ def editar_meta(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "metas", item_id):
         conn.close()
-        return jsonify({"erro": "meta não encontrada"}), 404
+        return jsonify({"erro": msg("meta não encontrada")}), 404
     campos, valores = [], []
     if "nome" in data:
         campos.append("nome = ?")
@@ -2243,7 +2351,7 @@ def deletar_meta(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "metas", item_id):
         conn.close()
-        return jsonify({"erro": "meta não encontrada"}), 404
+        return jsonify({"erro": msg("meta não encontrada")}), 404
     conn.execute("DELETE FROM metas WHERE id = ?", (item_id,))
     conn.commit()
     conn.close()
@@ -2267,7 +2375,7 @@ def definir_config_consignados():
     conn = get_db()
     if not eh_administrador(conn):
         conn.close()
-        return jsonify({"erro": "só o administrador pode alterar essa configuração"}), 403
+        return jsonify({"erro": msg("só o administrador pode alterar essa configuração")}), 403
     data = request.get_json(force=True)
     conn.execute(
         "UPDATE casas SET consignados_habilitado = ? WHERE id = ?",
@@ -2294,11 +2402,11 @@ def criar_consignado():
     nome = (data.get("nome") or "").strip()
     valor_parcela = data.get("valor_parcela")
     if not nome or not valor_parcela:
-        return jsonify({"erro": "nome e valor da parcela são obrigatórios"}), 400
+        return jsonify({"erro": msg("nome e valor da parcela são obrigatórios")}), 400
     try:
         valor_parcela = float(valor_parcela)
     except (TypeError, ValueError):
-        return jsonify({"erro": "valor da parcela inválido"}), 400
+        return jsonify({"erro": msg("valor da parcela inválido")}), 400
     conn = get_db()
     conn.execute(
         """INSERT INTO consignados
@@ -2318,7 +2426,7 @@ def editar_consignado(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "consignados", item_id):
         conn.close()
-        return jsonify({"erro": "consignado não encontrado"}), 404
+        return jsonify({"erro": msg("consignado não encontrado")}), 404
     campos, valores = [], []
     if "nome" in data:
         campos.append("nome = ?")
@@ -2351,7 +2459,7 @@ def deletar_consignado(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "consignados", item_id):
         conn.close()
-        return jsonify({"erro": "consignado não encontrado"}), 404
+        return jsonify({"erro": msg("consignado não encontrado")}), 404
     conn.execute("DELETE FROM consignados WHERE id = ?", (item_id,))
     conn.commit()
     conn.close()
@@ -3290,21 +3398,21 @@ def criar_investimento():
     nome = (data.get("nome") or "").strip()
     classe = data.get("classe")
     if not nome or classe not in CLASSES_VALIDAS:
-        return jsonify({"erro": "nome e classe são obrigatórios"}), 400
+        return jsonify({"erro": msg("nome e classe são obrigatórios")}), 400
     conn = get_db()
     conta_id, _ = resolver_conta(conn, data.get("conta_id"))
     if not conta_id:
         conn.close()
-        return jsonify({"erro": "conta é obrigatória"}), 400
+        return jsonify({"erro": msg("conta é obrigatória")}), 400
     ticker = normalizar_ticker(classe, data.get("ticker")) if classe in CLASSES_COM_TICKER else None
     if classe in CLASSES_COM_TICKER and not ticker:
         conn.close()
-        return jsonify({"erro": "ticker é obrigatório pra essa classe"}), 400
+        return jsonify({"erro": msg("ticker é obrigatório pra essa classe")}), 400
     indexador = (data.get("indexador") or None) if classe == "renda_fixa" else None
     taxa = data.get("taxa") if classe == "renda_fixa" else None
     if classe == "renda_fixa" and (not indexador or taxa in (None, "")):
         conn.close()
-        return jsonify({"erro": "indexador e taxa são obrigatórios pra renda fixa"}), 400
+        return jsonify({"erro": msg("indexador e taxa são obrigatórios pra renda fixa")}), 400
     cur = conn.execute(
         "INSERT INTO investimentos (usuario_id, nome, classe, ticker, conta_id, indexador, taxa, "
         "vencimento, criado_em, emissor, tipo_investimento, liquidez_diaria) "
@@ -3337,7 +3445,7 @@ def editar_investimento(item_id):
     row_atual = conn.execute("SELECT classe FROM investimentos WHERE id = ? AND usuario_id = ?", (item_id, uid())).fetchone()
     if not row_atual:
         conn.close()
-        return jsonify({"erro": "investimento não encontrado"}), 404
+        return jsonify({"erro": msg("investimento não encontrado")}), 404
     campos, valores = [], []
     if "nome" in data:
         campos.append("nome = ?")
@@ -3349,7 +3457,7 @@ def editar_investimento(item_id):
         conta_id, _ = resolver_conta(conn, data.get("conta_id"))
         if not conta_id:
             conn.close()
-            return jsonify({"erro": "conta inválida"}), 400
+            return jsonify({"erro": msg("conta inválida")}), 400
         campos.append("conta_id = ?")
         valores.append(conta_id)
     if "indexador" in data:
@@ -3383,7 +3491,7 @@ def deletar_investimento(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "investimentos", item_id):
         conn.close()
-        return jsonify({"erro": "investimento não encontrado"}), 404
+        return jsonify({"erro": msg("investimento não encontrado")}), 404
     lancamentos_vinculados = [
         r["lancamento_id"] for r in conn.execute(
             "SELECT lancamento_id FROM investimento_operacoes "
@@ -3405,7 +3513,7 @@ def listar_operacoes_investimento(investimento_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "investimentos", investimento_id):
         conn.close()
-        return jsonify({"erro": "investimento não encontrado"}), 404
+        return jsonify({"erro": msg("investimento não encontrado")}), 404
     rows = conn.execute(
         "SELECT * FROM investimento_operacoes WHERE investimento_id = ? ORDER BY data DESC, id DESC",
         (investimento_id,),
@@ -3419,17 +3527,17 @@ def criar_operacao_investimento(investimento_id):
     data = request.get_json(force=True)
     tipo = data.get("tipo")
     if tipo not in TIPOS_OPERACAO_INVESTIMENTO:
-        return jsonify({"erro": "tipo de operação inválido"}), 400
+        return jsonify({"erro": msg("tipo de operação inválido")}), 400
     conn = get_db()
     inv = conn.execute(
         "SELECT * FROM investimentos WHERE id = ? AND usuario_id = ?", (investimento_id, uid())
     ).fetchone()
     if not inv:
         conn.close()
-        return jsonify({"erro": "investimento não encontrado"}), 404
+        return jsonify({"erro": msg("investimento não encontrado")}), 404
     if tipo == "reavaliacao" and inv["classe"] != "outro":
         conn.close()
-        return jsonify({"erro": "reavaliação manual só vale pra classe 'outro'"}), 400
+        return jsonify({"erro": msg("reavaliação manual só vale pra classe 'outro'")}), 400
 
     data_op = data.get("data") or datetime.now().strftime("%Y-%m-%d")
     quantidade = preco_unitario = None
@@ -3442,10 +3550,10 @@ def criar_operacao_investimento(investimento_id):
             custos_extras = float(data.get("custos_extras") or 0)
         except (TypeError, ValueError):
             conn.close()
-            return jsonify({"erro": "quantidade e preço unitário são obrigatórios"}), 400
+            return jsonify({"erro": msg("quantidade e preço unitário são obrigatórios")}), 400
         if quantidade <= 0 or preco_unitario <= 0 or custos_extras < 0:
             conn.close()
-            return jsonify({"erro": "quantidade e preço devem ser maiores que zero"}), 400
+            return jsonify({"erro": msg("quantidade e preço devem ser maiores que zero")}), 400
         bruto = quantidade * preco_unitario
         # Compra: o custo extra soma ao que sai da conta. Venda: desconta do
         # que entra (corretagem reduz o valor líquido recebido na venda).
@@ -3455,10 +3563,10 @@ def criar_operacao_investimento(investimento_id):
             valor_bruto = float(data.get("valor"))
         except (TypeError, ValueError):
             conn.close()
-            return jsonify({"erro": "valor é obrigatório"}), 400
+            return jsonify({"erro": msg("valor é obrigatório")}), 400
         if valor_bruto <= 0:
             conn.close()
-            return jsonify({"erro": "valor deve ser maior que zero"}), 400
+            return jsonify({"erro": msg("valor deve ser maior que zero")}), 400
         tipo_pagamento = data.get("tipo_pagamento") or None
         data_com = data.get("data_com") or None
         # JSCP tem 15% de IR retido na fonte — Dividendo e Rendimento não têm
@@ -3476,10 +3584,10 @@ def criar_operacao_investimento(investimento_id):
             valor = float(data.get("valor"))
         except (TypeError, ValueError):
             conn.close()
-            return jsonify({"erro": "valor é obrigatório"}), 400
+            return jsonify({"erro": msg("valor é obrigatório")}), 400
         if valor <= 0:
             conn.close()
-            return jsonify({"erro": "valor deve ser maior que zero"}), 400
+            return jsonify({"erro": msg("valor deve ser maior que zero")}), 400
 
     agora = datetime.now().isoformat()
     observacao = (data.get("observacao") or "").strip()
@@ -3530,7 +3638,7 @@ def deletar_operacao_investimento(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "investimento_operacoes", item_id):
         conn.close()
-        return jsonify({"erro": "operação não encontrada"}), 404
+        return jsonify({"erro": msg("operação não encontrada")}), 404
     row = conn.execute(
         "SELECT lancamento_id FROM investimento_operacoes WHERE id = ?", (item_id,)
     ).fetchone()
@@ -4088,12 +4196,12 @@ def listar_holerites():
 @app.route("/api/holerites", methods=["POST"])
 def enviar_holerite():
     if "arquivo" not in request.files:
-        return jsonify({"erro": "nenhum arquivo enviado"}), 400
+        return jsonify({"erro": msg("nenhum arquivo enviado")}), 400
     arquivo = request.files["arquivo"]
     if arquivo.filename == "":
-        return jsonify({"erro": "arquivo sem nome"}), 400
+        return jsonify({"erro": msg("arquivo sem nome")}), 400
     if not arquivo.filename.lower().endswith(".pdf"):
-        return jsonify({"erro": "envie um arquivo PDF"}), 400
+        return jsonify({"erro": msg("envie um arquivo PDF")}), 400
 
     nome_seguro = secure_filename(arquivo.filename)
     nome_final = f"{uid()}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{nome_seguro}"
@@ -4171,7 +4279,7 @@ def editar_holerite(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "holerites", item_id):
         conn.close()
-        return jsonify({"erro": "holerite não encontrado"}), 404
+        return jsonify({"erro": msg("holerite não encontrado")}), 404
     campos, valores = [], []
     for campo in ("referencia", "recebido_em"):
         if campo in data:
@@ -4205,7 +4313,7 @@ def deletar_holerite(item_id):
     conn = get_db()
     if not pertence_ao_usuario(conn, "holerites", item_id):
         conn.close()
-        return jsonify({"erro": "holerite não encontrado"}), 404
+        return jsonify({"erro": msg("holerite não encontrado")}), 404
     row = conn.execute("SELECT * FROM holerites WHERE id = ?", (item_id,)).fetchone()
     if row["lancamento_id"]:
         conn.execute("DELETE FROM lancamentos WHERE id = ? AND usuario_id = ?", (row["lancamento_id"], uid()))
@@ -4225,10 +4333,10 @@ def analisar_nota_fiscal():
     """Lê uma foto/PDF de cupom fiscal via OCR e devolve os dados encontrados —
     não grava nada; a criação da despesa é um POST normal em /api/lancamentos."""
     if "arquivo" not in request.files:
-        return jsonify({"erro": "nenhum arquivo enviado"}), 400
+        return jsonify({"erro": msg("nenhum arquivo enviado")}), 400
     arquivo = request.files["arquivo"]
     if arquivo.filename == "":
-        return jsonify({"erro": "arquivo sem nome"}), 400
+        return jsonify({"erro": msg("arquivo sem nome")}), 400
 
     conteudo = arquivo.read()
     nome = arquivo.filename.lower()
@@ -4240,7 +4348,7 @@ def analisar_nota_fiscal():
         else:
             img = Image.open(io.BytesIO(conteudo)).convert("RGB")
     except Exception:
-        return jsonify({"erro": "não foi possível ler o arquivo — envie um PDF ou uma foto (JPG/PNG)"}), 400
+        return jsonify({"erro": msg("não foi possível ler o arquivo — envie um PDF ou uma foto (JPG/PNG)")}), 400
 
     chave_acesso_qr = None
     try:
@@ -4274,7 +4382,7 @@ def baixar_holerite(item_id):
     ).fetchone()
     conn.close()
     if not row:
-        return jsonify({"erro": "holerite não encontrado"}), 404
+        return jsonify({"erro": msg("holerite não encontrado")}), 404
     return send_from_directory(HOLERITES_DIR, row["arquivo"])
 
 
@@ -4974,11 +5082,11 @@ def salvar_config_backup():
     data = request.get_json(force=True)
     periodo = data.get("periodo")
     if periodo not in PERIODOS_BACKUP:
-        return jsonify({"erro": "período inválido"}), 400
+        return jsonify({"erro": msg("período inválido")}), 400
     try:
         manter = int(data.get("manter") or CONFIG_BACKUP_PADRAO["manter"])
     except (TypeError, ValueError):
-        return jsonify({"erro": "quantidade inválida"}), 400
+        return jsonify({"erro": msg("quantidade inválida")}), 400
     manter = max(1, min(manter, 30))
     gravar_config_backup({"periodo": periodo, "manter": manter})
     return jsonify({"ok": True, "config": ler_config_backup()})
@@ -5009,7 +5117,7 @@ def baixar_backup_salvo(nome_arquivo):
         return jsonify({"erro": MENSAGEM_BACKUP_BLOQUEADO}), 403
     caminho = caminho_backup_valido(nome_arquivo)
     if not caminho:
-        return jsonify({"erro": "backup não encontrado"}), 404
+        return jsonify({"erro": msg("backup não encontrado")}), 404
     return send_from_directory(BACKUPS_DIR, os.path.basename(caminho), as_attachment=True)
 
 
@@ -5019,7 +5127,7 @@ def excluir_backup_salvo(nome_arquivo):
         return jsonify({"erro": MENSAGEM_BACKUP_BLOQUEADO}), 403
     caminho = caminho_backup_valido(nome_arquivo)
     if not caminho:
-        return jsonify({"erro": "backup não encontrado"}), 404
+        return jsonify({"erro": msg("backup não encontrado")}), 404
     os.remove(caminho)
     return jsonify({"ok": True})
 
@@ -5027,12 +5135,12 @@ def excluir_backup_salvo(nome_arquivo):
 @app.route("/api/backups/<path:nome_arquivo>/restaurar", methods=["POST"])
 def restaurar_backup_salvo(nome_arquivo):
     if em_demo():
-        return jsonify({"erro": "desligue o modo demonstração antes de restaurar"}), 400
+        return jsonify({"erro": msg("desligue o modo demonstração antes de restaurar")}), 400
     if backup_bloqueado_multi_casa():
         return jsonify({"erro": MENSAGEM_BACKUP_BLOQUEADO}), 403
     caminho = caminho_backup_valido(nome_arquivo)
     if not caminho:
-        return jsonify({"erro": "backup não encontrado"}), 404
+        return jsonify({"erro": msg("backup não encontrado")}), 404
     with open(caminho, "rb") as f:
         erro = aplicar_backup(f)
     if erro:
@@ -5132,12 +5240,12 @@ def aplicar_backup(origem_arquivo):
 @app.route("/api/restaurar", methods=["POST"])
 def restaurar_backup():
     if em_demo():
-        return jsonify({"erro": "desligue o modo demonstração antes de restaurar"}), 400
+        return jsonify({"erro": msg("desligue o modo demonstração antes de restaurar")}), 400
     if "arquivo" not in request.files:
-        return jsonify({"erro": "envie o arquivo .zip do backup"}), 400
+        return jsonify({"erro": msg("envie o arquivo .zip do backup")}), 400
     enviado = request.files["arquivo"]
     if not enviado.filename.lower().endswith(".zip"):
-        return jsonify({"erro": "o backup precisa ser um arquivo .zip"}), 400
+        return jsonify({"erro": msg("o backup precisa ser um arquivo .zip")}), 400
     erro = aplicar_backup(enviado)
     if erro:
         return jsonify({"erro": erro}), 400
@@ -5311,19 +5419,19 @@ def pluggy_ver_credenciais():
 @app.route("/api/pluggy/credenciais", methods=["PUT"])
 def pluggy_salvar_credenciais():
     if em_demo():
-        return jsonify({"erro": "o modo demonstração não conecta em banco de verdade"}), 400
+        return jsonify({"erro": msg("o modo demonstração não conecta em banco de verdade")}), 400
     conn = get_db()
     try:
         # Mesma regra das outras rotas que mexem na casa: esconder o botão é
         # conforto, quem barra é a checagem aqui dentro.
         if not eh_administrador(conn):
-            return jsonify({"erro": "só o administrador da casa pode configurar o Open Finance"}), 403
+            return jsonify({"erro": msg("só o administrador da casa pode configurar o Open Finance")}), 403
 
         dados = request.get_json(silent=True) or {}
         client_id = (dados.get("client_id") or "").strip()
         client_secret = (dados.get("client_secret") or "").strip()
         if not client_id or not client_secret:
-            return jsonify({"erro": "informe o Client ID e o Client Secret do Meu Pluggy"}), 400
+            return jsonify({"erro": msg("informe o Client ID e o Client Secret do Meu Pluggy")}), 400
 
         casa_id = minha_casa_id(conn)
         agora = datetime.now().isoformat()
@@ -5359,7 +5467,7 @@ def pluggy_apagar_credenciais():
     conn = get_db()
     try:
         if not eh_administrador(conn):
-            return jsonify({"erro": "só o administrador da casa pode remover o Open Finance"}), 403
+            return jsonify({"erro": msg("só o administrador da casa pode remover o Open Finance")}), 403
         casa_id = minha_casa_id(conn)
         conn.execute("DELETE FROM pluggy_credenciais WHERE casa_id = ?", (casa_id,))
         conn.commit()
@@ -5376,7 +5484,7 @@ def pluggy_connect_token():
     client_secret — que vai para o navegador; dura pouco e só serve para abrir
     o widget."""
     if em_demo():
-        return jsonify({"erro": "o modo demonstração não conecta em banco de verdade"}), 400
+        return jsonify({"erro": msg("o modo demonstração não conecta em banco de verdade")}), 400
     conn = get_db()
     try:
         casa_id = minha_casa_id(conn)
@@ -5391,7 +5499,7 @@ def pluggy_connect_token():
                 "SELECT casa_id FROM pluggy_itens WHERE item_id = ?", (item_id,)
             ).fetchone()
             if not dono or dono["casa_id"] != casa_id:
-                return jsonify({"erro": "conexão não encontrada nesta casa"}), 404
+                return jsonify({"erro": msg("conexão não encontrada nesta casa")}), 404
             corpo["itemId"] = item_id
 
         try:
@@ -5450,11 +5558,11 @@ def _pluggy_sincronizar_contas(conn, casa_id, usuario_id, item_id):
 def pluggy_registrar_item():
     """Registra uma conexão a partir do Item ID que a pessoa colou."""
     if em_demo():
-        return jsonify({"erro": "o modo demonstração não conecta em banco de verdade"}), 400
+        return jsonify({"erro": msg("o modo demonstração não conecta em banco de verdade")}), 400
     dados = request.get_json(silent=True) or {}
     item_id = (dados.get("item_id") or "").strip()
     if not item_id:
-        return jsonify({"erro": "informe o Item ID da conexão"}), 400
+        return jsonify({"erro": msg("informe o Item ID da conexão")}), 400
 
     conn = get_db()
     try:
@@ -5466,14 +5574,14 @@ def pluggy_registrar_item():
             "SELECT casa_id FROM pluggy_itens WHERE item_id = ?", (item_id,)
         ).fetchone()
         if dono and dono["casa_id"] != casa_id:
-            return jsonify({"erro": "esse Item já está registrado em outra casa"}), 409
+            return jsonify({"erro": msg("esse Item já está registrado em outra casa")}), 409
 
         try:
             item = pluggy_pedir(conn, casa_id, "GET", f"/items/{item_id}")
         except PluggyErro as e:
             return jsonify({"erro": str(e)}), 400
         if not item.get("id"):
-            return jsonify({"erro": "a Pluggy não encontrou esse Item ID"}), 404
+            return jsonify({"erro": msg("a Pluggy não encontrou esse Item ID")}), 404
 
         conector = item.get("connector") or {}
         conn.execute(
@@ -5543,7 +5651,7 @@ def pluggy_sincronizar_item(item_id):
             "SELECT casa_id FROM pluggy_itens WHERE item_id = ?", (item_id,)
         ).fetchone()
         if not dono or dono["casa_id"] != casa_id:
-            return jsonify({"erro": "conexão não encontrada nesta casa"}), 404
+            return jsonify({"erro": msg("conexão não encontrada nesta casa")}), 404
         try:
             item = pluggy_pedir(conn, casa_id, "GET", f"/items/{item_id}")
             conn.execute(
@@ -5570,7 +5678,7 @@ def pluggy_remover_item(item_id):
             "SELECT casa_id FROM pluggy_itens WHERE item_id = ?", (item_id,)
         ).fetchone()
         if not dono or dono["casa_id"] != casa_id:
-            return jsonify({"erro": "conexão não encontrada nesta casa"}), 404
+            return jsonify({"erro": msg("conexão não encontrada nesta casa")}), 404
         conn.execute("DELETE FROM pluggy_transacoes WHERE account_id IN "
                      "(SELECT account_id FROM pluggy_contas WHERE item_id = ?)", (item_id,))
         conn.execute("DELETE FROM pluggy_contas WHERE item_id = ?", (item_id,))
@@ -5592,7 +5700,7 @@ def pluggy_vincular_conta(item_id):
             "SELECT casa_id FROM pluggy_contas WHERE id = ?", (item_id,)
         ).fetchone()
         if not linha or linha["casa_id"] != casa_id:
-            return jsonify({"erro": "conta não encontrada nesta casa"}), 404
+            return jsonify({"erro": msg("conta não encontrada nesta casa")}), 404
 
         dados = request.get_json(silent=True) or {}
         conta_id = dados.get("conta_id")
@@ -5600,7 +5708,7 @@ def pluggy_vincular_conta(item_id):
         ignorar = bool(dados.get("ignorada"))
 
         if conta_id and cartao_id:
-            return jsonify({"erro": "escolha uma conta ou um cartão, não os dois"}), 400
+            return jsonify({"erro": msg("escolha uma conta ou um cartão, não os dois")}), 400
 
         # O alvo tem que ser da mesma casa, senão o extrato de um cairia no
         # financeiro de outro.
@@ -5610,14 +5718,14 @@ def pluggy_vincular_conta(item_id):
                 "WHERE ct.id = ? AND u.casa_id = ?", (conta_id, casa_id)
             ).fetchone()
             if not ok:
-                return jsonify({"erro": "essa conta não é desta casa"}), 400
+                return jsonify({"erro": msg("essa conta não é desta casa")}), 400
         if cartao_id:
             ok = conn.execute(
                 "SELECT 1 FROM cartoes ca JOIN usuarios u ON u.id = ca.usuario_id "
                 "WHERE ca.id = ? AND u.casa_id = ?", (cartao_id, casa_id)
             ).fetchone()
             if not ok:
-                return jsonify({"erro": "esse cartão não é desta casa"}), 400
+                return jsonify({"erro": msg("esse cartão não é desta casa")}), 400
 
         conn.execute(
             "UPDATE pluggy_contas SET conta_id = ?, cartao_id = ?, ignorada = ? WHERE id = ?",
@@ -6096,7 +6204,7 @@ def _saldo_calculado(conn, conta_id):
 @app.route("/api/pluggy/sincronizar", methods=["POST"])
 def pluggy_sincronizar_agora():
     if em_demo():
-        return jsonify({"erro": "o modo demonstração não conecta em banco de verdade"}), 400
+        return jsonify({"erro": msg("o modo demonstração não conecta em banco de verdade")}), 400
     conn = get_db()
     try:
         casa_id = minha_casa_id(conn)
@@ -6336,7 +6444,7 @@ def listar_faturas_cartao(item_id):
     conn = get_db()
     try:
         if not pertence_ao_usuario(conn, "cartoes", item_id):
-            return jsonify({"erro": "cartão não encontrado"}), 404
+            return jsonify({"erro": msg("cartão não encontrado")}), 404
         faturas = []
         for r in conn.execute(
             "SELECT * FROM cartao_faturas WHERE cartao_id = ? ORDER BY vencimento DESC",
@@ -6406,7 +6514,7 @@ def pluggy_webhook(segredo):
     # Comparação em tempo constante: com `==`, o tempo de resposta vazaria
     # quantos caracteres do segredo o atacante já acertou.
     if not secrets.compare_digest(segredo, pluggy_webhook_segredo()):
-        return jsonify({"erro": "não autorizado"}), 401
+        return jsonify({"erro": msg("não autorizado")}), 401
 
     dados = request.get_json(silent=True) or {}
     evento = dados.get("event") or ""
@@ -6493,13 +6601,13 @@ def pluggy_webhook_registrar():
     conn = get_db()
     try:
         if not eh_administrador(conn):
-            return jsonify({"erro": "só o administrador da casa pode configurar o webhook"}), 403
+            return jsonify({"erro": msg("só o administrador da casa pode configurar o webhook")}), 403
         url = pluggy_webhook_url_completa()
         if not url:
             return jsonify({"erro": "defina PLUGGY_WEBHOOK_URL no .env com o endereço "
                                     "público do seu servidor"}), 400
         if not url.startswith("https://"):
-            return jsonify({"erro": "a Pluggy só aceita HTTPS e recusa localhost"}), 400
+            return jsonify({"erro": msg("a Pluggy só aceita HTTPS e recusa localhost")}), 400
 
         casa_id = minha_casa_id(conn)
         try:
@@ -6715,7 +6823,7 @@ def criar_regra():
     categoria = (dados.get("categoria") or "").strip()
     condicoes = dados.get("condicoes") or []
     if not nome or not categoria or not condicoes:
-        return jsonify({"erro": "informe nome, categoria e ao menos uma condição"}), 400
+        return jsonify({"erro": msg("informe nome, categoria e ao menos uma condição")}), 400
     conn = get_db()
     try:
         conn.execute(
@@ -6741,7 +6849,7 @@ def editar_regra(item_id):
         dona = conn.execute("SELECT casa_id FROM regras_categoria WHERE id = ?",
                             (item_id,)).fetchone()
         if not dona or dona["casa_id"] != casa_id:
-            return jsonify({"erro": "regra não encontrada"}), 404
+            return jsonify({"erro": msg("regra não encontrada")}), 404
         conn.execute(
             "UPDATE regras_categoria SET nome = ?, prioridade = ?, condicoes = ?, "
             "categoria = ?, marca_transferencia = ?, ativa = ? WHERE id = ?",
@@ -6765,7 +6873,7 @@ def apagar_regra(item_id):
         dona = conn.execute("SELECT casa_id FROM regras_categoria WHERE id = ?",
                             (item_id,)).fetchone()
         if not dona or dona["casa_id"] != casa_id:
-            return jsonify({"erro": "regra não encontrada"}), 404
+            return jsonify({"erro": msg("regra não encontrada")}), 404
         conn.execute("DELETE FROM regras_categoria WHERE id = ?", (item_id,))
         conn.commit()
         return jsonify({"ok": True})
@@ -6919,9 +7027,9 @@ def classificar_nao_categorizados():
     condicao = (dados.get("condicao") or "").strip()
 
     if not ids:
-        return jsonify({"erro": "nada para classificar"}), 400
+        return jsonify({"erro": msg("nada para classificar")}), 400
     if not categoria and not transferencia:
-        return jsonify({"erro": "escolha uma categoria, ou marque como transferência"}), 400
+        return jsonify({"erro": msg("escolha uma categoria, ou marque como transferência")}), 400
 
     conn = get_db()
     try:
@@ -6933,7 +7041,7 @@ def classificar_nao_categorizados():
             f"WHERE u.casa_id = ? AND l.id IN ({marcadores})",
             [casa_id] + list(ids)).fetchall()]
         if not proprios:
-            return jsonify({"erro": "nenhum desses lançamentos é desta casa"}), 404
+            return jsonify({"erro": msg("nenhum desses lançamentos é desta casa")}), 404
 
         marcadores2 = ",".join("?" for _ in proprios)
         conn.execute(
@@ -7109,11 +7217,11 @@ def mudar_estado_meta(item_id):
     dados = request.get_json(silent=True) or {}
     estado = (dados.get("estado") or "").strip()
     if estado not in ESTADOS_META:
-        return jsonify({"erro": "estado inválido"}), 400
+        return jsonify({"erro": msg("estado inválido")}), 400
     conn = get_db()
     try:
         if not pertence_ao_usuario(conn, "metas", item_id):
-            return jsonify({"erro": "meta não encontrada"}), 404
+            return jsonify({"erro": msg("meta não encontrada")}), 404
         concluida = datetime.now().isoformat() if estado == "concluida" else None
         conn.execute("UPDATE metas SET estado = ?, concluida_em = ? WHERE id = ?",
                      (estado, concluida, item_id))
@@ -7137,12 +7245,12 @@ def depositar_meta(item_id):
     except (TypeError, ValueError):
         valor = 0
     if valor == 0:
-        return jsonify({"erro": "informe um valor"}), 400
+        return jsonify({"erro": msg("informe um valor")}), 400
 
     conn = get_db()
     try:
         if not pertence_ao_usuario(conn, "metas", item_id):
-            return jsonify({"erro": "meta não encontrada"}), 404
+            return jsonify({"erro": msg("meta não encontrada")}), 404
         conn.execute(
             "INSERT INTO meta_depositos (meta_id, valor, data, observacao, usuario_id, criado_em) "
             "VALUES (?, ?, ?, ?, ?, ?)",
@@ -7171,7 +7279,7 @@ def listar_depositos_meta(item_id):
     conn = get_db()
     try:
         if not pertence_ao_usuario(conn, "metas", item_id):
-            return jsonify({"erro": "meta não encontrada"}), 404
+            return jsonify({"erro": msg("meta não encontrada")}), 404
         return jsonify([dict(r) for r in conn.execute(
             "SELECT * FROM meta_depositos WHERE meta_id = ? ORDER BY data DESC, id DESC",
             (item_id,)).fetchall()])
@@ -7186,7 +7294,7 @@ def apagar_deposito_meta(item_id):
         dep = conn.execute("SELECT meta_id, usuario_id FROM meta_depositos WHERE id = ?",
                            (item_id,)).fetchone()
         if not dep or dep["usuario_id"] != uid():
-            return jsonify({"erro": "depósito não encontrado"}), 404
+            return jsonify({"erro": msg("depósito não encontrado")}), 404
         meta_id = dep["meta_id"]
         conn.execute("DELETE FROM meta_depositos WHERE id = ?", (item_id,))
         total = conn.execute("SELECT COALESCE(SUM(valor),0) t FROM meta_depositos WHERE meta_id = ?",
