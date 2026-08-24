@@ -2172,11 +2172,17 @@ def deletar_transacao_cartao(item_id):
 @app.route("/api/metas", methods=["GET"])
 def listar_metas():
     conn = get_db()
-    rows = conn.execute(
-        "SELECT * FROM metas WHERE usuario_id = ? ORDER BY criado_em", (uid(),)
-    ).fetchall()
+    estado = request.args.get("estado")
+    sql = "SELECT * FROM metas WHERE usuario_id = ?"
+    p = [uid()]
+    if estado and estado != "todas":
+        sql += " AND estado = ?"; p.append(estado)
+    # Arquivada some da lista padrão: ela existe para tirar da vista sem apagar.
+    elif not estado:
+        sql += " AND estado <> 'arquivada'"
+    rows = conn.execute(sql + " ORDER BY criado_em", p).fetchall()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    return jsonify([_situacao_meta(dict(r)) for r in rows])
 
 
 @app.route("/api/metas", methods=["POST"])
@@ -2193,9 +2199,11 @@ def criar_meta():
         return jsonify({"erro": "valor alvo inválido"}), 400
     conn = get_db()
     conn.execute(
-        "INSERT INTO metas (nome, valor_alvo, valor_atual, prazo, criado_em, usuario_id) "
-        "VALUES (?, ?, 0, ?, ?, ?)",
-        (nome, valor_alvo, prazo, datetime.now().isoformat(), uid()),
+        "INSERT INTO metas (nome, valor_alvo, valor_atual, prazo, criado_em, usuario_id, "
+        "estado, inicio, icone, cor) VALUES (?, ?, 0, ?, ?, ?, 'ativa', ?, ?, ?)",
+        (nome, valor_alvo, prazo, datetime.now().isoformat(), uid(),
+         datetime.now().strftime("%Y-%m"), (data.get("icone") or "").strip() or None,
+         (data.get("cor") or "").strip() or None),
     )
     conn.commit()
     conn.close()
@@ -6940,6 +6948,164 @@ def money_map():
             "total_despesa": total_despesa,
             "saldo": total_receita - total_despesa,
         })
+    finally:
+        conn.close()
+
+
+# ---------------- Metas: estado e ritmo ----------------
+#
+# Guardar quanto falta é fácil; o que a pessoa quer saber é se está no ritmo.
+# Por isso cada meta devolve quanto precisa por mês e se está adiantada ou
+# atrasada em relação ao prazo.
+
+ESTADOS_META = ("ativa", "pausada", "concluida", "arquivada")
+
+
+def _meses_ate(prazo):
+    """Meses inteiros de hoje até o prazo (AAAA-MM). None se não há prazo."""
+    if not prazo:
+        return None
+    try:
+        ano, mes = int(prazo[:4]), int(prazo[5:7])
+    except (ValueError, IndexError):
+        return None
+    hoje = datetime.now()
+    return max((ano - hoje.year) * 12 + (mes - hoje.month), 0)
+
+
+def _situacao_meta(m):
+    """Enriquece a meta com progresso, ritmo e se está adiantada.
+
+    'Adiantada' compara o que já foi guardado com o que deveria estar guardado
+    a esta altura, distribuindo o alvo por igual entre o início e o prazo. Sem
+    prazo não existe atraso possível — só progresso.
+    """
+    alvo = m.get("valor_alvo") or 0
+    atual = m.get("valor_atual") or 0
+    d = dict(m)
+    d["progresso"] = min(atual / alvo, 1.0) if alvo else 0.0
+    d["falta"] = max(alvo - atual, 0)
+
+    meses = _meses_ate(m.get("prazo"))
+    d["meses_restantes"] = meses
+    # Quanto precisa guardar por mês daqui para frente. Com o prazo no mês
+    # corrente (0 meses), o que falta é para agora.
+    d["por_mes"] = (d["falta"] / meses) if meses else d["falta"]
+
+    d["situacao"] = None
+    if m.get("estado") == "concluida" or (alvo and atual >= alvo):
+        d["situacao"] = "concluida"
+    elif m.get("estado") in ("pausada", "arquivada"):
+        d["situacao"] = m["estado"]
+    elif m.get("prazo") and m.get("inicio"):
+        total = _meses_entre(m["inicio"], m["prazo"])
+        decorridos = _meses_entre(m["inicio"], datetime.now().strftime("%Y-%m"))
+        if total and total > 0:
+            esperado = alvo * min(max(decorridos / total, 0), 1)
+            d["esperado"] = esperado
+            d["situacao"] = "adiantada" if atual >= esperado else "atrasada"
+    return d
+
+
+def _meses_entre(de, ate):
+    try:
+        a1, m1 = int(de[:4]), int(de[5:7])
+        a2, m2 = int(ate[:4]), int(ate[5:7])
+    except (ValueError, IndexError, TypeError):
+        return None
+    return (a2 - a1) * 12 + (m2 - m1)
+
+
+@app.route("/api/metas/<int:item_id>/estado", methods=["PUT"])
+def mudar_estado_meta(item_id):
+    dados = request.get_json(silent=True) or {}
+    estado = (dados.get("estado") or "").strip()
+    if estado not in ESTADOS_META:
+        return jsonify({"erro": "estado inválido"}), 400
+    conn = get_db()
+    try:
+        if not pertence_ao_usuario(conn, "metas", item_id):
+            return jsonify({"erro": "meta não encontrada"}), 404
+        concluida = datetime.now().isoformat() if estado == "concluida" else None
+        conn.execute("UPDATE metas SET estado = ?, concluida_em = ? WHERE id = ?",
+                     (estado, concluida, item_id))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/metas/<int:item_id>/depositos", methods=["POST"])
+def depositar_meta(item_id):
+    """Registra um depósito e recalcula o total.
+
+    O total é a SOMA dos depósitos, não um número digitado à parte: assim ele
+    nunca fica em desacordo com o histórico, e apagar um depósito errado
+    corrige o total sozinho.
+    """
+    dados = request.get_json(silent=True) or {}
+    try:
+        valor = float(dados.get("valor") or 0)
+    except (TypeError, ValueError):
+        valor = 0
+    if valor == 0:
+        return jsonify({"erro": "informe um valor"}), 400
+
+    conn = get_db()
+    try:
+        if not pertence_ao_usuario(conn, "metas", item_id):
+            return jsonify({"erro": "meta não encontrada"}), 404
+        conn.execute(
+            "INSERT INTO meta_depositos (meta_id, valor, data, observacao, usuario_id, criado_em) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (item_id, valor, (dados.get("data") or datetime.now().strftime("%Y-%m-%d"))[:10],
+             (dados.get("observacao") or "").strip() or None, uid(), datetime.now().isoformat()),
+        )
+        total = conn.execute("SELECT COALESCE(SUM(valor),0) t FROM meta_depositos WHERE meta_id = ?",
+                             (item_id,)).fetchone()["t"]
+        meta = conn.execute("SELECT valor_alvo, estado FROM metas WHERE id = ?", (item_id,)).fetchone()
+        # Bateu o alvo? conclui sozinha — mas só se ainda estava ativa, para não
+        # ressuscitar meta que a pessoa arquivou de propósito.
+        estado = meta["estado"]
+        concluida = None
+        if meta["valor_alvo"] and total >= meta["valor_alvo"] and estado == "ativa":
+            estado, concluida = "concluida", datetime.now().isoformat()
+        conn.execute("UPDATE metas SET valor_atual = ?, estado = ?, concluida_em = ? WHERE id = ?",
+                     (total, estado, concluida, item_id))
+        conn.commit()
+        return jsonify({"ok": True, "total": total, "estado": estado})
+    finally:
+        conn.close()
+
+
+@app.route("/api/metas/<int:item_id>/depositos", methods=["GET"])
+def listar_depositos_meta(item_id):
+    conn = get_db()
+    try:
+        if not pertence_ao_usuario(conn, "metas", item_id):
+            return jsonify({"erro": "meta não encontrada"}), 404
+        return jsonify([dict(r) for r in conn.execute(
+            "SELECT * FROM meta_depositos WHERE meta_id = ? ORDER BY data DESC, id DESC",
+            (item_id,)).fetchall()])
+    finally:
+        conn.close()
+
+
+@app.route("/api/metas/depositos/<int:item_id>", methods=["DELETE"])
+def apagar_deposito_meta(item_id):
+    conn = get_db()
+    try:
+        dep = conn.execute("SELECT meta_id, usuario_id FROM meta_depositos WHERE id = ?",
+                           (item_id,)).fetchone()
+        if not dep or dep["usuario_id"] != uid():
+            return jsonify({"erro": "depósito não encontrado"}), 404
+        meta_id = dep["meta_id"]
+        conn.execute("DELETE FROM meta_depositos WHERE id = ?", (item_id,))
+        total = conn.execute("SELECT COALESCE(SUM(valor),0) t FROM meta_depositos WHERE meta_id = ?",
+                             (meta_id,)).fetchone()["t"]
+        conn.execute("UPDATE metas SET valor_atual = ? WHERE id = ?", (total, meta_id))
+        conn.commit()
+        return jsonify({"ok": True, "total": total})
     finally:
         conn.close()
 

@@ -256,6 +256,18 @@
      As cores não são as do app: o --red (#ff5630) é claro demais para o fundo
      escuro do gráfico e reprovou na faixa de luminosidade. Estes tons passaram
      nas seis checagens (inclusive separação para daltonismo) em cada tema. */
+  .metas-filtros{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
+  .metas-filtros button{
+    background:var(--card2); color:var(--muted); border:1px solid var(--border-soft);
+    padding:6px 13px; font-size:0.79rem; font-weight:600; box-shadow:none;
+  }
+  .metas-filtros button.ativo{background:var(--accent); color:#fff; border-color:transparent;}
+  .meta-selo{font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .meta-selo.adiantada{background:rgba(0,167,111,0.15); color:var(--green);}
+  .meta-selo.atrasada{background:rgba(255,171,0,0.15); color:var(--yellow);}
+  .meta-selo.concluida{background:rgba(0,184,217,0.15); color:var(--azul);}
+  .meta-selo.pausada, .meta-selo.arquivada{background:var(--card3); color:var(--muted);}
+  .meta-ritmo{color:var(--muted); font-size:0.76rem; margin-top:6px; line-height:1.5;}
   .mm-cores{--mm-entra:#00a76f; --mm-sai:#cf3d21;}
   :root[data-theme="light"] .mm-cores, body.tema-claro .mm-cores{--mm-entra:#00875a; --mm-sai:#d13c1f;}
   .mm-periodos{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
@@ -1441,22 +1453,6 @@
 
   <!-- ===================== DASHBOARD ===================== -->
   <section class="painel ativo" id="painel-dashboard">
-    <div class="secao mm-cores" id="secaoMoneyMap">
-      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> <span data-i18n="Money Map">Money Map</span></h2>
-      <p class="of-ajuda" data-i18n="De onde o dinheiro veio e para onde foi. Transferência entre contas suas fica de fora — ela move saldo, mas não é ganho nem gasto.">
-        De onde o dinheiro veio e para onde foi. Transferência entre contas suas
-        fica de fora — ela move saldo, mas não é ganho nem gasto.
-      </p>
-      <div class="mm-periodos" id="mmPeriodos">
-        <button type="button" data-p="30d" data-i18n="30 dias">30 dias</button>
-        <button type="button" data-p="3m" data-i18n="3 meses">3 meses</button>
-        <button type="button" data-p="6m" class="ativo" data-i18n="6 meses">6 meses</button>
-        <button type="button" data-p="ano" data-i18n="Este ano">Este ano</button>
-        <button type="button" data-p="1a" data-i18n="12 meses">12 meses</button>
-      </div>
-      <div class="mm-resumo" id="mmResumo"></div>
-      <div class="mm-svg-wrap"><div id="mmGrafico"></div></div>
-    </div>
 
     <div class="panorama-card" id="panoramaCard"></div>
 
@@ -1497,6 +1493,22 @@
     <div class="secao">
       <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-banco"/></svg> <span data-i18n="Resumo por conta">Resumo por conta</span></h2>
       <div id="listaContasResumo"></div>
+    </div>
+    <div class="secao mm-cores" id="secaoMoneyMap">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> <span data-i18n="Money Map">Money Map</span></h2>
+      <p class="of-ajuda" data-i18n="De onde o dinheiro veio e para onde foi. Transferência entre contas suas fica de fora — ela move saldo, mas não é ganho nem gasto.">
+        De onde o dinheiro veio e para onde foi. Transferência entre contas suas
+        fica de fora — ela move saldo, mas não é ganho nem gasto.
+      </p>
+      <div class="mm-periodos" id="mmPeriodos">
+        <button type="button" data-p="30d" data-i18n="30 dias">30 dias</button>
+        <button type="button" data-p="3m" data-i18n="3 meses">3 meses</button>
+        <button type="button" data-p="6m" class="ativo" data-i18n="6 meses">6 meses</button>
+        <button type="button" data-p="ano" data-i18n="Este ano">Este ano</button>
+        <button type="button" data-p="1a" data-i18n="12 meses">12 meses</button>
+      </div>
+      <div class="mm-resumo" id="mmResumo"></div>
+      <div class="mm-svg-wrap"><div id="mmGrafico"></div></div>
     </div>
   </section>
 
@@ -1783,6 +1795,13 @@
   <section class="painel" id="painel-metas">
     <div class="secao">
       <h2><span data-i18n="Metas de economia">Metas de economia</span></h2>
+      <div class="metas-filtros" id="metasFiltros">
+        <button type="button" data-estado="ativa" class="ativo" data-i18n="Ativas">Ativas</button>
+        <button type="button" data-estado="concluida" data-i18n="Concluídas">Concluídas</button>
+        <button type="button" data-estado="pausada" data-i18n="Pausadas">Pausadas</button>
+        <button type="button" data-estado="arquivada" data-i18n="Arquivadas">Arquivadas</button>
+        <button type="button" data-estado="todas" data-i18n="Todas">Todas</button>
+      </div>
       <div class="metas-grid" id="listaMetas"></div>
     </div>
     <form class="add-form" id="metaForm">
@@ -2579,10 +2598,12 @@ const TRADUCOES = {"en": {
 "30 dias": "30 days",
 "6 meses": "6 months",
 "7 dias antes": "7 days before",
+"A conta": "Account",
 "A leitura é automática e pode errar alguns dígitos — confira tudo antes de lançar.": "Scanning is automatic and may misread digits — check everything before saving.",
 "A receber": "Expected",
 "Aberto pelo navegador": "Opened in the browser",
 "Abre em tela cheia, sem a barra do navegador.": "Opens full screen, without the browser bar.",
+"Adiantada": "Ahead",
 "Adicionar": "Add",
 "Adicionar ativo": "Add asset",
 "Adicionar cartão": "Add card",
@@ -2592,13 +2613,19 @@ const TRADUCOES = {"en": {
 "Adicionar usuário": "Add user",
 "Administrador": "Administrator",
 "Agora não": "Not now",
+"Ainda pode gastar": "Still can spend",
 "Alternar tema": "Switch theme",
 "Anual": "Yearly",
 "Ao passar do limite, o backup mais antigo é apagado automaticamente.": "Past the limit, the oldest backup is deleted automatically.",
 "Aplicar no que já existe": "Apply to existing entries",
+"Arquivada": "Archived",
+"Arquivadas": "Archived",
+"Arquivar": "Archive",
 "Ativar avisos na hora": "Turn on instant alerts",
+"Ativas": "Active",
 "Ativo": "Asset",
 "Ativos na carteira": "Assets in portfolio",
+"Atrasada": "Behind",
 "Atualizar cotações": "Refresh prices",
 "Atualização disponível": "Update available",
 "Atualização necessária": "Update required",
@@ -2639,6 +2666,8 @@ const TRADUCOES = {"en": {
 "Com que frequência?": "How often?",
 "Como chegamos nesse valor": "How we got to this number",
 "Compra": "Buy",
+"Concluída": "Completed",
+"Concluídas": "Completed",
 "Conectar banco": "Connect bank",
 "Configurar % Ideal da carteira": "Set target portfolio mix",
 "Configurações administrativas": "Admin settings",
@@ -2681,9 +2710,11 @@ const TRADUCOES = {"en": {
 "Desligado": "Off",
 "Despesa": "Expense",
 "Despesas": "Expenses",
+"Despesas do mês": "Expenses this month",
 "Dia de vencimento": "Due day",
 "Digite para procurar em todos os meses.": "Type to search across every month.",
 "Digite pra buscar (ex: petrobras, bitcoin)": "Type to search (e.g. petrobras, bitcoin)",
+"Dinheiro disponível (mês)": "Money available (month)",
 "Dispensar": "Dismiss",
 "Distribuição da carteira": "Portfolio mix",
 "Distribuição em 12 meses": "Spread over 12 months",
@@ -2709,7 +2740,9 @@ const TRADUCOES = {"en": {
 "Ex: Nome da sua esposa": "e.g. your partner's name",
 "Ex: Reserva de emergência": "e.g. Emergency fund",
 "Ex: Tesouro Selic 2029, Poupança": "e.g. Tesouro Selic 2029, Savings",
+"Excluir": "Delete",
 "Excluir em todos os meses": "Delete from every month",
+"Excluir esta meta? O histórico de depósitos vai junto.": "Delete this goal? The deposit history goes with it.",
 "Excluir lançamento recorrente": "Delete recurring entry",
 "Excluir só neste mês": "Delete only this month",
 "Exportar CSV do mês": "Export this month as CSV",
@@ -2724,6 +2757,8 @@ const TRADUCOES = {"en": {
 "Fundo imobiliário (FII)": "Real estate fund (FII)",
 "Gastos por categoria": "Spending by category",
 "GitHub": "GitHub",
+"Guardar": "Save",
+"Guardar (R$)": "Save (R$)",
 "Habilitar aba Empréstimos": "Enable the Loans tab",
 "Histórico mensal": "Monthly history",
 "Holerite": "Payslip",
@@ -2732,8 +2767,10 @@ const TRADUCOES = {"en": {
 "Ignorar esta conta": "Ignore this account",
 "Importar comprovante": "Import receipt",
 "Importar holerite": "Import payslip",
+"Importar holerite deste mês": "Import this month's payslip",
 "Importar proventos agora": "Import income now",
 "Indexador": "Index",
+"Informe um valor": "Enter an amount",
 "Instalar": "Install",
 "Instalar como app": "Install as an app",
 "Investimentos": "Investments",
@@ -2741,24 +2778,29 @@ const TRADUCOES = {"en": {
 "Itens": "Items",
 "JSCP (15% de IR na fonte)": "JCP (15% withholding tax)",
 "Já caiu na conta": "Already in the account",
+"Já gastou (pago)": "Already spent (paid)",
 "Já paga": "Already paid",
 "LCA": "LCA",
 "LCI": "LCI",
+"Lançamentos gerados": "Entries created",
 "Lançar automaticamente como receita": "Post automatically as income",
 "Lançar despesa": "Add expense",
 "Lançar provento": "Add income",
 "Leitura": "Read-only",
 "Limite (R$)": "Limit (R$)",
+"Limite estourado": "Limit exceeded",
 "Limite mensal (R$)": "Monthly limit (R$)",
 "Liquidez diária": "Daily liquidity",
 "Login com Google": "Sign in with Google",
 "Loja": "Store",
+"Líquido": "Net",
 "MODO DEMONSTRAÇÃO ATIVADO — dados fictícios, suas contas reais estão ocultas": "DEMO MODE ON — made-up data, your real accounts are hidden",
 "Maior valor": "Highest amount",
 "Marcar todas como lidas": "Mark all as read",
 "Menor valor": "Lowest amount",
 "Mensal": "Monthly",
 "Menu": "Menu",
+"Meta concluída!": "Goal reached!",
 "Metas": "Goals",
 "Metas de economia": "Savings goals",
 "Meu perfil": "My profile",
@@ -2770,11 +2812,19 @@ const TRADUCOES = {"en": {
 "Money Map": "Money Map",
 "Média mensal (últ. 12 meses)": "Monthly average (last 12 months)",
 "Mês anterior": "Previous month",
+"Mês no vermelho": "Month in the red",
 "Nada pendente — tudo classificado.": "Nothing pending — all sorted.",
+"Nenhum ativo na carteira ainda.": "No assets in the portfolio yet.",
+"Nenhum ativo na carteira ainda. Use \"+ Adicionar ativo\" pra registrar a primeira compra.": "No assets in the portfolio yet. Use \"+ Add asset\" to record the first purchase.",
 "Nenhum banco conectado ainda. Conecte no meu.pluggy.ai e cole o Item ID abaixo.": "No bank connected yet. Connect at meu.pluggy.ai and paste the Item ID below.",
+"Nenhum holerite importado ainda.": "No payslip imported yet.",
+"Nenhum holerite importado para este mês.": "No payslip imported for this month.",
 "Nenhum lançamento ainda.": "No entries yet.",
+"Nenhum orçamento definido pra esse mês ainda.": "No budget set for this month yet.",
 "Nenhum resultado para os filtros aplicados.": "No results for the filters applied.",
 "Nenhuma conta cadastrada. Adicione a primeira abaixo.": "No accounts yet. Add the first one below.",
+"Nenhuma meta aqui.": "No goals here.",
+"Nenhuma parcela futura cadastrada.": "No upcoming instalments.",
 "Nenhuma regra ainda.": "No rules yet.",
 "Nome": "Name",
 "Nome (ex: Empréstimo Santander)": "Name (e.g. Santander loan)",
@@ -2786,6 +2836,7 @@ const TRADUCOES = {"en": {
 "Nome do local": "Place name",
 "Nota fiscal escaneada": "Scanned receipt",
 "Notificações": "Notifications",
+"Notificações bloqueadas": "Notifications blocked",
 "Nova senha": "New password",
 "Novo": "New",
 "Novo lançamento": "New entry",
@@ -2795,6 +2846,7 @@ const TRADUCOES = {"en": {
 "Não é o mês atual": "Not the current month",
 "Não é preciso saber a senha atual — só o administrador acessa esta tela.": "No need to know the current password — only the administrator can open this screen.",
 "Número de parcelas": "Number of instalments",
+"O cartão": "Card",
 "O que avisar": "What to warn about",
 "O que o banco mandou e ninguém soube classificar. Estão agrupados por descrição: você resolve o grupo inteiro de uma vez e, marcando": "What the bank sent and nobody could classify. They are grouped by description: you handle the whole group at once and, by ticking",
 "O saldo inicial desta conta é": "The starting balance of this account is",
@@ -2809,18 +2861,26 @@ const TRADUCOES = {"en": {
 "Outro": "Other",
 "Outros custos": "Other costs",
 "Pago": "Paid",
+"Parcela": "Instalment",
 "Parcela atual (ex: 3)": "Current instalment (e.g. 3)",
 "Parcelar": "Split into instalments",
 "Parcelas futuras": "Upcoming instalments",
 "Patrimônio": "Net worth",
 "Patrimônio por mês": "Net worth by month",
+"Patrimônio total": "Total net worth",
+"Pausada": "Paused",
+"Pausadas": "Paused",
+"Pausar": "Pause",
 "Pelo navegador, os avisos só aparecem enquanto o FinanCerto está aberto — é uma limitação de quem roda o próprio servidor, sem um serviço de push. Para receber com o celular guardado, use o": "In the browser, alerts only appear while FinanCerto is open — a limitation of self-hosting without a push service. To get them with your phone put away, use the",
 "Pendente": "Pending",
 "Permitir notificações": "Allow notifications",
+"Perto do limite": "Near the limit",
 "Por quantos meses?": "For how many months?",
 "Posições": "Holdings",
+"Prazo": "Deadline",
 "Prazo (opcional)": "Deadline (optional)",
 "Prefixado": "Fixed rate",
+"Previsão de saldo no fim do mês": "Forecast balance at month end",
 "Preço em R$": "Price in R$",
 "Proventos": "Income",
 "Próximo mês": "Next month",
@@ -2832,7 +2892,9 @@ const TRADUCOES = {"en": {
 "Receita": "Income",
 "Receitas & Despesas": "Income & Expenses",
 "Receitas &amp; Despesas": "Income &amp; Expenses",
+"Receitas do mês": "Income this month",
 "Recolher menu": "Collapse menu",
+"Referência não identificada": "Reference not identified",
 "Registrar compra": "Record purchase",
 "Registrar provento": "Record income",
 "Regras": "Rules",
@@ -2850,13 +2912,16 @@ const TRADUCOES = {"en": {
 "Restaurar de um arquivo": "Restore from a file",
 "Resumo": "Summary",
 "Resumo por conta": "Summary by account",
+"Retomar": "Resume",
 "Rodam da menor prioridade para a maior, e a primeira que casar decide. Elas olham a descrição do lançamento, que é onde está o nome do estabelecimento.": "They run from lowest priority to highest, and the first match decides. They look at the entry description, which is where the merchant name is.",
 "Sair": "Sign out",
 "Sair do demo": "Leave demo",
 "Saiu": "Money out",
+"Saldo do mês (recebido − pago)": "Month balance (received − paid)",
 "Saldo inicial (R$)": "Starting balance (R$)",
 "Saldo inicial:": "Starting balance:",
 "Saldo negativo em alguma conta": "Negative balance in some account",
+"Saldo real das contas": "Real account balance",
 "Salvar": "Save",
 "Salvar alterações": "Save changes",
 "Salvar categoria": "Save category",
@@ -2886,12 +2951,14 @@ const TRADUCOES = {"en": {
 "Tipo de investimento": "Investment type",
 "Tipo de pagamento": "Payment type",
 "Toda semana": "Every week",
+"Todas": "All",
 "Todas categorias": "All categories",
 "Todas contas": "All accounts",
 "Todo dia": "Every day",
 "Todo mês": "Every month",
 "Todos": "All",
 "Todos status": "All statuses",
+"Toque em um dia para ver os lançamentos.": "Tap a day to see the entries.",
 "Total": "Total",
 "Total Despesas": "Total expenses",
 "Total Renda": "Total income",
@@ -2910,36 +2977,61 @@ const TRADUCOES = {"en": {
 "Valor bruto anunciado (R$)": "Gross amount announced (R$)",
 "Valor da parcela (R$)": "Instalment amount (R$)",
 "Valor em R$": "Amount in R$",
+"Valor guardado": "Amount saved",
 "Valor líquido": "Net amount",
 "Valor parcela": "Instalment",
 "Valor total": "Total amount",
 "Valor total da despesa (R$)": "Total expense amount (R$)",
 "Vencimento / data": "Due date",
 "Venda": "Sell",
+"Ver lançamentos do cartão": "See card entries",
+"Ver minhas contas": "See my accounts",
 "Ver o código-fonte no GitHub — software livre sob AGPL-3.0": "View the source on GitHub — free software under AGPL-3.0",
 "Ver todas as contas": "See all accounts",
 "Verificando…": "Checking…",
 "Você está na versão — e já existe a —.": "You are on version — and — is already out.",
+"Você negou antes. Para liberar, toque no cadeado ao lado do endereço e permita as notificações deste site.": "You denied it before. To allow, tap the padlock next to the address and permit notifications for this site.",
 "Voltar para hoje": "Back to today",
 "agora há pouco": "just now",
 "app do Android": "Android app",
 "ativa": "active",
+"até o fim do mês — faltam": "until month end —",
 "calculado a partir do extrato": "calculated from the statement",
+"começa com": "starts with",
+"contém": "contains",
 "criar regra": "create rule",
 "criar regra para": "create a rule for",
+"de": "of",
+"dia": "day",
+"dias": "days",
 "do banco": "from the bank",
 "do banco. Por isso não dá para editar aqui — se editasse, o saldo do app deixaria de bater com o do banco.": "from the bank. That is why it cannot be edited here — if it were, the app balance would stop matching the bank.",
+"do limite.": "of the limit.",
 "em dia": "up to date",
+"em relação ao mês anterior": "compared with last month",
+"está a": "is at",
+"está negativa em": "is negative by",
 "ex: 6": "e.g. 6",
 "ex: esposa": "e.g. partner",
+"faltam": "still need",
 "lançamento": "entry",
 "lançamentos": "entries",
+"meses": "months",
+"mês": "month",
 "mínimo 4 caracteres": "at least 4 characters",
+"ou": "or",
+"recebido no fim do mês": "received at month end",
 "repita a nova senha": "repeat the new password",
 "sincronizada": "synced",
+"tem a palavra": "has the word",
+"termina com": "ends with",
+"usado": "used",
+"vence este mês": "due this month",
+"vs mês anterior": "vs last month",
 "· entradas, saídas e saldo acumulado dia a dia": "· money in, money out and running balance day by day",
 "· toque numa coluna para ver o detalhe": "· tap a bar to see the detail",
 "É uma previsão (será substituída quando eu importar o holerite)": "This is a forecast (it will be replaced when I import the payslip)",
+"é igual a": "equals",
 "— não usar ainda —": "— not in use yet —",
 "— é transferência entre contas —": "— it is a transfer between accounts —"
 }};
@@ -3380,7 +3472,7 @@ async function carregarOrcamentos(){
     const orcamentos = await res.json();
     container.innerHTML = "";
     if (orcamentos.length === 0){
-      container.innerHTML = `<div class="empty">Nenhum orçamento definido pra esse mês ainda.</div>`;
+      container.innerHTML = `<div class="empty">${t("Nenhum orçamento definido pra esse mês ainda.")}</div>`;
       return;
     }
     orcamentos.forEach(o => {
@@ -4169,10 +4261,10 @@ function renderizarRegras(){
   }
   el.innerHTML = regrasCache.map(r => {
     const cond = (r.condicoes || []).map(c => {
-      const op = {comeca_com:"começa com", contem:"contém", igual:"é igual a",
-                  termina_com:"termina com", palavra:"tem a palavra"}[c.operador] || c.operador;
+      const op = {comeca_com:t("começa com"), contem:t("contém"), igual:t("é igual a"),
+                  termina_com:t("termina com"), palavra:t("tem a palavra")}[c.operador] || c.operador;
       return `${op} "${escapeHtml(c.valor)}"`;
-    }).join(" ou ");
+    }).join(" " + t("ou") + " ");
     return `
       <div class="regra-linha ${r.ativa ? "" : "inativa"}">
         <div style="min-width:200px; flex:1;">
@@ -4509,7 +4601,7 @@ function popularSelectsConta(){
 
   const selFiltroConta = document.getElementById("filtroConta");
   const valorAtual2 = selFiltroConta.value;
-  selFiltroConta.innerHTML = `<option value="">Todas contas</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
+  selFiltroConta.innerHTML = `<option value="">${t("Todas contas")}</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
   selFiltroConta.value = valorAtual2;
 
   const opcoesCartaoConta = `<option value="">Sem conta vinculada</option>` + contasCache.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join("");
@@ -4613,7 +4705,7 @@ function popularOpcoesFiltro(lancamentos){
   const selCat = document.getElementById("filtroCategoria");
   const catAtual = selCat.value;
   const categorias = [...new Set(lancamentos.map(l => l.categoria).filter(Boolean))].sort();
-  selCat.innerHTML = `<option value="">Todas categorias</option>` + categorias.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  selCat.innerHTML = `<option value="">${t("Todas categorias")}</option>` + categorias.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
   selCat.value = catAtual;
 }
 
@@ -4869,7 +4961,7 @@ function calcularPanorama(d){
 
   let tom, icone, titulo, texto;
   if (sobra < 0){
-    tom = "critical"; icone = "✕"; titulo = "Mês no vermelho";
+    tom = "critical"; icone = "✕"; titulo = t("Mês no vermelho");
     texto = `Suas despesas do mês (${formatMoeda(despesa)}) já passam a renda (${formatMoeda(receita)}) em ${formatMoeda(Math.abs(sobra))}. Nesse ritmo o mês fecha negativo — vale rever o que dá pra cortar ou adiar antes de virar dívida.`;
   } else if (receita === 0 && despesa === 0){
     tom = "warn"; icone = "•"; titulo = "Ainda sem lançamentos neste mês";
@@ -4942,7 +5034,7 @@ async function carregarDashboard(){
     destaqueContasEl.classList.add("clicavel");
     destaqueContasEl.innerHTML = `
       <div class="hero-conteudo">
-        <div class="hero-rotulo">Saldo real das contas</div>
+        <div class="hero-rotulo">${t("Saldo real das contas")}</div>
         <div class="hero-valor">Cadastre suas contas</div>
         <div class="hero-sub">toque aqui para ir até "Contas" e ver seu saldo de banco/carteira</div>
       </div>`;
@@ -4959,12 +5051,12 @@ async function carregarDashboard(){
     destaqueContasEl.onclick = null;
     destaqueContasEl.innerHTML = `
       <div class="hero-conteudo">
-        <div class="hero-rotulo">${svgIco("banco","ico sm")} Saldo real das contas</div>
+        <div class="hero-rotulo">${svgIco("banco","ico sm")} ${t("Saldo real das contas")}</div>
         <div class="hero-valor ${d.saldo_total_contas>=0?'':'negativo'}" id="heroValor"
              data-alvo="${d.saldo_total_contas}">${formatMoeda(d.saldo_total_contas)}</div>
         <div class="hero-selos">${selo}</div>
         <button type="button" class="hero-botao" id="heroVerContas">
-          Ver minhas contas <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-direita"/></svg>
+          ${t("Ver minhas contas")} <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-direita"/></svg>
         </button>
       </div>
       <div class="hero-grafico"><canvas id="chartHero"></canvas></div>`;
@@ -4993,7 +5085,7 @@ async function carregarDashboard(){
       ? `${subiu ? '+' : '−'}${formatMoeda(Math.abs(dif))}`
       : `${subiu ? '+' : ''}${((dif / Math.abs(anterior)) * 100).toFixed(1).replace('.', ',')}%`;
     return `<div class="kpi-var ${bom ? 'sobe' : 'desce'}">${svgIco(seta, "ico")}
-      ${texto} <span class="ref">vs mês anterior</span></div>`;
+      ${texto} <span class="ref">${t("vs mês anterior")}</span></div>`;
   }
   function kpi(chave, icone, tintBg, tintCor, rotulo, valor, classeValor, varHTML){
     return `<div class="card kpi clicavel" onclick="abrirExplicacao('${chave}')">
@@ -5009,22 +5101,22 @@ async function carregarDashboard(){
              ambar:["rgba(255,171,0,0.12)","#ffab00"], roxo:["rgba(142,51,255,0.12)","#8e33ff"],
              azul:["rgba(0,184,217,0.12)","#00b8d9"]};
   const cardsHTML = [
-    kpi("saldo_mes", "calendario", ...V.azul, "Saldo do mês (recebido − pago)", d.saldo_atual,
+    kpi("saldo_mes", "calendario", ...V.azul, t("Saldo do mês (recebido − pago)"), d.saldo_atual,
         d.saldo_atual>=0?'positivo':'negativo', mesAnterior ? variacao(d.saldo_atual, mesAnterior.saldo, true) : ""),
-    kpi("disponivel", "grafico", ...V.verde, "Dinheiro disponível (mês)", d.disponivel,
+    kpi("disponivel", "grafico", ...V.verde, t("Dinheiro disponível (mês)"), d.disponivel,
         d.disponivel>=0?'positivo':'negativo', ""),
-    kpi("receitas", "sobe", ...V.verde, "Receitas do mês", d.receita_total, "positivo",
+    kpi("receitas", "sobe", ...V.verde, t("Receitas do mês"), d.receita_total, "positivo",
         mesAnterior ? variacao(d.receita_total, mesAnterior.receita, true) : ""),
-    kpi("despesas", "desce", ...V.vermelho, "Despesas do mês", d.despesa_total, "negativo",
+    kpi("despesas", "desce", ...V.vermelho, t("Despesas do mês"), d.despesa_total, "negativo",
         mesAnterior ? variacao(d.despesa_total, mesAnterior.despesa, false) : ""),
-    kpi("gasto_pago", "recibo", ...V.ambar, "Já gastou (pago)", d.despesa_paga, "negativo", ""),
+    kpi("gasto_pago", "recibo", ...V.ambar, t("Já gastou (pago)"), d.despesa_paga, "negativo", ""),
     kpi("ainda_pode_gastar", "check-circulo", ...V.verde, "Ainda pode gastar", d.ainda_pode_gastar,
         d.ainda_pode_gastar>=0?'positivo':'negativo', ""),
-    kpi("previsao", "bussola", ...V.roxo, "Previsão de saldo no fim do mês", d.previsao_fim_mes,
+    kpi("previsao", "bussola", ...V.roxo, t("Previsão de saldo no fim do mês"), d.previsao_fim_mes,
         d.previsao_fim_mes>=0?'positivo':'negativo', ""),
     kpi("gasto_diario", "carteira", ...V.azul, "Pode gastar por dia", d.gasto_diario_disponivel,
         d.gasto_diario_disponivel>0?'positivo':'negativo',
-        `<div class="kpi-var"><span class="ref">até o fim do mês — faltam ${d.dias_restantes} dia${d.dias_restantes === 1 ? '' : 's'}</span></div>`),
+        `<div class="kpi-var"><span class="ref">${t("até o fim do mês — faltam")} ${d.dias_restantes} ${d.dias_restantes === 1 ? t("dia") : t("dias")}</span></div>`),
   ].join("");
   document.getElementById("dashCards").innerHTML = cardsHTML;
 
@@ -5046,7 +5138,7 @@ async function carregarDashboard(){
   const parcContainer = document.getElementById("listaParcelasFuturas");
   parcContainer.innerHTML = "";
   if (d.parcelas_futuras.length === 0){
-    parcContainer.innerHTML = `<div class="empty">Nenhuma parcela futura cadastrada.</div>`;
+    parcContainer.innerHTML = `<div class="empty">${t("Nenhuma parcela futura cadastrada.")}</div>`;
   } else {
     d.parcelas_futuras.forEach(item => {
       const div = document.createElement("div");
@@ -5239,7 +5331,7 @@ function abrirExplicacao(chave){
   const todasDespesas = lancamentosCache.filter(l => l.tipo === "despesa");
 
   if (chave === "receitas"){
-    tituloEl.textContent = "Receitas do mês";
+    tituloEl.textContent = t("Receitas do mês");
     formulaEl.innerHTML = formulaLinha("Total de receitas do mês", somaValor(todasReceitas), "total");
     adicionarGrupoExplicacao(listasEl, "Recebidas", receitasPagas);
     adicionarGrupoExplicacao(listasEl, "Pendentes", receitasPendentes);
@@ -5258,7 +5350,7 @@ function abrirExplicacao(chave){
     adicionarGrupoExplicacao(listasEl, "Receitas recebidas", receitasPagas);
     adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
   } else if (chave === "disponivel" || chave === "ainda_pode_gastar"){
-    tituloEl.textContent = chave === "disponivel" ? "Dinheiro disponível (mês)" : "Ainda pode gastar";
+    tituloEl.textContent = chave === "disponivel" ? t("Dinheiro disponível (mês)") : t("Ainda pode gastar");
     const r = somaValor(todasReceitas), d = somaValor(todasDespesas);
     const resultado = chave === "ainda_pode_gastar" ? Math.max(r - d, 0) : r - d;
     formulaEl.innerHTML =
@@ -5268,11 +5360,11 @@ function abrirExplicacao(chave){
     adicionarGrupoExplicacao(listasEl, "Receitas do mês", todasReceitas);
     adicionarGrupoExplicacao(listasEl, "Despesas do mês", todasDespesas);
   } else if (chave === "gasto_pago"){
-    tituloEl.textContent = "Já gastou (pago)";
+    tituloEl.textContent = t("Já gastou (pago)");
     formulaEl.innerHTML = formulaLinha("Total de despesas já pagas", somaValor(despesasPagas), "total");
     adicionarGrupoExplicacao(listasEl, "Despesas pagas", despesasPagas);
   } else if (chave === "previsao"){
-    tituloEl.textContent = "Previsão de saldo no fim do mês";
+    tituloEl.textContent = t("Previsão de saldo no fim do mês");
     const rp = somaValor(receitasPendentes), dp = somaValor(despesasPendentes);
     const saldoContas = dashboardCache ? dashboardCache.saldo_total_contas : 0;
     formulaEl.innerHTML =
@@ -5369,13 +5461,13 @@ async function carregarCartoes(){
         <div class="item-info"><div class="rotulo">Vencimento</div><div class="valor-info">${c.dia_vencimento ? "dia " + c.dia_vencimento : "-"}</div></div>
       </div>
       <div class="barra-progresso"><div class="fill" style="width:${uso}%; background:${corBarra};"></div></div>
-      ${uso >= 100 ? `<div class="aviso-limite estourado">Limite estourado</div>` : uso >= 80 ? `<div class="aviso-limite">Perto do limite (${uso}% usado)</div>` : ""}
+      ${uso >= 100 ? `<div class="aviso-limite estourado">${t("Limite estourado")}</div>` : uso >= 80 ? `<div class="aviso-limite">${t("Perto do limite")} (${uso}% ${t("usado")})</div>` : ""}
       <div class="cartao-rodape">
         <span class="badge ${c.fatura_paga ? 'paga' : 'aberta'}">${c.fatura_paga ? '✓ Fatura paga' : 'Fatura aberta'}</span>
         <button class="secondary" onclick="alternarFaturaCartao(${c.id}, ${c.fatura_paga ? 0 : 1})">${c.fatura_paga ? 'Reabrir fatura' : 'Marcar como paga'}</button>
       </div>
       <div class="cartao-transacoes-toggle">
-        <button class="link" onclick="alternarTransacoesCartao(${c.id})">Ver lançamentos do cartão ▾</button>
+        <button class="link" onclick="alternarTransacoesCartao(${c.id})">${t("Ver lançamentos do cartão")} ▾</button>
       </div>
       <div class="cartao-transacoes" id="transacoes-cartao-${c.id}" style="display:none">
         <div class="lista-transacoes-cartao" id="lista-transacoes-${c.id}"><div class="loading-msg">Carregando...</div></div>
@@ -5523,57 +5615,117 @@ async function excluirCartao(id){
 
 // ---------- Metas de economia ----------
 let metasCache = [];
+let metasEstado = "ativa";
 
 async function carregarMetas(){
   const container = document.getElementById("listaMetas");
-  container.innerHTML = `<div class="loading-msg">Carregando...</div>`;
+  container.innerHTML = `<div class="loading-msg">${t("Carregando...")}</div>`;
   try {
-    const res = await apiFetch(`${API}/metas`, undefined, {erro:"Não foi possível carregar as metas"});
+    const res = await apiFetch(`${API}/metas?estado=${metasEstado}`, undefined,
+                               {erro:"Não foi possível carregar as metas"});
     metasCache = await res.json();
   } catch (e) {
-    container.innerHTML = `<div class="empty">Não foi possível carregar.</div>`;
+    container.innerHTML = `<div class="empty">${t("Não foi possível carregar.")}</div>`;
     return;
   }
-  container.innerHTML = "";
-  if (metasCache.length === 0){ container.innerHTML = `<div class="empty">Nenhuma meta criada ainda.</div>`; return; }
-  metasCache.forEach(m => {
-    const pct = m.valor_alvo > 0 ? Math.min(100, (m.valor_atual / m.valor_alvo) * 100) : 0;
-    const div = document.createElement("div");
-    div.className = "meta-card";
-    div.innerHTML = `
-      <div class="meta-topo">
-        <span class="meta-nome">${escapeHtml(m.nome)}</span>
-        <button class="icon danger" title="Excluir meta">${ICO.x}</button>
-      </div>
-      ${m.prazo ? `<div class="meta-prazo">Prazo: ${formatMes(m.prazo)}</div>` : ""}
-      <div class="orcamento-barra" style="margin-top:8px;"><div class="preenchido ${pct>=100?'':(pct>=80?'alerta':'')}" style="width:${pct}%"></div></div>
-      <div class="meta-valores"><span>${formatMoeda(m.valor_atual)}</span><span>${formatMoeda(m.valor_alvo)}</span></div>
-      <div class="meta-acoes">
-        <input type="number" step="0.01" placeholder="Adicionar valor (R$)">
-        <button type="button" class="secondary">+ Adicionar</button>
-      </div>
-    `;
-    div.querySelector(".meta-topo button").addEventListener("click", async () => {
-      if (!confirm("Excluir esta meta?")) return;
-      try {
-        await apiFetch(`${API}/metas/${m.id}`, {method:"DELETE"}, {sucesso:"Meta excluída", erro:"Não foi possível excluir"});
-        carregarMetas();
-      } catch (e) {}
-    });
-    const input = div.querySelector(".meta-acoes input");
-    div.querySelector(".meta-acoes button").addEventListener("click", async () => {
-      const valor = parseFloat(input.value);
-      if (!valor) return;
-      try {
-        await apiFetch(`${API}/metas/${m.id}`, {method:"PUT", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({valor_atual: m.valor_atual + valor})},
-          {sucesso:"Valor adicionado à meta", erro:"Não foi possível atualizar"});
-        carregarMetas();
-      } catch (e) {}
-    });
-    container.appendChild(div);
-  });
+  renderizarMetas();
 }
+
+function renderizarMetas(){
+  const container = document.getElementById("listaMetas");
+  if (!metasCache.length){
+    container.innerHTML = `<div class="empty">${t("Nenhuma meta aqui.")}</div>`;
+    return;
+  }
+  const rotulo = {adiantada:t("Adiantada"), atrasada:t("Atrasada"),
+                  concluida:t("Concluída"), pausada:t("Pausada"), arquivada:t("Arquivada")};
+
+  container.innerHTML = metasCache.map(m => {
+    const pct = Math.round((m.progresso || 0) * 100);
+    const selo = m.situacao
+      ? `<span class="meta-selo ${m.situacao}">${rotulo[m.situacao] || m.situacao}</span>` : "";
+
+    // O ritmo é o que responde "estou conseguindo?". A barra sozinha não diz
+    // se 40% em dois meses é bom ou ruim.
+    let ritmo = "";
+    if (m.estado !== "concluida"){
+      ritmo = `${t("faltam")} ${formatMoeda(m.falta)}`;
+      if (m.meses_restantes !== null && m.meses_restantes !== undefined){
+        ritmo += ` · ${formatMoeda(m.por_mes)}/${t("mês")}`;
+        ritmo += m.meses_restantes
+          ? ` · ${m.meses_restantes} ${m.meses_restantes > 1 ? t("meses") : t("mês")}`
+          : ` · ${t("vence este mês")}`;
+      }
+    }
+
+    return `
+      <div class="meta-card">
+        <div class="meta-topo">
+          <span class="meta-nome">${escapeHtml(m.nome)}</span>
+          ${selo}
+        </div>
+        ${m.prazo ? `<div class="meta-prazo">${t("Prazo")}: ${formatMes(m.prazo)}</div>` : ""}
+        <div class="orcamento-barra" style="margin-top:8px;">
+          <div class="preenchido ${pct>=100?'':(pct>=80?'alerta':'')}" style="width:${pct}%"></div>
+        </div>
+        <div class="meta-valores"><span>${formatMoeda(m.valor_atual)}</span><span>${formatMoeda(m.valor_alvo)}</span></div>
+        ${ritmo ? `<div class="meta-ritmo">${ritmo}</div>` : ""}
+        ${m.estado === "ativa" ? `
+        <div class="meta-acoes">
+          <input type="number" step="0.01" id="dep-${m.id}" placeholder="${t("Guardar (R$)")}">
+          <button type="button" class="secondary" onclick="depositarMeta(${m.id})">${t("Guardar")}</button>
+        </div>` : ""}
+        <div class="meta-acoes" style="margin-top:6px;">
+          ${m.estado === "ativa" ? `<button class="icon" type="button" title="${t("Pausar")}" onclick="mudarEstadoMeta(${m.id},'pausada')">${ICO.relogio}</button>` : ""}
+          ${m.estado === "pausada" ? `<button class="icon" type="button" title="${t("Retomar")}" onclick="mudarEstadoMeta(${m.id},'ativa')">${ICO.repetir}</button>` : ""}
+          ${m.estado !== "arquivada" ? `<button class="icon" type="button" title="${t("Arquivar")}" onclick="mudarEstadoMeta(${m.id},'arquivada')">${ICO.escudo}</button>` : ""}
+          <button class="icon danger" type="button" title="${t("Excluir")}" onclick="excluirMeta(${m.id})">${ICO.x}</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function depositarMeta(id){
+  const campo = document.getElementById(`dep-${id}`);
+  const valor = parseFloat(campo.value);
+  if (!valor){ showToast(t("Informe um valor"), "erro"); return; }
+  try {
+    const res = await apiFetch(`${API}/metas/${id}/depositos`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({valor}),
+    }, {erro:"Não foi possível guardar"});
+    const j = await res.json();
+    showToast(j.estado === "concluida" ? t("Meta concluída!") : t("Valor guardado"), "ok");
+    carregarMetas();
+  } catch (e) {}
+}
+
+async function mudarEstadoMeta(id, estado){
+  try {
+    await apiFetch(`${API}/metas/${id}/estado`, {
+      method:"PUT", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({estado}),
+    }, {sucesso:"Meta atualizada"});
+    carregarMetas();
+  } catch (e) {}
+}
+
+async function excluirMeta(id){
+  if (!confirm(t("Excluir esta meta? O histórico de depósitos vai junto."))) return;
+  try {
+    await apiFetch(`${API}/metas/${id}`, {method:"DELETE"}, {sucesso:"Meta excluída"});
+    carregarMetas();
+  } catch (e) {}
+}
+
+document.getElementById("metasFiltros").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-estado]");
+  if (!b) return;
+  document.querySelectorAll("#metasFiltros button").forEach(x => x.classList.remove("ativo"));
+  b.classList.add("ativo");
+  metasEstado = b.dataset.estado;
+  carregarMetas();
+});
 
 document.getElementById("metaForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -5764,7 +5916,7 @@ function renderizarPosicoes(containerId){
     containerId === "listaPosicoes" ? "contagemAtivosPosicoes" : "contagemAtivosResumo");
   if (contagem) contagem.textContent = investimentosCache.length ? `(${investimentosCache.length})` : "";
   if (investimentosCache.length === 0){
-    container.innerHTML = `<div class="empty">Nenhum ativo na carteira ainda. Use "+ Adicionar ativo" pra registrar a primeira compra.</div>`;
+    container.innerHTML = `<div class="empty">${t('Nenhum ativo na carteira ainda. Use "+ Adicionar ativo" pra registrar a primeira compra.')}</div>`;
     return;
   }
   const porClasse = {};
@@ -5961,7 +6113,7 @@ function renderizarKpiCardsInvestimentos(resumo){
   const V_VERDE = ["rgba(0,167,111,0.12)", "#00a76f"], V_AZUL = ["rgba(0,184,217,0.12)", "#00b8d9"],
         V_AMBAR = ["rgba(255,171,0,0.12)", "#ffab00"], V_ROXO = ["rgba(142,51,255,0.12)", "#8e33ff"];
   const html = [
-    kpiInvestimento("carteira", ...V_AZUL, "Patrimônio total", formatMoeda(resumo.patrimonio_atual),
+    kpiInvestimento("carteira", ...V_AZUL, t("Patrimônio total"), formatMoeda(resumo.patrimonio_atual),
       `${kpiVarPct(resumo.rentabilidade_pct_total, "desde o início")}
        <div class="kpi-var"><span class="ref">Valor investido: ${formatMoeda(resumo.patrimonio_investido)}</span></div>`),
     kpiInvestimento("sobe", ...V_VERDE, "Lucro total", formatMoeda(resumo.lucro_total),
@@ -6969,7 +7121,7 @@ async function carregarHolerites(){
   }
   container.innerHTML = "";
   renderizarChartHolerites(holerites);
-  if (holerites.length === 0){ container.innerHTML = `<div class="empty">Nenhum holerite importado ainda.</div>`; return; }
+  if (holerites.length === 0){ container.innerHTML = `<div class="empty">${t("Nenhum holerite importado ainda.")}</div>`; return; }
   const referencias = holerites.map(h => h.referencia).filter(Boolean);
   const faltando = calcularMesesFaltando(referencias);
   if (referencias.length){
@@ -7002,7 +7154,7 @@ function criarHoleriteFaltandoHTML(mes){
   div.innerHTML = `
     <div class="holerite-topo"><span class="holerite-nome">${formatMes(mes)}</span></div>
     <p>Nenhum holerite importado para este mês.</p>
-    <button type="button" class="secondary" style="width:100%;">Importar holerite deste mês</button>
+    <button type="button" class="secondary" style="width:100%;">${t("Importar holerite deste mês")}</button>
   `;
   div.querySelector("button").addEventListener("click", () => {
     document.getElementById("holeriteForm").scrollIntoView({behavior:"smooth", block:"center"});
@@ -7023,7 +7175,7 @@ function criarHoleriteCardHTML(h){
   const lancamentos = h.lancamentos || [];
   const listaLancamentos = lancamentos.length
     ? `<div class="holerite-lancamentos">
-        <div class="holerite-lancamentos-titulo">Lançamentos gerados</div>
+        <div class="holerite-lancamentos-titulo">${t("Lançamentos gerados")}</div>
         ${lancamentos.map(l => `
           <div class="holerite-lancamento-linha">
             <span>${escapeHtml(l.descricao)} · ${formatData(l.data_pagamento)}</span>
@@ -7046,7 +7198,7 @@ function criarHoleriteCardHTML(h){
       <label>Recebido em <input type="date" data-campo="recebido_em" value="${h.recebido_em || ""}"></label>
       <label>Proventos <input type="number" step="0.01" data-campo="total_proventos" value="${h.total_proventos ?? ""}"></label>
       <label>Descontos <input type="number" step="0.01" data-campo="total_descontos" value="${h.total_descontos ?? ""}"></label>
-      <label>Líquido <small>recebido no fim do mês</small><input type="number" step="0.01" data-campo="total_liquido" value="${h.total_liquido ?? ""}"></label>
+      <label>${t("Líquido")} <small>${t("recebido no fim do mês")}</small><input type="number" step="0.01" data-campo="total_liquido" value="${h.total_liquido ?? ""}"></label>
       <label>Adiantamento <small>recebido dia 15</small><input type="number" step="0.01" data-campo="adiantamento" value="${h.adiantamento ?? ""}"></label>
     </div>
     <div class="holerite-acoes">
@@ -7232,7 +7384,7 @@ async function carregarCalendario(){
   if (diaSelecionadoCalendario && porDia[diaSelecionadoCalendario]){
     renderizarListaDiaCalendario(porDia[diaSelecionadoCalendario], diaSelecionadoCalendario);
   } else if (!diaSelecionadoCalendario){
-    document.getElementById("calLista").innerHTML = `<div class="empty">Toque em um dia para ver os lançamentos.</div>`;
+    document.getElementById("calLista").innerHTML = `<div class="empty">${t("Toque em um dia para ver os lançamentos.")}</div>`;
   }
 }
 
@@ -8200,9 +8352,9 @@ function atualizarEstadoNotif(){
     ajuda.textContent = "Você recebe os avisos escolhidos abaixo enquanto o FinanCerto estiver aberto.";
   } else if (Notification.permission === "denied"){
     bolinha.classList.add("bloqueado");
-    texto.textContent = "Notificações bloqueadas";
+    texto.textContent = t("Notificações bloqueadas");
     // O navegador não deixa pedir de novo depois de negado; só nas configurações do site.
-    ajuda.textContent = "Você negou antes. Para liberar, toque no cadeado ao lado do endereço e permita as notificações deste site.";
+    ajuda.textContent = t("Você negou antes. Para liberar, toque no cadeado ao lado do endereço e permita as notificações deste site.");
     testar.disabled = true;
   } else {
     bolinha.classList.add("pendente");
