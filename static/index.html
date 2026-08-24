@@ -264,7 +264,6 @@
     display:inline-flex; align-items:center; gap:4px; white-space:nowrap;
   }
   .selo-sinc svg{width:11px; height:11px;}
-  .extrato-velho{color:var(--yellow);}
   .of-cartao{border:1px solid var(--border-soft); border-radius:var(--radius-sm);
     padding:12px 14px; margin-bottom:10px; background:var(--card2);}
   .of-cartao-topo{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
@@ -2622,13 +2621,23 @@ function formatMes(m){
   const nomes = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   return `${nomes[parseInt(mes,10)-1]}/${ano}`;
 }
-// Mais de 3 dias sem transação nova costuma ser feriado ou conta parada, mas
-// acima disso vale destacar: o banco pode ter parado de mandar sem avisar.
-function extratoAtrasado(data){
+// "sincronizado há 2h" diz o que é: quando NÓS lemos a Pluggy. A API não
+// informa quando a Pluggy leu o banco — conferido em /items (nosso e o interno
+// do Meu Pluggy, que trazem o mesmo carimbo), /accounts, /consents; /executions
+// e /statuses dão 403. Prometer mais que isso seria inventar precisão.
+function tempoDesde(iso){
   try {
-    const d = new Date(data + "T12:00:00");
-    return (Date.now() - d.getTime()) / 86400000 > 5;
-  } catch (e) { return false; }
+    const d = new Date(iso);
+    if (isNaN(d)) return "";
+    const min = Math.round((Date.now() - d.getTime()) / 60000);
+    // O selo ao lado já diz "sincronizada"; repetir a palavra aqui ficava
+    // "sincronizada · sincronizado há 3h".
+    if (min < 60) return "agora há pouco";
+    const h = Math.round(min / 60);
+    if (h < 24) return `há ${h}h`;
+    const dias = Math.round(h / 24);
+    return `há ${dias} dia${dias > 1 ? "s" : ""}`;
+  } catch (e) { return ""; }
 }
 function formatDataHora(iso){
   // A Pluggy devolve em UTC com Z; sem converter, um extrato do fim da noite
@@ -3588,8 +3597,8 @@ function renderizarContas(){
         <div class="conta-identidade">
           <div class="conta-nome">${escapeHtml(c.nome)}</div>
           <div class="conta-sub">${c.sincronizada
-              ? `<span class="selo-sinc" title="Atualizada pelo Open Finance — última leitura da Pluggy em ${c.ultimo_sync ? escapeHtml(formatDataHora(c.ultimo_sync)) : "?"}"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>sincronizada</span>`
-                + (c.extrato_ate ? ` · <span class="${extratoAtrasado(c.extrato_ate) ? "extrato-velho" : ""}">extrato até ${formatData(c.extrato_ate)}</span>` : "")
+              ? `<span class="selo-sinc" title="Atualizada pelo Open Finance${c.extrato_ate ? " · lançamentos até " + escapeHtml(formatData(c.extrato_ate)) : ""}"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>sincronizada</span>`
+                + (c.ultimo_sync ? " · " + tempoDesde(c.ultimo_sync) : "")
               : "Saldo inicial: " + formatMoeda(c.saldo_inicial)}${usuariosCache.length > 1 && c.usuario_nome ? " · " + escapeHtml(c.usuario_nome) : ""}</div>
         </div>
       </div>
