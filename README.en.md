@@ -67,9 +67,12 @@ Open `http://localhost:8420` and sign in as `admin`. That's it.
 > arm64** — so on a Raspberry Pi installing takes seconds instead of the
 > several minutes it takes to compile the dependencies on the device itself.
 > The `latest` tag follows `main`, which is exactly what the installer used
-> to give you by cloning and building; to pin a version, use the release tag,
-> e.g. `:3.3`. To build locally anyway — what you want when developing or
-> after changing the code — use `docker compose up -d --build`.
+> to give you by cloning and building. To pin a version, use the release tag
+> — `:3.4`, or `:v3.4` if you prefer the tag as shown on the release page. To
+> pin an exact point in history there is `:main-<commit>`, for example
+> `:main-ea4cd28`, which never changes once created. To build locally anyway
+> — what you want when developing or after changing the code — use
+> `docker compose up -d --build`.
 
 > To use a different port: `PORTA=8421 curl -fsSL ... | bash`.
 > The manual walkthrough, with every variable, is under

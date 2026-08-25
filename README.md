@@ -64,10 +64,12 @@ Abra `http://localhost:8420` e entre com o usuário `admin`. Pronto.
 > arm64** — então num Raspberry Pi a instalação são segundos, e não os vários
 > minutos de compilar as dependências no próprio aparelho. A etiqueta
 > `latest` acompanha o `main`, que é exatamente o que a instalação entregava
-> antes clonando e construindo; quem prefere fixar uma versão usa a etiqueta
-> da release, por exemplo `:3.3`. Para construir localmente mesmo assim —
-> é o que fazem quem desenvolve e quem mudou o código — use
-> `docker compose up -d --build`.
+> antes clonando e construindo. Quem prefere fixar uma versão usa a etiqueta
+> da release — `:3.4`, ou `:v3.4` se preferir a tag como aparece na página. E
+> para prender a um ponto exato do histórico existe `:main-<commit>`, por
+> exemplo `:main-ea4cd28`, que nunca muda depois de criada. Para construir
+> localmente mesmo assim — é o que fazem quem desenvolve e quem mudou o
+> código — use `docker compose up -d --build`.
 
 > Para instalar numa porta diferente: `PORTA=8421 curl -fsSL ... | bash`.
 > O passo a passo manual, com todas as variáveis, está em
