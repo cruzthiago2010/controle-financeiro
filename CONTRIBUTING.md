@@ -87,8 +87,8 @@ Manter assim é proposital — quem clona precisa conseguir subir com um
 Para rodar o teste dos anexos na sua máquina, com o container já de pé:
 
 ```bash
-docker compose cp testes/teste_anexos.py controle-financeiro:/app/teste_anexos.py
-docker compose exec -e SENHA=<a sua senha> controle-financeiro python /app/teste_anexos.py
+docker compose cp testes/teste_anexos.py financerto:/app/teste_anexos.py
+docker compose exec -e SENHA=<a sua senha> financerto python /app/teste_anexos.py
 ```
 
 Ele monta um holerite e um cupom fiscal na hora e confere os valores lidos —

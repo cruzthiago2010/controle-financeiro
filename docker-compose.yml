@@ -1,5 +1,5 @@
 services:
-  controle-financeiro:
+  financerto:
     build: .
     # A imagem publicada a cada push no main, para quem só quer hospedar:
     # "docker compose pull" baixa pronta em vez de construir, o que num
@@ -7,7 +7,7 @@ services:
     # desenvolve, ou publica a produção, usa "up -d --build": constrói
     # daqui e reaproveita este mesmo nome, sem baixar nada.
     image: ghcr.io/financerto/financerto-app:latest
-    container_name: controle-financeiro
+    container_name: financerto
     restart: unless-stopped
     ports:
       - "8420:5000"

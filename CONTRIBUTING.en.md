@@ -86,8 +86,8 @@ start it with `docker compose up` and nothing else.
 To run the attachment tests locally, with the container already up:
 
 ```bash
-docker compose cp testes/teste_anexos.py controle-financeiro:/app/teste_anexos.py
-docker compose exec -e SENHA=<your password> controle-financeiro python /app/teste_anexos.py
+docker compose cp testes/teste_anexos.py financerto:/app/teste_anexos.py
+docker compose exec -e SENHA=<your password> financerto python /app/teste_anexos.py
 ```
 
 It generates a payslip and a receipt on the fly and checks the values read
