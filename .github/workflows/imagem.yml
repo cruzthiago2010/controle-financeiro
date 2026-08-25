@@ -65,11 +65,19 @@ jobs:
           # entregava clonando e construindo — não é uma promessa nova de
           # estabilidade. Release ganha a etiqueta da versão, para quem
           # prefere fixar.
+          #
+          # NÃO usar type=semver aqui: ele exige três números (3.4.0) e as tags
+          # deste projeto sempre tiveram dois (v3.0 … v3.4). Com semver o
+          # metadata-action devolvia lista VAZIA de etiquetas e o buildx
+          # recusava publicar com "tag is needed when pushing to registry" — foi
+          # o que derrubou a publicação da v3.4. O `match` tira o "v" e entrega
+          # 3.4, que é o que o README promete; o `ref` mantém também a tag
+          # literal, para quem digitar :v3.4.
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=main-,format=short,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=match,pattern=v(.*),group=1
+            type=ref,event=tag
           labels: |
             org.opencontainers.image.title=FinanCerto
             org.opencontainers.image.description=Controle financeiro pessoal e familiar, self-hosted
