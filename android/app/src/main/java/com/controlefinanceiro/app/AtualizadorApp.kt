@@ -17,8 +17,15 @@ import java.net.URL
  * usuário tinha que achar o arquivo, baixar e instalar à mão — pior ainda
  * quando a release publicada estava atrás da versão que o servidor anunciava.
  *
- * O download vem do PRÓPRIO servidor do FinanCerto (/api/app/apk), então o que
- * é anunciado e o que é entregue são sempre o mesmo arquivo.
+ * Quem decide de ONDE baixar é o servidor, não o app: /api/versao-app devolve
+ * o campo `apk`, e é ele que chega aqui. Por padrão aponta para o arquivo da
+ * release no GitHub, montado a partir da versão anunciada — o que é anunciado
+ * e o que é entregue são sempre o mesmo arquivo. Quem hospeda pode apontar
+ * para outro lugar com APP_ANDROID_APK_URL, inclusive para o próprio servidor.
+ *
+ * O app não tem endereço de repositório embutido, de propósito: cada instalação
+ * aponta para o servidor de quem a hospeda, e trocar o repositório do projeto
+ * não pode exigir um APK novo de todo mundo.
  *
  * Importante: o Android NÃO permite instalar sem o usuário confirmar. Nenhum
  * app comum pode — só quem é dono do dispositivo (MDM) ou tem root. O que dá
@@ -30,9 +37,12 @@ object AtualizadorApp {
     /**
      * Baixa o APK e devolve o arquivo, ou null se falhar.
      *
-     * A rota exige sessão, então o cookie do WebView vai junto — sem ele o
-     * servidor responde 401 e o download traria uma página de erro em vez do
-     * APK.
+     * O cookie do WebView vai junto quando o endereço aceita um — é o caso de
+     * quem serve o APK do próprio servidor por APP_ANDROID_APK_URL, onde a rota
+     * exige sessão e sem o cookie viria uma página de login em vez do arquivo.
+     * No caminho padrão, o GitHub, não há cookie para aquele domínio e nada é
+     * enviado; é por isso que a checagem de Content-Type abaixo existe de
+     * qualquer forma.
      */
     fun baixar(context: Context, url: String): File? {
         return try {

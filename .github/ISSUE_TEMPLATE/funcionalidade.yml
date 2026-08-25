@@ -1,0 +1,32 @@
+name: Sugerir uma funcionalidade
+description: Uma ideia do que o app poderia fazer
+labels: [ideia]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qual problema isso resolve
+      description: Conte a situação de verdade em que você sentiu falta, não só a solução que imaginou.
+    validations:
+      required: true
+
+  - type: textarea
+    id: ideia
+    attributes:
+      label: Como você imagina que funcionaria
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Como você resolve isso hoje
+      description: Planilha à parte, anotação no papel, outro app — ajuda a entender o tamanho da falta.
+
+  - type: checkboxes
+    id: escopo
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: Isso funcionaria para qualquer pessoa que hospeda o app, não só para a minha instalação
+          required: true

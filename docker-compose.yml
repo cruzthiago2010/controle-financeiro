@@ -1,8 +1,13 @@
 services:
-  controle-financeiro:
+  financerto:
     build: .
-    image: controle-financeiro:latest
-    container_name: controle-financeiro
+    # A imagem publicada a cada push no main, para quem só quer hospedar:
+    # "docker compose pull" baixa pronta em vez de construir, o que num
+    # Raspberry Pi é a diferença entre segundos e vários minutos. Quem
+    # desenvolve, ou publica a produção, usa "up -d --build": constrói
+    # daqui e reaproveita este mesmo nome, sem baixar nada.
+    image: ghcr.io/financerto/financerto-app:latest
+    container_name: financerto
     restart: unless-stopped
     ports:
       - "8420:5000"

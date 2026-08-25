@@ -1,0 +1,9 @@
+# O static/index.html é o app inteiro numa página só: HTML, CSS e JavaScript no
+# mesmo arquivo. O linguist classifica cada arquivo pela extensão, então esses
+# 458 KB entravam inteiros como HTML e faziam a barra de linguagens anunciar o
+# projeto como HTML — 56% contra 38% de Python —, escondendo o que de fato roda
+# aqui. Fora da contagem, a barra passa a dizer Python.
+#
+# Isso mexe SÓ na estatística da página: o arquivo continua versionado, revisado
+# e analisado pelo CodeQL como antes.
+static/index.html linguist-detectable=false
