@@ -1579,6 +1579,42 @@ def listar_lancamentos():
     return jsonify([dict(r) for r in rows])
 
 
+@app.route("/api/ultimos-lancamentos", methods=["GET"])
+def ultimos_lancamentos():
+    """Os ultimos lancamentos, receita e despesa na mesma lista.
+
+    Ordena por vencimento, e nao por criado_em, porque o que interessa e quando
+    o dinheiro andou e nao quando alguem digitou: um lancamento retroativo
+    (extrato importado, holerite de mes passado) entraria no topo se a ordem
+    fosse a de digitacao, e nao e "ultimo" coisa nenhuma.
+
+    Pelo mesmo motivo corta o que ainda vai vencer: parcela de dezembro nao e
+    ultimo lancamento, e ela ja tem secao propria no painel.
+
+    Transferencia entre contas fica de fora, como no Money Map. Ela existe aos
+    pares (uma saida e uma entrada do mesmo valor) e encheria a lista com
+    movimento que nao e ganho nem gasto.
+    """
+    try:
+        limite = int(request.args.get("limite", 10))
+    except (TypeError, ValueError):
+        limite = 10
+    # O limite vem da tela, entao e conferido aqui e nao la: um pedido montado
+    # a mao levaria a base inteira embora se o numero seguisse direto pro SQL.
+    if limite not in (5, 10, 30):
+        limite = 10
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, tipo, descricao, valor, vencimento, categoria, conta, pago "
+        "FROM lancamentos "
+        "WHERE usuario_id = ? AND eh_transferencia = 0 AND vencimento <= ? "
+        "ORDER BY vencimento DESC, id DESC LIMIT ?",
+        (uid(), datetime.now().strftime("%Y-%m-%d"), limite),
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
 @app.route("/api/sugestoes", methods=["GET"])
 def sugestoes_lancamento():
     """Sugere descrição, categoria, valor e conta a partir do histórico.

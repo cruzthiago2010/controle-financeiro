@@ -294,12 +294,12 @@
   .meta-ritmo{color:var(--muted); font-size:0.76rem; margin-top:6px; line-height:1.5;}
   .mm-cores{--mm-entra:#00a76f; --mm-sai:#cf3d21;}
   :root[data-theme="light"] .mm-cores, body.tema-claro .mm-cores{--mm-entra:#00875a; --mm-sai:#d13c1f;}
-  .mm-periodos{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
-  .mm-periodos button{
+  .mm-periodos, .ult-limites{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
+  .mm-periodos button, .ult-limites button{
     background:var(--card2); color:var(--muted); border:1px solid var(--border-soft);
     padding:6px 13px; font-size:0.79rem; font-weight:600; box-shadow:none;
   }
-  .mm-periodos button.ativo{background:var(--accent); color:#fff; border-color:transparent;}
+  .mm-periodos button.ativo, .ult-limites button.ativo{background:var(--accent); color:#fff; border-color:transparent;}
   .mm-resumo{display:flex; gap:22px; flex-wrap:wrap; margin-bottom:16px;}
   .mm-resumo div{min-width:120px;}
   .mm-resumo .rot{
@@ -1517,6 +1517,20 @@
     <div class="secao">
       <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-banco"/></svg> <span data-i18n="Resumo por conta">Resumo por conta</span></h2>
       <div id="listaContasResumo"></div>
+    </div>
+    <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> <span data-i18n="Últimos lançamentos">Últimos lançamentos</span></h2>
+      <p class="of-ajuda" data-i18n="Receitas e despesas na mesma lista, da mais recente para a mais antiga. Transferência entre contas fica de fora, e o que ainda vai vencer aparece em Parcelas futuras.">
+        Receitas e despesas na mesma lista, da mais recente para a mais antiga.
+        Transferência entre contas fica de fora, e o que ainda vai vencer
+        aparece em Parcelas futuras.
+      </p>
+      <div class="ult-limites" id="ultLimites">
+        <button type="button" data-n="5">5</button>
+        <button type="button" data-n="10" class="ativo">10</button>
+        <button type="button" data-n="30">30</button>
+      </div>
+      <div id="listaUltimos"></div>
     </div>
     <div class="secao mm-cores" id="secaoMoneyMap">
       <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> <span data-i18n="Money Map">Money Map</span></h2>
@@ -2931,6 +2945,7 @@ const TRADUCOES = {"en": {
 "Receitas & Despesas": "Income & Expenses",
 "Receitas &amp; Despesas": "Income &amp; Expenses",
 "Receitas do mês": "Income this month",
+"Receitas e despesas na mesma lista, da mais recente para a mais antiga. Transferência entre contas fica de fora, e o que ainda vai vencer aparece em Parcelas futuras.": "Income and expenses in one list, newest first. Transfers between your own accounts are left out, and anything not due yet shows up under Upcoming instalments.",
 "Recolher menu": "Collapse menu",
 "Referência": "Reference",
 "Referência não identificada": "Reference not identified",
@@ -3085,6 +3100,7 @@ const TRADUCOES = {"en": {
 "· entradas, saídas e saldo acumulado dia a dia": "· money in, money out and running balance day by day",
 "· toque numa coluna para ver o detalhe": "· tap a bar to see the detail",
 "É uma previsão (será substituída quando eu importar o holerite)": "This is a forecast (it will be replaced when I import the payslip)",
+"Últimos lançamentos": "Latest entries",
 "é igual a": "equals",
 "— não usar ainda —": "— not in use yet —",
 "— é transferência entre contas —": "— it is a transfer between accounts —"
@@ -4083,6 +4099,62 @@ async function carregarTudo(){
 }
 
 // ---------- Contas ----------
+// ---------- Últimos lançamentos ----------
+// Quem manda na quantidade é quem olha: 5 para uma conferida rápida, 30 para
+// procurar aquele gasto que não se lembra de ter feito. A escolha fica no
+// aparelho, porque é preferência de leitura e não dado da conta.
+let ultLimite = [5, 10, 30].includes(Number(localStorage.getItem("ultimosLimite")))
+  ? Number(localStorage.getItem("ultimosLimite")) : 10;
+
+async function carregarUltimos(){
+  const alvo = document.getElementById("listaUltimos");
+  if (!alvo) return;
+  try {
+    const res = await apiFetch(`${API}/ultimos-lancamentos?limite=${ultLimite}`,
+                               undefined, {silencioso:true});
+    renderizarUltimos(await res.json());
+  } catch (e) {
+    alvo.innerHTML = `<div class="empty">${t("Não foi possível carregar.")}</div>`;
+  }
+}
+
+function renderizarUltimos(itens){
+  const alvo = document.getElementById("listaUltimos");
+  if (!alvo) return;
+  if (!itens || !itens.length){
+    alvo.innerHTML = `<div class="empty">${t("Nenhum lançamento ainda.")}</div>`;
+    return;
+  }
+  // O sinal vai junto da cor de propósito: aqui receita e despesa dividem a
+  // mesma lista, e cor sozinha não serve a quem não distingue verde de vermelho.
+  alvo.innerHTML = itens.map(i => {
+    const receita = i.tipo === "renda";
+    const sub = [formatData(i.vencimento), i.categoria, i.conta]
+      .filter(Boolean).map(escapeHtml).join(" · ");
+    return `<div class="simple-card">
+      <div>
+        <div class="nome">${escapeHtml(i.descricao)}</div>
+        <div class="sub">${sub}</div>
+      </div>
+      <div class="valor ${receita ? "positivo" : "negativo"}">${receita ? "+" : "−"}\u00a0${formatMoeda(i.valor)}</div>
+    </div>`;
+  }).join("");
+}
+
+document.querySelectorAll("#ultLimites button").forEach(b => {
+  b.classList.toggle("ativo", Number(b.dataset.n) === ultLimite);
+});
+
+document.getElementById("ultLimites").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-n]");
+  if (!b) return;
+  document.querySelectorAll("#ultLimites button").forEach(x => x.classList.remove("ativo"));
+  b.classList.add("ativo");
+  ultLimite = Number(b.dataset.n);
+  localStorage.setItem("ultimosLimite", ultLimite);
+  carregarUltimos();
+});
+
 // ---------- Money Map ----------
 // Sankey desenhado à mão em SVG. Não usa plugin: o Chart.js do app não traz
 // Sankey, e uma biblioteca a mais só para um gráfico não se paga.
@@ -5095,6 +5167,10 @@ async function carregarDashboard(){
     document.getElementById("dashCards").innerHTML = `<div class="empty">Não foi possível carregar o dashboard.</div>`;
     return;
   }
+
+  // Lista própria, com pedido próprio: trocar 5/10/30 não pode obrigar o
+  // dashboard inteiro a ser recarregado.
+  carregarUltimos();
 
   // A tendência vem antes dos cards porque é dela que sai a comparação com o
   // mês anterior mostrada em cada indicador.
