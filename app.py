@@ -1605,8 +1605,11 @@ def ultimos_lancamentos():
         limite = 10
     conn = get_db()
     rows = conn.execute(
-        "SELECT id, tipo, descricao, valor, vencimento, categoria, conta, pago "
-        "FROM lancamentos "
+        # SELECT * porque a tela monta o item completo (marcar como pago,
+        # editar, anexar, excluir) e ele le recorrencia, parcela, comprovante,
+        # observacao e origem. Devolver so o resumo obrigaria um segundo
+        # pedido por lancamento na hora de editar.
+        "SELECT * FROM lancamentos "
         "WHERE usuario_id = ? AND eh_transferencia = 0 AND vencimento <= ? "
         "ORDER BY vencimento DESC, id DESC LIMIT ?",
         (uid(), datetime.now().strftime("%Y-%m-%d"), limite),

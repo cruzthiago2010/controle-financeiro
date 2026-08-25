@@ -1525,12 +1525,12 @@
         Transferência entre contas fica de fora, e o que ainda vai vencer
         aparece em Parcelas futuras.
       </p>
-      <div class="ult-limites" id="ultLimites">
+      <div class="ult-limites">
         <button type="button" data-n="5">5</button>
         <button type="button" data-n="10" class="ativo">10</button>
         <button type="button" data-n="30">30</button>
       </div>
-      <div id="listaUltimos"></div>
+      <div class="lista-ultimos" id="listaUltimos"></div>
     </div>
     <div class="secao mm-cores" id="secaoMoneyMap">
       <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-trocas"/></svg> <span data-i18n="Money Map">Money Map</span></h2>
@@ -1589,6 +1589,21 @@
     <div class="secao pendentes" id="secaoPendentes" style="display:none;">
       <h2 style="color:var(--yellow);"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> <span data-i18n="Contas pendentes do mês">Contas pendentes do mês</span></h2>
       <div id="listaPendentes"></div>
+    </div>
+
+    <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-relogio"/></svg> <span data-i18n="Últimos lançamentos">Últimos lançamentos</span></h2>
+      <p class="of-ajuda" data-i18n="Receitas e despesas na mesma lista, da mais recente para a mais antiga. Transferência entre contas fica de fora, e o que ainda vai vencer aparece em Parcelas futuras.">
+        Receitas e despesas na mesma lista, da mais recente para a mais antiga.
+        Transferência entre contas fica de fora, e o que ainda vai vencer
+        aparece em Parcelas futuras.
+      </p>
+      <div class="ult-limites">
+        <button type="button" data-n="5">5</button>
+        <button type="button" data-n="10">10</button>
+        <button type="button" data-n="30">30</button>
+      </div>
+      <div class="lista-ultimos"></div>
     </div>
 
     <div class="filtros-row">
@@ -4100,58 +4115,62 @@ async function carregarTudo(){
 
 // ---------- Contas ----------
 // ---------- Últimos lançamentos ----------
+// Aparece em dois lugares — no dashboard e em Receitas & Despesas — e usa o
+// MESMO item da aba de Lançamentos, não uma versão só de leitura: dá para
+// marcar como pago, editar, anexar comprovante e excluir daqui. Ver sem poder
+// agir obrigaria a procurar o mesmo lançamento de novo na outra tela, que é
+// justamente o passo que esta seção existe para poupar.
+//
 // Quem manda na quantidade é quem olha: 5 para uma conferida rápida, 30 para
 // procurar aquele gasto que não se lembra de ter feito. A escolha fica no
-// aparelho, porque é preferência de leitura e não dado da conta.
+// localStorage porque é preferência de leitura, e não dado da conta.
 let ultLimite = [5, 10, 30].includes(Number(localStorage.getItem("ultimosLimite")))
   ? Number(localStorage.getItem("ultimosLimite")) : 10;
 
 async function carregarUltimos(){
-  const alvo = document.getElementById("listaUltimos");
-  if (!alvo) return;
+  if (!document.querySelector(".lista-ultimos")) return;
   try {
     const res = await apiFetch(`${API}/ultimos-lancamentos?limite=${ultLimite}`,
                                undefined, {silencioso:true});
     renderizarUltimos(await res.json());
   } catch (e) {
-    alvo.innerHTML = `<div class="empty">${t("Não foi possível carregar.")}</div>`;
+    document.querySelectorAll(".lista-ultimos").forEach(alvo => {
+      alvo.innerHTML = `<div class="empty">${t("Não foi possível carregar.")}</div>`;
+    });
   }
 }
 
 function renderizarUltimos(itens){
-  const alvo = document.getElementById("listaUltimos");
-  if (!alvo) return;
-  if (!itens || !itens.length){
-    alvo.innerHTML = `<div class="empty">${t("Nenhum lançamento ainda.")}</div>`;
-    return;
-  }
-  // O sinal vai junto da cor de propósito: aqui receita e despesa dividem a
-  // mesma lista, e cor sozinha não serve a quem não distingue verde de vermelho.
-  alvo.innerHTML = itens.map(i => {
-    const receita = i.tipo === "renda";
-    const sub = [formatData(i.vencimento), i.categoria, i.conta]
-      .filter(Boolean).map(escapeHtml).join(" · ");
-    return `<div class="simple-card">
-      <div>
-        <div class="nome">${escapeHtml(i.descricao)}</div>
-        <div class="sub">${sub}</div>
-      </div>
-      <div class="valor ${receita ? "positivo" : "negativo"}">${receita ? "+" : "−"}\u00a0${formatMoeda(i.valor)}</div>
-    </div>`;
-  }).join("");
+  // São de meses variados, então entram no cache para a edição encontrá-los —
+  // mesma razão da lista de contas vencendo, que também mistura meses.
+  (itens || []).forEach(item => { itensPorId[item.id] = item; });
+  document.querySelectorAll(".lista-ultimos").forEach(alvo => {
+    alvo.innerHTML = "";
+    if (!itens || !itens.length){
+      alvo.innerHTML = `<div class="empty">${t("Nenhum lançamento ainda.")}</div>`;
+      return;
+    }
+    // criarItemHTML devolve um nó novo a cada chamada, então cada painel ganha
+    // o seu: o mesmo nó não pode viver em dois lugares.
+    itens.forEach(item => alvo.appendChild(criarItemHTML(item)));
+  });
 }
 
-document.querySelectorAll("#ultLimites button").forEach(b => {
-  b.classList.toggle("ativo", Number(b.dataset.n) === ultLimite);
-});
+function marcarBotoesUltimos(){
+  document.querySelectorAll(".ult-limites button[data-n]").forEach(b => {
+    b.classList.toggle("ativo", Number(b.dataset.n) === ultLimite);
+  });
+}
+marcarBotoesUltimos();
 
-document.getElementById("ultLimites").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-n]");
+// Delegado no documento porque a seção existe em dois painéis: trocar a
+// quantidade num deve valer no outro, já que é a mesma preferência.
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".ult-limites button[data-n]");
   if (!b) return;
-  document.querySelectorAll("#ultLimites button").forEach(x => x.classList.remove("ativo"));
-  b.classList.add("ativo");
   ultLimite = Number(b.dataset.n);
   localStorage.setItem("ultimosLimite", ultLimite);
+  marcarBotoesUltimos();
   carregarUltimos();
 });
 
