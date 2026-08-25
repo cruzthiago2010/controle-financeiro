@@ -115,3 +115,84 @@ jobs:
           echo "::error::A imagem publicada não respondeu em 60s."
           docker logs financerto-publicada
           exit 1
+
+  limpar:
+    name: Apagar etiquetas main-* antigas
+    needs: publicar
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Guardar as 10 mais recentes, apagar o resto
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error
+
+          ORG, PACOTE, MANTER = "financerto", "financerto-app", 10
+          TOKEN = os.environ["GH_TOKEN"]
+
+          def chamar(metodo, caminho):
+              req = urllib.request.Request(
+                  "https://api.github.com" + caminho, method=metodo,
+                  headers={"Authorization": "Bearer " + TOKEN,
+                           "Accept": "application/vnd.github+json"})
+              try:
+                  with urllib.request.urlopen(req) as r:
+                      corpo = r.read()
+                      return r.status, (json.loads(corpo) if corpo else None)
+              except urllib.error.HTTPError as e:
+                  return e.code, e.read().decode("utf-8", "replace")
+
+          versoes, pagina = [], 1
+          while True:
+              st, lote = chamar("GET", "/orgs/%s/packages/container/%s/versions"
+                                       "?per_page=100&page=%d" % (ORG, PACOTE, pagina))
+              if st != 200:
+                  print("::warning::Não consegui listar as versões (HTTP %s). "
+                        "A limpeza não roda, mas a publicação está feita." % st)
+                  raise SystemExit(0)
+              if not lote:
+                  break
+              versoes += lote
+              pagina += 1
+
+          def etiquetas(v):
+              return v.get("metadata", {}).get("container", {}).get("tags", []) or []
+
+          # Só entram versões cujas etiquetas são TODAS main-*. Uma versão que
+          # carregue também `latest` ou a etiqueta de uma release fica de fora —
+          # e é o caso comum, porque uma release aponta para o mesmo manifesto do
+          # main-<sha> daquele commit. As versões SEM etiqueta também ficam: são
+          # os manifestos por arquitetura, e apagá-las quebraria a imagem inteira.
+          alvo = [v for v in versoes
+                  if etiquetas(v) and all(t.startswith("main-") for t in etiquetas(v))]
+          alvo.sort(key=lambda v: v["created_at"], reverse=True)
+          apagar = alvo[MANTER:]
+
+          print("versões no pacote: %d | candidatas main-*: %d | apagando: %d"
+                % (len(versoes), len(alvo), len(apagar)))
+          if not apagar:
+              print("Nada a fazer.")
+              raise SystemExit(0)
+
+          falhas = 0
+          for v in apagar:
+              st, corpo = chamar("DELETE", "/orgs/%s/packages/container/%s/versions/%s"
+                                           % (ORG, PACOTE, v["id"]))
+              if st in (204, 200):
+                  print("  apagada %s (%s)" % (etiquetas(v), v["created_at"][:16]))
+              else:
+                  falhas += 1
+                  print("::warning::Não consegui apagar %s: HTTP %s %s"
+                        % (etiquetas(v), st, str(corpo)[:200]))
+
+          if falhas:
+              print("::warning::%d etiqueta(s) não puderam ser apagadas. Provavelmente "
+                    "o GITHUB_TOKEN não tem permissão de apagar pacote na organização; "
+                    "nesse caso a limpeza precisa de um token próprio, ou de ser feita "
+                    "à mão de tempos em tempos." % falhas)
+          PY
