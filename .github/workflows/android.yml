@@ -1,0 +1,83 @@
+name: Android
+
+# Existe por causa de um estrago concreto: em 25/08/2026 uma atualização de
+# dependência subiu o Android Gradle Plugin sozinha, o app parou de compilar, e
+# o main seguiu com todos os checks verdes por três horas — porque o CI só
+# olhava o backend. A quebra só apareceria na hora de gerar o APK.
+#
+# Roda só quando `android/` muda: o app não é tocado pela maior parte dos
+# commits, e cobrar três minutos de quem mexeu numa tela do Flask seria pedágio.
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/android.yml']
+  pull_request:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/android.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Compilar o APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Montar o ambiente de build
+        # Usa o PRÓPRIO Dockerfile.build que o README manda usar, e não uma
+        # receita paralela: assim o CI também prova que a instrução publicada
+        # continua funcionando. Foi justamente esse arquivo que ficou para trás
+        # quando o AGP subiu, então ele precisa estar dentro do que é testado.
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: android
+          file: android/Dockerfile.build
+          tags: android-build-env:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Gerar o APK
+        run: |
+          docker run --rm -v "$PWD/android":/project -w /project android-build-env:ci \
+            gradle assembleRelease --no-daemon
+
+      - name: Conferir a identidade do APK
+        # O applicationId, o versionCode e o versionName decidem se o APK
+        # instala POR CIMA do que a pessoa já tem. Se o applicationId mudar, o
+        # Android trata como outro app: quem usa teria que desinstalar e
+        # perderia o endereço do servidor guardado no aparelho. É a única coisa
+        # aqui que não dá para consertar depois, então é conferida no CI.
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release-unsigned.apk
+          INFO=$(docker run --rm -v "$PWD":/p -w /p android-build-env:ci \
+                   /opt/android-sdk/build-tools/34.0.0/aapt dump badging "$APK" | head -1)
+          echo "$INFO"
+          echo "$INFO" | grep -q "name='com.controlefinanceiro.app'" || {
+            echo "::error::O applicationId mudou. Um APK com outro applicationId não instala por cima do que já está no celular — quem usa teria que desinstalar e perderia o endereço do servidor."
+            exit 1
+          }
+          echo "applicationId intacto."
+
+      - name: Guardar o APK para baixar
+        # Sem assinatura, de propósito: a chave de release não entra no CI, e um
+        # APK assinado saindo de qualquer pull request seria pior que a
+        # comodidade que traria. Serve para conferir tamanho e conteúdo; para
+        # instalar no aparelho, assina-se localmente com a chave de sempre.
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk-nao-assinado
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 14
