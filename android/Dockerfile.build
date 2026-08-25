@@ -11,13 +11,18 @@ RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
     mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
     rm /tmp/cmdline-tools.zip
 
-RUN curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip && \
+# O AGP 9 exige Gradle 9.5 no mínimo e recusa subir com menos — foi o que
+# quebrou o build quando o AGP subiu sozinho, sem esta linha acompanhar.
+RUN curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-9.7.1-bin.zip && \
     unzip -q /tmp/gradle.zip -d /opt && \
-    mv /opt/gradle-8.7 /opt/gradle && \
+    mv /opt/gradle-9.7.1 /opt/gradle && \
     rm /tmp/gradle.zip
 
+# O 34 fica: o apksigner que o README manda usar para assinar a release vive
+# em build-tools/34.0.0. O 36 entra porque o AGP 9 o exige e, sem ele aqui,
+# cada build o baixaria de novo no meio da compilação.
 RUN yes | sdkmanager --licenses > /dev/null && \
     sdkmanager "platform-tools" "platforms;android-34" "platforms;android-35" \
-        "build-tools;34.0.0" "build-tools;35.0.0" > /dev/null
+        "build-tools;34.0.0" "build-tools;35.0.0" "build-tools;36.0.0" > /dev/null
 
 WORKDIR /project

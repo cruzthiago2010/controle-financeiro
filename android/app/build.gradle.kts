@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
 }
 
 android {
@@ -37,9 +36,10 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
 
-// O Kotlin 2.x removeu o `kotlinOptions { jvmTarget = "17" }`: passar a versão
-// como texto virou erro de compilação, e a configuração mudou de lugar. Foi a
-// única mudança de código que a subida das bibliotecas exigiu.
+// O `kotlinOptions { jvmTarget = "17" }` de antes deixou de existir: passar a
+// versão como texto virou erro no Kotlin 2.x, e a configuração mudou para cá.
+// O bloco continua valendo com o Kotlin embutido do AGP 9 — o que mudou foi
+// quem fornece o compilador, não onde se configura o alvo da JVM.
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
