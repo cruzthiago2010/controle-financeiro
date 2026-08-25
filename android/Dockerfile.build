@@ -17,6 +17,7 @@ RUN curl -sSL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradl
     rm /tmp/gradle.zip
 
 RUN yes | sdkmanager --licenses > /dev/null && \
-    sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+    sdkmanager "platform-tools" "platforms;android-34" "platforms;android-35" \
+        "build-tools;34.0.0" "build-tools;35.0.0" > /dev/null
 
 WORKDIR /project
