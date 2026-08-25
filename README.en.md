@@ -1,19 +1,79 @@
 <p align="center">
-  <img src="static/logo-financerto.svg" width="96" alt="FinanCerto">
+  <img src="static/logo-financerto.svg" width="120" alt="FinanCerto">
+</p>
+
+<h1 align="center">FinanCerto</h1>
+
+<p align="center">
+  <a href="https://github.com/financerto/financerto-app/actions/workflows/ci.yml"><img src="https://github.com/financerto/financerto-app/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/financerto/financerto-app/actions/workflows/codeql.yml"><img src="https://github.com/financerto/financerto-app/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
+  <br>
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white" alt="Python 3.11">
+  <img src="https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white" alt="Flask 3.0">
+  <img src="https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/Data-SQLite%20on%20your%20server-003B57?logo=sqlite&logoColor=white" alt="Local SQLite">
+  <br>
+  <a href="#features">Features</a> ·
+  <a href="#installation">Installation</a> ·
+  <a href="#screenshots">Screenshots</a> ·
+  <a href="#installing-on-the-phone">Mobile app</a> ·
+  <a href="#open-finance-pulling-your-bank-statement-automatically">Open Finance</a> ·
+  <a href="CONTRIBUTING.en.md">Contributing</a> ·
+  <a href="SECURITY.en.md">Security</a>
 </p>
 
 <p align="center">
   <a href="README.md">Português</a> · <b>English</b>
 </p>
 
-# FinanCerto — Self-hosted
+<h3 align="center">Finance apps want your data. This one doesn't.</h3>
 
-Monthly personal finance app (income, expenses, cards), built to run on your own
-server (a home lab, or any Docker host). All data is stored locally in SQLite,
-inside the `data/` folder — nothing leaves your server.
+<p align="center">
+Monthly personal finance — income, expenses, cards and investments — built to
+run on <i>your</i> server. No company between you and your money: the database
+is a SQLite file inside <code>data/</code>, on your machine, and nothing ever
+leaves it. No subscription, no cloud account, no telemetry.
+</p>
 
 > Built for Brazil: amounts in R$, PIX, credit-card bills, payslips and Open
 > Finance Brasil. The interface is available in Portuguese and English.
+
+## Installation
+
+**Linux and macOS** — one command (installs Docker if it isn't there yet):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/financerto/financerto-app/main/install.sh | bash
+```
+
+The script clones the repository, generates a random admin password and session
+key, starts the container, and prints the address and password at the end.
+
+**Windows** — install [Docker Desktop](https://www.docker.com/products/docker-desktop/), then:
+
+```bash
+git clone https://github.com/financerto/financerto-app.git
+cd financerto-app
+copy .env.example .env
+docker compose pull
+docker compose up -d
+```
+
+Open `http://localhost:8420` and sign in as `admin`. That's it.
+
+> **The image is prebuilt.** Both paths above pull
+> `ghcr.io/financerto/financerto-app:latest`, published for **amd64 and
+> arm64** — so on a Raspberry Pi installing takes seconds instead of the
+> several minutes it takes to compile the dependencies on the device itself.
+> The `latest` tag follows `main`, which is exactly what the installer used
+> to give you by cloning and building; to pin a version, use the release tag,
+> e.g. `:3.3`. To build locally anyway — what you want when developing or
+> after changing the code — use `docker compose up -d --build`.
+
+> To use a different port: `PORTA=8421 curl -fsSL ... | bash`.
+> The manual walkthrough, with every variable, is under
+> [Manual installation](#manual-installation).
 
 ## Features
 
@@ -103,13 +163,15 @@ _Taken with **demo mode** on — made-up data._
 | **Credit cards** | ![Cards](docs/screenshots/cartoes.png) |
 | **Automatic backup** | ![Backup](docs/screenshots/backup.png) |
 
-## Running it (easiest — terminal/SSH)
+## Manual installation
+
+If you'd rather not run the install script, or want to see what it does:
 
 1. Connect over SSH (or open the terminal).
 2. Clone the repository and start the container:
    ```bash
-   git clone https://github.com/cruzthiago2010/controle-financeiro.git
-   cd controle-financeiro
+   git clone https://github.com/financerto/financerto-app.git
+   cd financerto-app
    docker compose up -d --build
    ```
 3. Open `http://localhost:8420` in the browser (your machine's IP).
@@ -308,6 +370,8 @@ Finance off, nothing that already came in is lost.
 - `static/login.html` — sign-in screen
 - `static/registro.html` — public sign-up screen (creates a new household)
 - `static/manifest.json`, `static/sw.js`, `static/icon*.svg` — PWA files
+- `static/chart.umd.min.js` — Chart.js 4.4.1 (MIT), served by the app itself:
+  charts work offline and no CDN learns who opened the screen
 - `Dockerfile` / `docker-compose.yml` — packaging (includes `tesseract-ocr` for
   receipt scanning)
 - `.env.example` — a template of the environment variables accepted; copy it to
@@ -322,8 +386,14 @@ Finance off, nothing that already came in is lost.
   `docker build -t android-build-env -f android/Dockerfile.build android/` then
   `gradle assembleRelease` inside it. The APK comes out unsigned; sign it with
   your own key.
-- `umbrel-app.yml` — optional manifest, in case you want to publish it as a
-  formal app in an Umbrel community app store
+- `install.sh` — one-command installer (checks Docker, clones, generates the
+  `.env` with a random password, and starts the container)
+- `testes/teste_anexos.py` — checks payslip-PDF reading and receipt OCR with
+  files generated on the fly; runs from inside the container
+- `testes/teste_seguranca.py` — tries to turn a ticker into another URL and an
+  attachment name into another path, and checks both are refused
+- `.github/workflows/` — CI (ruff, migrations, image build, attachment tests)
+  and CodeQL
 
 **The code and the comments are in Portuguese.** Only the interface is
 translated, through a lookup table keyed by the Portuguese text.
@@ -332,6 +402,23 @@ translated, through a lookup table keyed by the Portuguese text.
 
 If `8420` is taken, edit `docker-compose.yml` and change `"8420:5000"` to
 another free port, e.g. `"8421:5000"`.
+
+## Contributing
+
+Issues, fixes and ideas are welcome — including "I installed it and didn't
+understand this screen". The guide is in [CONTRIBUTING.en.md](CONTRIBUTING.en.md),
+and the [Code of Conduct](CODE_OF_CONDUCT.md) applies in every project space.
+
+Found a security flaw? **Don't open a public issue** — use the
+[private channel](https://github.com/financerto/financerto-app/security/advisories/new).
+Details in [SECURITY.en.md](SECURITY.en.md).
+
+## Built with AI assistance
+
+Part of this codebase was written with AI assistance, and every line was
+human-reviewed before landing. No data of yours leaves your server because of
+it — there is no AI service called at runtime. AI-assisted contributions are
+welcome too: see [Using AI](CONTRIBUTING.en.md#using-ai).
 
 ## Licence
 

@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Instalar o ruff
+        run: pip install ruff
+
+      - name: Erros de sintaxe e nome indefinido
+        # Só a classe de erro que quebra o app em produção — estilo não reprova
+        # o CI, senão ninguém consegue mandar pull request.
+        run: ruff check --select E9,F63,F7,F82 --output-format=github .
+
+      - name: Compilar o backend
+        run: python -m compileall -q app.py
+
+  migrations:
+    name: Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Numeração em sequência, sem número repetido
+        run: |
+          repetidos=$(ls migrations/*.sql | sed 's#.*/##' | cut -d_ -f1 | sort | uniq -d)
+          if [ -n "$repetidos" ]; then
+            echo "::error::Migrations com o mesmo número: $repetidos"
+            exit 1
+          fi
+          echo "OK — $(ls migrations/*.sql | wc -l) migrations, sem número repetido."
+
+  docker:
+    name: Imagem Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Construir a imagem
+        run: docker build -t financerto:ci .
+
+      - name: Subir e conferir se o app responde
+        run: |
+          docker run -d --name financerto-ci -p 8420:5000 \
+            -e ADMIN_PASSWORD=senha-de-teste-do-ci \
+            -e SECRET_KEY=chave-de-teste-do-ci-com-tamanho-suficiente \
+            financerto:ci
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://localhost:8420/; then
+              echo "O app respondeu."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::O app não respondeu em 60s."
+          docker logs financerto-ci
+          exit 1
+
+      - name: Holerite em PDF e nota fiscal por OCR
+        # Roda de dentro do container, onde o tesseract e as bibliotecas de
+        # imagem já existem. É o que pega uma atualização de dependência que
+        # passa no import e só quebra no arquivo de verdade.
+        run: |
+          docker cp testes/teste_anexos.py financerto-ci:/app/teste_anexos.py
+          docker exec -e SENHA=senha-de-teste-do-ci financerto-ci \
+            python /app/teste_anexos.py
+
+      - name: Ticker em URL externa e nome de anexo em caminho
+        run: |
+          docker cp testes/teste_seguranca.py financerto-ci:/app/teste_seguranca.py
+          docker exec -e SENHA=senha-de-teste-do-ci financerto-ci \
+            python /app/teste_seguranca.py
+
+      - name: Log do container
+        if: always()
+        run: docker logs financerto-ci || true
