@@ -122,6 +122,11 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
+      # Confirmado na prática em 25/08/2026: o GITHUB_TOKEN da própria execução
+      # APAGA versão de pacote da organização com esta permissão, sem precisar
+      # de token pessoal cadastrado como segredo. A documentação é ambígua no
+      # ponto, então fica registrado aqui para ninguém precisar descobrir de
+      # novo — nem cadastrar um segredo que não é necessário.
       packages: write
 
     steps:
