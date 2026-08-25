@@ -1,0 +1,16 @@
+-- Lançamento que mexe no saldo da conta mas não é ganho nem gasto de ninguém
+-- desta casa.
+--
+-- O caso real que motivou a coluna: a esposa manda o valor de um boleto e o
+-- boleto sai no mesmo dia. A entrada não é receita, a saída não é despesa, e
+-- mesmo assim as duas precisam existir — senão o saldo do app para de bater
+-- com o do banco. Antes disso a única saída era apagar os dois lançamentos, o
+-- que estragava o saldo, ou deixar o mês mostrar receita e despesa infladas.
+--
+-- Coluna nova, e não `eh_transferencia = 1`, porque transferência tem
+-- comportamento próprio: existe aos pares (`grupo_transferencia`) e apagar uma
+-- perna apaga a outra. Marcar isto como transferência faria o pagamento do
+-- boleto sumir junto com a entrada.
+--
+-- 0 como padrão deixa o histórico inteiro como estava: até agora tudo contava.
+ALTER TABLE lancamentos ADD COLUMN fora_dos_totais INTEGER DEFAULT 0;

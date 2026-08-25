@@ -1,0 +1,18 @@
+-- Regra que marca o lançamento como "não contar nos totais".
+--
+-- A regra já sabia definir categoria e marcar transferência, mas nenhum dos
+-- dois serve para o caso que mais suja os totais desta casa: o Pix que vai e
+-- volta entre marido e mulher. Categoria não tira da soma, e transferência é
+-- errado — ela existe aos pares (`grupo_transferencia`) e apagar uma perna
+-- apaga a outra, o que não vale para dinheiro que vem de outra pessoa.
+--
+-- O que serve é o `fora_dos_totais` (migration 0023), que tira da soma sem
+-- tirar da lista. Faltava só a regra saber marcá-lo, para o extrato já chegar
+-- classificado em vez de exigir um toque por lançamento todo mês.
+--
+-- Numa base real eram centenas de lançamentos ao longo de um ano, dezenas de
+-- milhares de reais indo e voltando, contados como receita de um lado e despesa
+-- do outro.
+--
+-- 0 como padrão deixa toda regra existente como estava.
+ALTER TABLE regras_categoria ADD COLUMN marca_fora_dos_totais INTEGER DEFAULT 0;

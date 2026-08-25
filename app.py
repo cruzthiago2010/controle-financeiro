@@ -27,12 +27,13 @@ import zipfile
 import secrets
 import calendar
 import sqlite3
+import itertools
 import tempfile
 import threading
 import unicodedata
 import requests
 from urllib.parse import quote, urlparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from werkzeug.utils import secure_filename, safe_join
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import (Flask, request, jsonify, send_from_directory, session, redirect,
@@ -834,10 +835,30 @@ def extrair_dados_nota_fiscal(texto, chave_acesso_qr=None):
     }
 
 
+# Nem tudo que passa pela conta é ganho ou gasto. A transferência entre contas
+# próprias já era assim, e o `fora_dos_totais` (migration 0023) cobre o outro
+# caso: dinheiro de terceiro que só atravessa a conta — a esposa manda o valor
+# de um boleto e o boleto sai no mesmo dia. Os dois mexem no saldo da conta,
+# porque o dinheiro andou de verdade, e ficam fora de todo total, gráfico e
+# dashboard, porque não é ganho nem gasto de ninguém aqui.
+#
+# A condição mora numa função só porque precisa valer em todas as consultas ao
+# mesmo tempo: escrever "eh_transferencia = 0" à mão em cada uma é como se
+# acrescenta uma regra em doze lugares e se esquece do décimo terceiro.
+# Vale só para soma, gráfico e dashboard. **Nenhuma lista usa esta função**: o
+# lançamento marcado continua aparecendo em Receitas & Despesas, em Últimos
+# lançamentos, no CSV e na busca, com o valor riscado. Sumir da lista é o
+# contrário do que a marca promete — quem marca quer justamente continuar
+# vendo a linha para conferir com o extrato do banco.
+def entra_nos_totais(alias=""):
+    p = f"{alias}." if alias else ""
+    return f"{p}eh_transferencia = 0 AND {p}fora_dos_totais = 0"
+
+
 def totais_do_mes(conn, mes_ref, usuario_id):
     rows = conn.execute(
         "SELECT tipo, pago, COALESCE(SUM(valor),0) as total FROM lancamentos "
-        "WHERE mes = ? AND eh_transferencia = 0 AND usuario_id = ? GROUP BY tipo, pago",
+        f"WHERE mes = ? AND {entra_nos_totais()} AND usuario_id = ? GROUP BY tipo, pago",
         (mes_ref, usuario_id),
     ).fetchall()
     t = {"receita_total": 0.0, "receita_recebida": 0.0, "despesa_total": 0.0, "despesa_paga": 0.0}
@@ -1482,7 +1503,7 @@ def listar_orcamentos():
     ).fetchall()
     gastos = conn.execute(
         "SELECT COALESCE(NULLIF(categoria,''),'Sem categoria') as categoria, COALESCE(SUM(valor),0) as gasto "
-        "FROM lancamentos WHERE mes = ? AND tipo = 'despesa' AND eh_transferencia = 0 AND usuario_id = ? "
+        f"FROM lancamentos WHERE mes = ? AND tipo = 'despesa' AND {entra_nos_totais()} AND usuario_id = ? "
         "GROUP BY categoria",
         (mes, uid()),
     ).fetchall()
@@ -1772,6 +1793,7 @@ def criar_lancamento():
     parcelas = int(data.get("parcelas") or 1)
     pago = 1 if data.get("pago") else 0
     previsto = 1 if data.get("previsto") else 0
+    fora_dos_totais = 1 if data.get("fora_dos_totais") else 0
     data_pagamento = data.get("data_pagamento") or (datetime.now().strftime("%Y-%m-%d") if pago else "")
 
     if tipo not in ("renda", "despesa"):
@@ -1800,10 +1822,11 @@ def criar_lancamento():
                 """INSERT INTO lancamentos
                    (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
                     grupo_parcela, parcela_num, parcela_total, pago, data_pagamento, observacao,
-                    criado_em, usuario_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, '', ?, ?, ?)""",
+                    criado_em, usuario_id, fora_dos_totais)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, '', ?, ?, ?, ?)""",
                 (mes_parcela, tipo, desc_parcela, valor, venc_parcela, categoria, conta, conta_id,
-                 grupo, i + 1, parcelas, observacao, datetime.now().isoformat(), uid()),
+                 grupo, i + 1, parcelas, observacao, datetime.now().isoformat(), uid(),
+                 fora_dos_totais),
             )
         conn.commit()
         conn.close()
@@ -1826,11 +1849,11 @@ def criar_lancamento():
         """INSERT INTO lancamentos
            (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
             pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia,
-            recorrencia_ate, previsto)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            recorrencia_ate, previsto, fora_dos_totais)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
          pago, data_pagamento, observacao, datetime.now().isoformat(), uid(), grupo_recorrencia,
-         recorrencia_ate, previsto),
+         recorrencia_ate, previsto, fora_dos_totais),
     )
     conn.commit()
     novo_id = cur.lastrowid
@@ -1906,13 +1929,18 @@ def editar_lancamento(item_id):
         conn.close()
         return jsonify({"erro": msg("lançamento não encontrado")}), 404
     conta_id, conta = resolver_conta(conn, data.get("conta_id"))
+    # COALESCE em vez de sobrescrever sempre: quem chamar esta rota sem o campo
+    # (uma versão antiga do app Android, por exemplo) não pode desfazer sem
+    # querer a marca de "fora dos totais" que a pessoa pôs pela web.
+    fora = None if "fora_dos_totais" not in data else (1 if data.get("fora_dos_totais") else 0)
     conn.execute(
         """UPDATE lancamentos SET descricao = ?, valor = ?, vencimento = ?, categoria = ?,
-           conta = ?, conta_id = ?, recorrente = ?, observacao = ? WHERE id = ?""",
+           conta = ?, conta_id = ?, recorrente = ?, observacao = ?,
+           fora_dos_totais = COALESCE(?, fora_dos_totais) WHERE id = ?""",
         (
             data.get("descricao"), float(data.get("valor", 0) or 0), data.get("vencimento", ""),
             data.get("categoria", ""), conta, conta_id,
-            1 if data.get("recorrente") else 0, data.get("observacao", ""), item_id,
+            1 if data.get("recorrente") else 0, data.get("observacao", ""), fora, item_id,
         ),
     )
     conn.commit()
@@ -1935,6 +1963,300 @@ def marcar_pagamento(item_id):
         return jsonify({"erro": msg("lançamento não encontrado")}), 404
     conn.execute("UPDATE lancamentos SET pago = ?, data_pagamento = ? WHERE id = ?",
                  (pago, data_pagamento, item_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/lancamentos/<int:item_id>/fora-dos-totais", methods=["PUT"])
+def marcar_fora_dos_totais(item_id):
+    """Tira (ou devolve) um lançamento dos totais sem abrir a tela de edição.
+
+    Rota própria, no molde do `/pagamento`, porque o caso de uso é um toque na
+    lista logo depois que o extrato importou uma entrada que não é sua: abrir o
+    modal inteiro para virar uma chave seria caro para algo que se repete todo
+    mês.
+
+    Transferência não passa por aqui: ela já está fora dos totais por natureza
+    e existe aos pares, então marcar só uma perna não faria sentido.
+    """
+    data = request.get_json(force=True)
+    fora = 1 if data.get("fora_dos_totais") else 0
+    conn = get_db()
+    if not pertence_ao_usuario(conn, "lancamentos", item_id):
+        conn.close()
+        return jsonify({"erro": msg("lançamento não encontrado")}), 404
+    conn.execute("UPDATE lancamentos SET fora_dos_totais = ? WHERE id = ?", (fora, item_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+# ---- Possíveis duplicados ----
+#
+# O casador do Open Finance evita a duplicata na hora de importar, mas ele só
+# acerta o que consegue reconhecer: valor igual, na mesma conta, com até três
+# dias de folga. O que escapa dele escapa em silêncio, e em agosto/2026 foram
+# uma dúzia de lançamentos — meses de salário contados duas vezes —
+# descobertos semanas depois, no olho.
+#
+# Daí este detector, que roda DEPOIS e não decide nada: ele levanta suspeita e
+# entrega para a pessoa resolver. É de propósito que ele seja mais frouxo que o
+# casador. Errar para mais aqui custa um "não é duplicado"; errar para menos
+# custa um total errado que ninguém percebe.
+
+# Quanto os valores podem diferir e ainda serem o mesmo pagamento: o boleto que
+# entrou como 1.106,00 e saiu do banco como 1.106,98, a compra de 26,00 que
+# fechou um real acima. Um piso em reais, porque 1% de um valor pequeno não
+# pegaria nada.
+DUPLICADO_TOLERANCIA_REAIS = 1.00
+DUPLICADO_TOLERANCIA_FRACAO = 0.01
+DUPLICADO_DIAS = 3
+# Janela maior, usada só quando o valor bate EXATAMENTE e os lados são um
+# lançamento à mão que nenhuma transação reclamou contra um do extrato. É o
+# padrão que o dono da casa descreveu — "a duplicata acontece entre o Open
+# Finance e eu" —, e nele a distância de dias diz pouco: o holerite datado do
+# dia 25 e o crédito do dia 31 são o mesmo salário. Com três dias esse par
+# passava batido.
+DUPLICADO_DIAS_EXTRATO = 10
+# Quantos lançamentos podem somar para bater com uma transação só. Dois é o caso
+# real — o Pix único que paga a água e a luz. Testado com três sobre um ano de
+# extrato: apareceram 30 combinações, todas coincidência. Com muitos gastos
+# pequenos e três parcelas livres, sempre existe alguma soma que fecha.
+DUPLICADO_MAX_PARCELAS = 2
+# E só vale a pena procurar soma acima de um valor: abaixo disso a chance de dois
+# gastos miúdos fecharem por acaso é maior que a de serem o mesmo pagamento.
+DUPLICADO_SOMA_MINIMA = 100.00
+
+
+def _duplicado_dia(l):
+    """O dia do lançamento como número, para comparar sem reparsear data.
+
+    `data_pagamento` guarda string vazia quando não há pagamento, e não NULL —
+    por isso o `or` em cadeia em vez de COALESCE no SQL, que deixaria o vazio
+    passar como se fosse data.
+    """
+    texto = (l["data_pagamento"] or l["vencimento"] or (l["mes"] + "-15"))[:10]
+    try:
+        return datetime.strptime(texto, "%Y-%m-%d").toordinal()
+    except (ValueError, TypeError):
+        return None
+
+
+def _duplicado_palavras(texto):
+    """Palavras de peso da descrição, sem acento e sem as curtas demais.
+
+    Serve para separar "gastei dois valores iguais por acaso" de "lancei a
+    mesma coisa duas vezes": dois gastos miúdos de mesmo valor no mesmo dia
+    coincidem no número e em mais nada.
+    """
+    limpo = _sem_acento((texto or "").lower())
+    return {p for p in re.findall(r"[a-z0-9]+", limpo) if len(p) >= 4}
+
+
+def _duplicado_mesma_descricao(a, b):
+    """Se as duas descrições dizem a mesma coisa, ignorando acento e pontuação.
+
+    Exige o conjunto INTEIRO de palavras igual, e não uma palavra em comum:
+    "Aluguel recebido — Apto Centro" e "Aluguel recebido — Kitnet" dividem duas
+    palavras e são dois imóveis diferentes, com o mesmo valor no mesmo dia. Já
+    todo duplicado de verdade que apareceu no histórico veio com a descrição
+    idêntica — o que faz sentido, porque duplicata à mão é a mesma coisa
+    digitada duas vezes.
+    """
+    pa, pb = _duplicado_palavras(a), _duplicado_palavras(b)
+    return bool(pa) and pa == pb
+
+
+def possiveis_duplicados(conn, usuario_id, meses=18):
+    """Grupos de lançamentos que parecem ser o mesmo dinheiro contado duas vezes.
+
+    Três formas, da mais confiável para a menos:
+
+    - `exato`: mesmo valor, mesmo tipo, datas próximas.
+    - `soma`: uma transação do extrato que bate com a soma de dois ou três
+      lançamentos manuais — o Pix único que paga a água e a luz.
+    - `aproximado`: valores que diferem por centavos.
+
+    Duas transações vindas ambas do extrato nunca viram suspeita: são ids
+    diferentes da Pluggy, ou seja, o banco afirma que foram dois eventos. Quem
+    duplica é sempre o encontro entre o que a pessoa digitou e o que o extrato
+    trouxe — ou a mesma coisa digitada duas vezes.
+
+    A comparação anda numa janela deslizante sobre a lista já ordenada por data.
+    Comparar todos contra todos custaria milhões de pares num histórico de um
+    ano, e a tela abre a cada carregamento.
+    """
+    corte = (date.today().replace(day=1) - timedelta(days=31 * meses)).strftime("%Y-%m")
+    linhas = [dict(r) for r in conn.execute(
+        """SELECT id, mes, tipo, descricao, valor, vencimento, data_pagamento, pago,
+                  categoria, conta_id, origem, grupo_recorrencia
+             FROM lancamentos
+            WHERE usuario_id = ? AND mes >= ?
+              AND eh_transferencia = 0 AND fora_dos_totais = 0""",
+        (usuario_id, corte),
+    ).fetchall()]
+    # O não pago entra só para a forma `previsao` (ver abaixo). Em todas as
+    # outras, comparar previsão com realizado acusaria de duplicata todo aluguel
+    # futuro que por acaso tem o valor de um Pix do mês passado.
+    for l in linhas:
+        l["_dia"] = _duplicado_dia(l)
+        l["_valor"] = round(abs(l["valor"]), 2)
+    # A ordenação é feita aqui, sobre o mesmo `_dia` que a janela compara. Ordenar
+    # no SQL usaria outra regra de data e a janela deslizaria fora de sincronia.
+    linhas = sorted((l for l in linhas if l["_dia"] is not None), key=lambda l: l["_dia"])
+
+    # Quem já está conciliado com a mesma transação da Pluggy não é duplicata:
+    # é o casamento tendo funcionado.
+    conciliado = {
+        r["lancamento_id"]: r["transacao_id"]
+        for r in conn.execute(
+            "SELECT lancamento_id, transacao_id FROM pluggy_transacoes "
+            "WHERE lancamento_id IS NOT NULL"
+        ).fetchall()
+    }
+    ignorados = {
+        r["assinatura"]
+        for r in conn.execute(
+            "SELECT assinatura FROM duplicados_ignorados WHERE usuario_id = ?", (usuario_id,)
+        ).fetchall()
+    }
+
+    grupos, vistos = [], set()
+
+    def registrar(ids, forma, **detalhe):
+        assinatura = "-".join(str(i) for i in sorted(ids))
+        if assinatura in vistos or assinatura in ignorados:
+            return
+        vistos.add(assinatura)
+        grupos.append(dict(assinatura=assinatura, forma=forma, ids=sorted(ids), **detalhe))
+
+    for i, a in enumerate(linhas):
+        for b in linhas[i + 1:]:
+            distancia = b["_dia"] - a["_dia"]
+            if distancia > DUPLICADO_DIAS_EXTRATO:
+                break  # a lista está ordenada por data: daqui para frente só piora
+            if a["tipo"] != b["tipo"]:
+                continue
+            if not (a["pago"] and b["pago"]):
+                continue
+            if a["origem"] == "open_finance" and b["origem"] == "open_finance":
+                continue
+            # Duas ocorrências da mesma série recorrente são a conta de dois
+            # meses, não a mesma conta duas vezes.
+            if a["grupo_recorrencia"] and a["grupo_recorrencia"] == b["grupo_recorrencia"]:
+                continue
+            # Os dois já prestaram contas ao banco, cada um com a sua transação:
+            # o extrato afirma que foram duas compras. Foi o que aconteceu com
+            # duas compras do mesmo valor na mesma loja em dois dias, dois
+            # cafés, dois abastecimentos iguais — todos reais, todos acusados
+            # antes disto. Ter conciliação é prova melhor que valor igual.
+            if conciliado.get(a["id"]) and conciliado.get(b["id"]):
+                continue
+            manual, extrato = (a, b) if b["origem"] == "open_finance" else (b, a)
+            if manual["origem"] != "open_finance" != extrato["origem"]:
+                # Manual contra manual: só acusa quando as descrições dizem a
+                # mesma coisa. Mesmo valor no mesmo dia acontece o tempo todo em
+                # gasto miúdo, e sozinho não quer dizer nada.
+                if not _duplicado_mesma_descricao(a["descricao"], b["descricao"]):
+                    continue
+            elif conciliado.get(manual["id"]):
+                # O manual já casou com alguma transação da Pluggy, ou seja, o
+                # banco já prestou contas dele. Bater com OUTRA transação do
+                # extrato é coincidência de valor. Quem duplica é justamente o
+                # lançamento que nenhuma transação reclamou.
+                continue
+            diferenca = round(abs(a["_valor"] - b["_valor"]), 2)
+            # A janela larga vale só para o par valor-exato manual×extrato; nas
+            # outras formas a distância volta a ser de três dias, senão qualquer
+            # gasto repetido do mês vira suspeita.
+            entre_mao_e_banco = (extrato["origem"] == "open_finance"
+                                 and manual["origem"] != "open_finance")
+            limite = DUPLICADO_DIAS_EXTRATO if (diferenca == 0 and entre_mao_e_banco) \
+                else DUPLICADO_DIAS
+            if distancia > limite:
+                continue
+            if diferenca == 0:
+                registrar([a["id"], b["id"]], "exato")
+                continue
+            folga = max(DUPLICADO_TOLERANCIA_REAIS,
+                        max(a["_valor"], b["_valor"]) * DUPLICADO_TOLERANCIA_FRACAO)
+            if diferenca <= folga:
+                registrar([a["id"], b["id"]], "aproximado", diferenca=diferenca)
+
+    # Soma: uma transação do extrato pagando vários lançamentos manuais de uma vez.
+    # Previsão que já se realizou: a pessoa lançou o salário à mão para enxergar
+    # o mês, o extrato trouxe o pagamento de verdade, e os dois ficaram somando.
+    # O valor não precisa bater — a graça de uma previsão é justamente ser um
+    # palpite. O que a torna suspeita é a mesma categoria na mesma data com o
+    # banco confirmando um dos lados.
+    #
+    # Exige que o realizado venha do extrato: comparar duas linhas escritas à
+    # mão acusaria o adiantamento pago do dia 15 contra o salário previsto do
+    # dia 31, que são dois pagamentos de verdade.
+    pagos_do_banco = [l for l in linhas if l["pago"] and l["origem"] == "open_finance"]
+    for p in linhas:
+        if p["pago"] or p["origem"] == "open_finance" or not p["categoria"]:
+            continue
+        for r in pagos_do_banco:
+            if (r["tipo"] == p["tipo"] and r["categoria"] == p["categoria"]
+                    and abs(r["_dia"] - p["_dia"]) <= DUPLICADO_DIAS):
+                registrar([p["id"], r["id"]], "previsao", previsto=p["_valor"],
+                          realizado=r["_valor"])
+
+    # Só entram lançamentos que nenhuma transação da Pluggy reclamou: se o banco
+    # já casou aquele lançamento com outra transação, ele não é parte desta.
+    manuais = [l for l in linhas
+               if l["pago"] and l["origem"] != "open_finance" and not conciliado.get(l["id"])]
+    for a in linhas:
+        if not a["pago"] or a["origem"] != "open_finance" or a["_valor"] < DUPLICADO_SOMA_MINIMA:
+            continue
+        vizinhos = [m for m in manuais
+                    if m["tipo"] == a["tipo"] and abs(m["_dia"] - a["_dia"]) <= DUPLICADO_DIAS]
+        for n in range(2, DUPLICADO_MAX_PARCELAS + 1):
+            if len(vizinhos) < n:
+                break
+            for combo in itertools.combinations(vizinhos, n):
+                if round(sum(m["_valor"] for m in combo), 2) != a["_valor"]:
+                    continue
+                registrar([a["id"]] + [m["id"] for m in combo], "soma",
+                          parcelas=[m["_valor"] for m in combo], total=a["_valor"])
+
+    por_id = {l["id"]: l for l in linhas}
+    ordem = {"exato": 0, "previsao": 1, "soma": 2, "aproximado": 3}
+    grupos.sort(key=lambda g: (ordem[g["forma"]],
+                               -max(por_id[i]["_valor"] for i in g["ids"])))
+    for g in grupos:
+        g["lancamentos"] = [{k: v for k, v in por_id[i].items() if not k.startswith("_")}
+                            for i in g["ids"]]
+    return grupos
+
+
+@app.route("/api/duplicados")
+def listar_duplicados():
+    conn = get_db()
+    try:
+        return jsonify(possiveis_duplicados(conn, uid()))
+    finally:
+        conn.close()
+
+
+@app.route("/api/duplicados/ignorar", methods=["POST"])
+def ignorar_duplicado():
+    """Guarda que este grupo já foi olhado e não é duplicata.
+
+    Sem isso o mesmo par voltaria a cada carregamento da tela, e um aviso que
+    reaparece depois de resolvido ensina a pessoa a não olhar mais para ele.
+    """
+    assinatura = (request.get_json(force=True).get("assinatura") or "").strip()
+    if not re.fullmatch(r"\d+(-\d+)*", assinatura):
+        return jsonify({"erro": msg("assinatura inválida")}), 400
+    conn = get_db()
+    conn.execute(
+        "INSERT OR IGNORE INTO duplicados_ignorados (usuario_id, assinatura, criado_em) "
+        "VALUES (?, ?, ?)",
+        (uid(), assinatura, datetime.now().isoformat()),
+    )
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
@@ -4330,6 +4652,96 @@ def listar_holerites():
     return jsonify(resultado)
 
 
+# A folga do holerite é maior que a do extrato: a data do PDF é quando a empresa
+# diz que pagou, e o crédito na conta às vezes cai vários dias depois (feriado,
+# fim de semana, banco diferente). Sete dias, dentro do mesmo mês, cobriu todos
+# os casos reais; com três, um salário creditado no dia 31 contra um holerite
+# datado de 25 virava duas receitas.
+HOLERITE_DIAS = 7
+# E uma folga de centavos no valor, porque o líquido do holerite e o crédito no
+# banco às vezes diferem por arredondamento. Um real é o bastante para isso e
+# pequeno o bastante para não confundir dois pagamentos diferentes.
+HOLERITE_TOLERANCIA = 1.00
+
+
+def _holerite_lancamento(conn, usuario_id, mes, rotulo, valor, data, usados,
+                         dias=HOLERITE_DIAS):
+    """O lançamento que representa esse dinheiro do holerite — achando ou criando.
+
+    O salário chega por três caminhos que não se conhecem: a previsão que a
+    pessoa lança à mão para enxergar o mês, o holerite em PDF e o extrato do
+    banco. Criar às cegas fazia o mesmo salário ser contado até três vezes —
+    numa simulação sobre um mês real, o dobro e meio do valor certo.
+
+    A ordem de preferência é a da confiança:
+
+    1. **Alguém com o mesmo valor e data próxima já existe** — é o mesmo
+       dinheiro, venha do banco ou de um lançamento à mão. Reaproveita, sem
+       renomear: se veio do extrato, o texto do banco é o mais fiel.
+    2. **Uma previsão em aberto perto dessa data** — ela vira o lançamento real,
+       com o valor certo do holerite. Aproveitar em vez de apagar preserva o id,
+       a conta e o anexo que a pessoa já tinha posto ali.
+    3. **Nada parecido** — aí sim cria.
+
+    `usados` guarda os ids já entregues nesta importação, para o salário e o
+    adiantamento não reivindicarem o mesmo lançamento quando têm valor igual.
+    """
+    if not valor:
+        return None
+
+    def perto(coluna):
+        return (f"ABS(JULIANDAY(COALESCE(NULLIF({coluna},''), vencimento, mes || '-15')) "
+                f"- JULIANDAY(?)) <= {dias}")
+
+    dia = (data or f"{mes}-15")[:10]
+    fora = ",".join(str(i) for i in usados) or "0"
+
+    achado = conn.execute(
+        f"""SELECT id FROM lancamentos
+             WHERE usuario_id = ? AND mes = ? AND tipo = 'renda'
+               AND eh_transferencia = 0 AND id NOT IN ({fora})
+               AND ABS(ROUND(ABS(valor), 2) - ROUND(?, 2)) <= ?
+               AND {perto('data_pagamento')}
+             ORDER BY ABS(ROUND(ABS(valor), 2) - ROUND(?, 2)),
+                      (origem = 'open_finance') DESC, id LIMIT 1""",
+        (usuario_id, mes, round(abs(valor), 2), HOLERITE_TOLERANCIA, dia,
+         round(abs(valor), 2)),
+    ).fetchone()
+    if achado:
+        conn.execute(
+            "UPDATE lancamentos SET pago = 1, "
+            "data_pagamento = CASE WHEN COALESCE(NULLIF(data_pagamento,''), '') = '' "
+            "                      THEN ? ELSE data_pagamento END WHERE id = ?",
+            (dia, achado["id"]))
+        usados.add(achado["id"])
+        return achado["id"]
+
+    previsao = conn.execute(
+        f"""SELECT id FROM lancamentos
+             WHERE usuario_id = ? AND mes = ? AND tipo = 'renda' AND pago = 0
+               AND categoria = 'Salário' AND eh_transferencia = 0 AND id NOT IN ({fora})
+               AND {perto('data_pagamento')}
+             ORDER BY previsto DESC, id LIMIT 1""",
+        (usuario_id, mes, dia),
+    ).fetchone()
+    if previsao:
+        conn.execute(
+            "UPDATE lancamentos SET descricao = ?, valor = ?, pago = 1, previsto = 0, "
+            "data_pagamento = ?, vencimento = ? WHERE id = ?",
+            (rotulo, valor, dia, dia, previsao["id"]))
+        usados.add(previsao["id"])
+        return previsao["id"]
+
+    cur = conn.execute(
+        """INSERT INTO lancamentos
+           (mes, tipo, descricao, valor, vencimento, categoria, pago, data_pagamento,
+            criado_em, usuario_id)
+           VALUES (?, 'renda', ?, ?, '', 'Salário', 1, ?, ?, ?)""",
+        (mes, rotulo, valor, dia, datetime.now().isoformat(), usuario_id))
+    usados.add(cur.lastrowid)
+    return cur.lastrowid
+
+
 @app.route("/api/holerites", methods=["POST"])
 def enviar_holerite():
     if "arquivo" not in request.files:
@@ -4362,37 +4774,39 @@ def enviar_holerite():
     if lancar_receita and dados["referencia"]:
         ano_r, mes_r = dados["referencia"].split("-")
         rotulo = "Férias" if dados["eh_ferias"] else "Salário"
-        # Remove lançamentos de renda "previstos" (salário/adiantamento lançados à mão antes do
-        # holerite chegar) desse mês, pra não duplicar a renda real que estamos importando agora.
-        previstos = conn.execute(
-            "SELECT id, comprovante FROM lancamentos WHERE usuario_id = ? AND mes = ? "
-            "AND tipo = 'renda' AND categoria = 'Salário' AND previsto = 1",
+        usados = set()
+        lancamento_id = _holerite_lancamento(
+            conn, uid(), dados["referencia"], f"{rotulo} ({mes_r}/{ano_r})",
+            dados["total_liquido"], dados["recebido_em"] or "", usados)
+        lancamento_adiantamento_id = _holerite_lancamento(
+            conn, uid(), dados["referencia"], f"Adiantamento quinzenal ({mes_r}/{ano_r})",
+            dados["adiantamento"], f"{dados['referencia']}-15", usados)
+        # Sobra: salário em aberto naquele mês que nenhuma das duas linhas do
+        # holerite reivindicou. O holerite é a autoridade sobre o mês — se ele
+        # diz que o salário foi X e o adiantamento Y, o que restou é palpite que
+        # já se realizou por outro caminho (quase sempre o extrato chegou antes).
+        #
+        # Quem estava marcado como previsão some, que é o combinado dessa marca.
+        # O resto NÃO é apagado: é lançamento que a pessoa escreveu sem dizer que
+        # era palpite, e sumir com ele seria perder dado sem pedir licença. Sai
+        # da soma e continua na lista, riscado, para ela decidir.
+        for p in conn.execute(
+            "SELECT id, comprovante, previsto FROM lancamentos WHERE usuario_id = ? AND mes = ? "
+            "AND tipo = 'renda' AND categoria = 'Salário' AND pago = 0 "
+            "AND eh_transferencia = 0 AND fora_dos_totais = 0",
             (uid(), dados["referencia"]),
-        ).fetchall()
-        for p in previstos:
-            if p["comprovante"]:
-                caminho = os.path.join(COMPROVANTES_DIR, p["comprovante"])
-                if os.path.exists(caminho):
-                    os.remove(caminho)
-            conn.execute("DELETE FROM lancamentos WHERE id = ?", (p["id"],))
-        if dados["total_liquido"]:
-            cur = conn.execute(
-                """INSERT INTO lancamentos
-                   (mes, tipo, descricao, valor, vencimento, categoria, pago, data_pagamento, criado_em, usuario_id)
-                   VALUES (?, 'renda', ?, ?, '', 'Salário', 1, ?, ?, ?)""",
-                (dados["referencia"], f"{rotulo} ({mes_r}/{ano_r})", dados["total_liquido"],
-                 dados["recebido_em"] or "", datetime.now().isoformat(), uid()),
-            )
-            lancamento_id = cur.lastrowid
-        if dados["adiantamento"]:
-            cur = conn.execute(
-                """INSERT INTO lancamentos
-                   (mes, tipo, descricao, valor, vencimento, categoria, pago, data_pagamento, criado_em, usuario_id)
-                   VALUES (?, 'renda', ?, ?, '', 'Salário', 1, ?, ?, ?)""",
-                (dados["referencia"], f"Adiantamento quinzenal ({mes_r}/{ano_r})", dados["adiantamento"],
-                 f"{dados['referencia']}-15", datetime.now().isoformat(), uid()),
-            )
-            lancamento_adiantamento_id = cur.lastrowid
+        ).fetchall():
+            if p["id"] in usados:
+                continue
+            if p["previsto"]:
+                if p["comprovante"]:
+                    caminho_c = os.path.join(COMPROVANTES_DIR, p["comprovante"])
+                    if os.path.exists(caminho_c):
+                        os.remove(caminho_c)
+                conn.execute("DELETE FROM lancamentos WHERE id = ?", (p["id"],))
+            else:
+                conn.execute(
+                    "UPDATE lancamentos SET fora_dos_totais = 1 WHERE id = ?", (p["id"],))
 
     cur = conn.execute(
         """INSERT INTO holerites
@@ -4574,7 +4988,7 @@ def dashboard():
 
     por_categoria = conn.execute(
         "SELECT COALESCE(NULLIF(categoria,''),'Sem categoria') as categoria, SUM(valor) as total "
-        "FROM lancamentos WHERE mes = ? AND tipo = 'despesa' AND eh_transferencia = 0 AND usuario_id = ? "
+        f"FROM lancamentos WHERE mes = ? AND tipo = 'despesa' AND {entra_nos_totais()} AND usuario_id = ? "
         "GROUP BY categoria ORDER BY total DESC",
         (mes, uid()),
     ).fetchall()
@@ -4663,7 +5077,7 @@ def fluxo_caixa():
     conn = get_db()
     rows = conn.execute(
         "SELECT tipo, valor, COALESCE(NULLIF(data_pagamento,''), vencimento) as data_efetiva "
-        "FROM lancamentos WHERE mes = ? AND eh_transferencia = 0 AND usuario_id = ?",
+        f"FROM lancamentos WHERE mes = ? AND {entra_nos_totais()} AND usuario_id = ?",
         (mes, uid()),
     ).fetchall()
     conn.close()
@@ -4703,7 +5117,7 @@ def resumo():
     conn = get_db()
     rows = conn.execute(
         "SELECT tipo, SUM(valor) as total FROM lancamentos "
-        "WHERE mes = ? AND eh_transferencia = 0 AND usuario_id = ? GROUP BY tipo",
+        f"WHERE mes = ? AND {entra_nos_totais()} AND usuario_id = ? GROUP BY tipo",
         (mes, uid()),
     ).fetchall()
     pendentes = conn.execute(
@@ -4885,6 +5299,34 @@ def _semear_demo():
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, '', ?, 1)""",
             (mes_atual, tipo, descricao, valor, venc, categoria, conta, ids_conta[conta],
              pago, venc if pago else "", agora),
+        )
+
+    # Duas duplicatas de propósito, para a seção "Possíveis lançamentos
+    # duplicados" ter o que mostrar. Sem dado aqui a função existiria e o print
+    # do demo sairia vazio, que é como uma tela nova passa despercebida.
+    #
+    # A primeira é o par simples: a mesma conta de luz digitada à mão e trazida
+    # de novo pelo extrato. A segunda é o caso que motivou tudo — um Pix único
+    # único que pagou a água e a luz juntas, e por isso não bate com
+    # nenhum lançamento sozinho, só com a soma dos dois.
+    venc_dup = dia_valido(mes_atual, min(hoje.day, 14))
+    duplicatas = [
+        ("Internet fibra", 129.90, "Internet", "Nubank", "manual"),
+        ("VIVO FIBRA SP", 129.90, "Internet", "Nubank", "open_finance"),
+        ("Água", 89.90, "Água", "Itaú", "manual"),
+        ("Luz", 142.60, "Energia", "Itaú", "manual"),
+        # "Outros", e não "Pix enviado": essa categoria só nasce na primeira
+        # sincronização com a Pluggy, e o demo não fala com API nenhuma.
+        ("Pix enviado CONDOMINIO CENTRAL", 232.50, "Outros", "Itaú", "open_finance"),
+    ]
+    for descricao, valor, categoria, conta, origem in duplicatas:
+        conn.execute(
+            """INSERT INTO lancamentos
+               (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
+                pago, data_pagamento, observacao, criado_em, usuario_id, origem)
+               VALUES (?, 'despesa', ?, ?, ?, ?, ?, ?, 0, 1, ?, '', ?, 1, ?)""",
+            (mes_atual, descricao, valor, venc_dup, categoria, conta, ids_conta[conta],
+             venc_dup, agora, origem),
         )
 
     # Uma transferência entre contas próprias.
@@ -6150,25 +6592,37 @@ def _pluggy_extrato(conn, casa_id, account_id, desde=None):
 def _pluggy_casa_com_lancamento(conn, usuario_id, conta_id, tipo, valor, data_iso, dias=3):
     """Procura um lançamento que já represente essa transação: mesmo tipo,
     mesmo valor e data próxima. A folga de 3 dias existe porque a data que a
-    pessoa digita raramente é exatamente a que o banco registra."""
+    pessoa digita raramente é exatamente a que o banco registra.
+
+    Lançamento **sem conta** também casa. Exigir `conta_id` igual deixava
+    passar tudo que é digitado sem escolher a conta — salário, luz, água,
+    internet — e o extrato entrava por cima: numa base real foram uma dúzia de
+    duplicados, quase todos de salário. Quem escolheu a conta continua
+    ganhando na frente, e entre empates vence a data mais próxima: sem isso
+    um Pix de três dias depois roubava o casamento da compra certa."""
     from datetime import datetime as _dt, timedelta as _td
 
     try:
         d = _dt.fromisoformat(data_iso[:10])
     except ValueError:
         return None
+    dia = d.strftime("%Y-%m-%d")
     inicio = (d - _td(days=dias)).strftime("%Y-%m-%d")
     fim = (d + _td(days=dias)).strftime("%Y-%m-%d")
 
     row = conn.execute(
         """SELECT id FROM lancamentos
-           WHERE usuario_id = ? AND conta_id = ? AND tipo = ?
+           WHERE usuario_id = ? AND tipo = ?
+             AND (conta_id = ? OR conta_id IS NULL)
              AND ROUND(ABS(valor), 2) = ROUND(?, 2)
              AND COALESCE(data_pagamento, vencimento, mes || '-15') BETWEEN ? AND ?
              AND id NOT IN (SELECT lancamento_id FROM pluggy_transacoes
                             WHERE lancamento_id IS NOT NULL)
+           ORDER BY (conta_id IS NULL),
+                    ABS(JULIANDAY(COALESCE(data_pagamento, vencimento, mes || '-15'))
+                        - JULIANDAY(?))
            LIMIT 1""",
-        (usuario_id, conta_id, tipo, round(abs(valor), 2), inicio, fim),
+        (usuario_id, tipo, conta_id, round(abs(valor), 2), inicio, fim, dia),
     ).fetchone()
     return row["id"] if row else None
 
@@ -6224,7 +6678,7 @@ def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None
             # Regra primeiro: ela olha a descrição, onde está o nome do
             # estabelecimento. A categoria da Pluggy é genérica e entra só
             # quando nenhuma regra casou.
-            categoria, transf_regra, _ = aplicar_regras(
+            categoria, transf_regra, fora_regra, _ = aplicar_regras(
                 conn, casa_id, descricao, valor, tipo)
             if transf_regra:
                 eh_transf = 1
@@ -6238,11 +6692,13 @@ def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None
             cur = conn.execute(
                 """INSERT INTO lancamentos
                        (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id,
-                        pago, data_pagamento, eh_transferencia, usuario_id, criado_em, origem)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'open_finance')""",
+                        pago, data_pagamento, eh_transferencia, usuario_id, criado_em, origem,
+                        fora_dos_totais)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'open_finance', ?)""",
                 (mes, tipo, descricao, valor, data, categoria,
                  conn.execute("SELECT nome FROM contas WHERE id = ?", (conta_id,)).fetchone()["nome"],
-                 conta_id, data, eh_transf, usuario_id, datetime.now().isoformat()),
+                 conta_id, data, eh_transf, usuario_id, datetime.now().isoformat(),
+                 int(fora_regra)),
             )
             lancamento_id = cur.lastrowid
             estado = "aprovada"
@@ -6857,7 +7313,7 @@ def regra_casa(regra, descricao, valor, tipo):
 
 def aplicar_regras(conn, casa_id, descricao, valor, tipo):
     """Primeira regra que casar decide. Devolve (categoria, transferencia,
-    regra_id) ou (None, False, None)."""
+    fora_dos_totais, regra_id) ou (None, False, False, None)."""
     for r in conn.execute(
         "SELECT * FROM regras_categoria WHERE casa_id = ? AND ativa = 1 "
         "ORDER BY prioridade, id", (casa_id,)
@@ -6868,8 +7324,9 @@ def aplicar_regras(conn, casa_id, descricao, valor, tipo):
                 "ultima_aplicacao = ? WHERE id = ?",
                 (datetime.now().isoformat(), r["id"]),
             )
-            return r["categoria"], bool(r["marca_transferencia"]), r["id"]
-    return None, False, None
+            return (r["categoria"], bool(r["marca_transferencia"]),
+                    bool(r["marca_fora_dos_totais"]), r["id"])
+    return None, False, False, None
 
 
 # Regras que toda casa ganha na primeira vez. São os estabelecimentos que
@@ -6975,6 +7432,7 @@ def listar_regras():
                 d["condicoes"] = []
             d["ativa"] = bool(d["ativa"])
             d["marca_transferencia"] = bool(d["marca_transferencia"])
+            d["marca_fora_dos_totais"] = bool(d["marca_fora_dos_totais"])
             regras.append(d)
         return jsonify(regras)
     finally:
@@ -6987,16 +7445,23 @@ def criar_regra():
     nome = (dados.get("nome") or "").strip()
     categoria = (dados.get("categoria") or "").strip()
     condicoes = dados.get("condicoes") or []
-    if not nome or not categoria or not condicoes:
-        return jsonify({"erro": msg("informe nome, categoria e ao menos uma condição")}), 400
+    fora = bool(dados.get("marca_fora_dos_totais"))
+    transf = bool(dados.get("marca_transferencia"))
+    # Categoria não é obrigatória quando a regra tem outro destino: tirar dos
+    # totais ou marcar como transferência já são o que ela faz. O Pix entre
+    # marido e mulher, por exemplo, já chega classificado do banco — o que se
+    # quer da regra é só a marca.
+    if not nome or not condicoes or not (categoria or fora or transf):
+        return jsonify({"erro": msg("informe nome, condição e um destino: categoria, transferência ou fora dos totais")}), 400
     conn = get_db()
     try:
         conn.execute(
             "INSERT INTO regras_categoria (casa_id, nome, prioridade, condicoes, "
-            "categoria, marca_transferencia, ativa, criado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "categoria, marca_transferencia, marca_fora_dos_totais, ativa, criado_em) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (minha_casa_id(conn), nome, int(dados.get("prioridade") or 10),
              json.dumps(condicoes, ensure_ascii=False), categoria,
-             int(bool(dados.get("marca_transferencia"))),
+             int(transf), int(fora),
              int(bool(dados.get("ativa", True))), datetime.now().isoformat()),
         )
         conn.commit()
@@ -7017,11 +7482,13 @@ def editar_regra(item_id):
             return jsonify({"erro": msg("regra não encontrada")}), 404
         conn.execute(
             "UPDATE regras_categoria SET nome = ?, prioridade = ?, condicoes = ?, "
-            "categoria = ?, marca_transferencia = ?, ativa = ? WHERE id = ?",
+            "categoria = ?, marca_transferencia = ?, marca_fora_dos_totais = ?, "
+            "ativa = ? WHERE id = ?",
             ((dados.get("nome") or "").strip(), int(dados.get("prioridade") or 10),
              json.dumps(dados.get("condicoes") or [], ensure_ascii=False),
              (dados.get("categoria") or "").strip(),
              int(bool(dados.get("marca_transferencia"))),
+             int(bool(dados.get("marca_fora_dos_totais"))),
              int(bool(dados.get("ativa", True))), item_id),
         )
         conn.commit()
@@ -7061,24 +7528,38 @@ def aplicar_regras_no_historico():
         casa_id = minha_casa_id(conn)
         garantir_regras_iniciais(conn, casa_id)
 
-        filtro = "" if sobrescrever else " AND (l.categoria IS NULL OR l.categoria = '')"
+        # Todo lançamento é avaliado, e o `sobrescrever` decide só se a
+        # categoria pode ser trocada. Antes o filtro era na consulta, e aí a
+        # regra que marca "fora dos totais" nunca alcançava o que já tinha
+        # categoria — que é justamente o caso dela: o Pix entre marido e mulher
+        # chega do extrato já classificado como "Pix recebido".
         alvo = conn.execute(
-            "SELECT l.id, l.descricao, l.valor, l.tipo FROM lancamentos l "
-            "JOIN usuarios u ON u.id = l.usuario_id "
-            "WHERE u.casa_id = ? AND l.eh_transferencia = 0" + filtro,
+            "SELECT l.id, l.descricao, l.valor, l.tipo, l.categoria, l.fora_dos_totais "
+            "FROM lancamentos l JOIN usuarios u ON u.id = l.usuario_id "
+            "WHERE u.casa_id = ? AND l.eh_transferencia = 0",
             (casa_id,)
         ).fetchall()
 
         mudados = 0
         for l in alvo:
-            categoria, transf, _ = aplicar_regras(conn, casa_id, l["descricao"],
-                                                  l["valor"], l["tipo"])
-            if categoria:
-                conn.execute(
-                    "UPDATE lancamentos SET categoria = ?, eh_transferencia = ? WHERE id = ?",
-                    (categoria, int(transf), l["id"]),
-                )
-                mudados += 1
+            categoria, transf, fora, regra_id = aplicar_regras(
+                conn, casa_id, l["descricao"], l["valor"], l["tipo"])
+            if not regra_id:
+                continue
+            nova_cat = l["categoria"]
+            if categoria and (sobrescrever or not l["categoria"]):
+                nova_cat = categoria
+            # A marca só é ligada, nunca desligada: quem tirou dos totais à mão
+            # não pode ver a marca sumir porque outra regra casou depois.
+            nova_fora = 1 if (fora or l["fora_dos_totais"]) else 0
+            if nova_cat == l["categoria"] and nova_fora == l["fora_dos_totais"] and not transf:
+                continue
+            conn.execute(
+                "UPDATE lancamentos SET categoria = ?, eh_transferencia = ?, "
+                "fora_dos_totais = ? WHERE id = ?",
+                (nova_cat, int(transf), nova_fora, l["id"]),
+            )
+            mudados += 1
         conn.commit()
         return jsonify({"ok": True, "avaliados": len(alvo), "classificados": mudados})
     finally:
@@ -7188,13 +7669,14 @@ def classificar_nao_categorizados():
     ids = dados.get("ids") or []
     categoria = (dados.get("categoria") or "").strip()
     transferencia = bool(dados.get("transferencia"))
+    fora_dos_totais = bool(dados.get("fora_dos_totais"))
     criar_regra = bool(dados.get("criar_regra"))
     condicao = (dados.get("condicao") or "").strip()
 
     if not ids:
         return jsonify({"erro": msg("nada para classificar")}), 400
-    if not categoria and not transferencia:
-        return jsonify({"erro": msg("escolha uma categoria, ou marque como transferência")}), 400
+    if not categoria and not transferencia and not fora_dos_totais:
+        return jsonify({"erro": msg("escolha uma categoria, ou marque como transferência ou fora dos totais")}), 400
 
     conn = get_db()
     try:
@@ -7210,20 +7692,21 @@ def classificar_nao_categorizados():
 
         marcadores2 = ",".join("?" for _ in proprios)
         conn.execute(
-            f"UPDATE lancamentos SET categoria = ?, eh_transferencia = ? "
-            f"WHERE id IN ({marcadores2})",
-            [categoria or None, int(transferencia)] + proprios)
+            f"UPDATE lancamentos SET categoria = COALESCE(?, categoria), "
+            f"eh_transferencia = ?, fora_dos_totais = ? WHERE id IN ({marcadores2})",
+            [categoria or None, int(transferencia), int(fora_dos_totais)] + proprios)
 
         regra_id = None
         if criar_regra and condicao:
             cur = conn.execute(
                 "INSERT INTO regras_categoria (casa_id, nome, prioridade, condicoes, "
-                "categoria, marca_transferencia, ativa, criado_em) "
-                "VALUES (?, ?, 10, ?, ?, ?, 1, ?)",
-                (casa_id, f"{condicao} → {categoria or 'transferência'}",
+                "categoria, marca_transferencia, marca_fora_dos_totais, ativa, criado_em) "
+                "VALUES (?, ?, 10, ?, ?, ?, ?, 1, ?)",
+                (casa_id, f"{condicao} → {categoria or ('fora dos totais' if fora_dos_totais else 'transferência')}",
                  json.dumps([{"campo": "descricao", "operador": "contem",
                               "valor": condicao}], ensure_ascii=False),
-                 categoria or "", int(transferencia), datetime.now().isoformat()),
+                 categoria or "", int(transferencia), int(fora_dos_totais),
+                 datetime.now().isoformat()),
             )
             regra_id = cur.lastrowid
         conn.commit()
@@ -7267,10 +7750,10 @@ def money_map():
         # Só o que foi efetivado: previsão não é dinheiro que andou, e
         # misturar os dois faria o mapa mostrar um mês que ainda não aconteceu.
         linhas = conn.execute(
-            """SELECT tipo, COALESCE(NULLIF(categoria,''), 'Sem categoria') AS categoria,
+            f"""SELECT tipo, COALESCE(NULLIF(categoria,''), 'Sem categoria') AS categoria,
                       SUM(valor) AS total, COUNT(*) AS n
                FROM lancamentos
-               WHERE usuario_id = ? AND pago = 1 AND eh_transferencia = 0
+               WHERE usuario_id = ? AND pago = 1 AND {entra_nos_totais()}
                  AND COALESCE(data_pagamento, vencimento, mes || '-15') BETWEEN ? AND ?
                GROUP BY tipo, categoria""",
             (uid(), inicio, fim),

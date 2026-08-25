@@ -525,6 +525,102 @@
     margin-left:6px; white-space:nowrap;
   }
   .selo-of svg{width:11px; height:11px;}
+  /* Lançamento que ficou de fora dos totais. Cinza, e não verde como o selo do
+     Open Finance, porque o recado aqui é o contrário de um destaque: aquele
+     valor está na tela e no saldo, mas não está sendo somado. */
+  .selo-fora{
+    font-size:0.66rem; font-weight:600; padding:2px 7px; border-radius:999px;
+    background:rgba(145,158,171,0.16); color:var(--muted);
+    display:inline-flex; align-items:center; gap:4px; vertical-align:middle;
+    margin-left:6px; white-space:nowrap;
+  }
+  .selo-fora svg{width:11px; height:11px;}
+  /* O valor riscado é o que faz a lista bater com o total sem precisar de
+     explicação: o item continua ali, o número não conta. */
+  .item.fora-dos-totais .valor{opacity:.5; text-decoration:line-through;}
+  /* ---- Editor de regras ---- */
+  .regras-acoes{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+  .regra-cond-titulo{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--muted); margin:6px 0 6px;
+  }
+  .regra-cond-titulo button{padding:5px 10px; font-size:0.76rem; width:auto; flex:none;}
+  /* Grid, e não flex: com flex os dois seletores cresciam até o tamanho da
+     opção mais longa ("tipo do lançamento", "tem a palavra"), sobrava pouco
+     para o valor — que é o texto que a pessoa relê para conferir a regra — e o
+     botão de remover ainda quebrava para a linha de baixo. O grid fixa o teto
+     dos seletores e dá o resto ao valor. */
+  /* O modal padrão é estreito porque a maioria dos formulários tem um campo por
+     linha. Aqui são três, e no tamanho de sempre sobravam ~80px para o valor —
+     que é justamente o texto que a pessoa relê para conferir a regra. */
+  #modalRegra .modal-box{max-width:min(680px, 94vw);}
+  .regra-cond-linha{
+    display:grid; grid-template-columns:minmax(0,130px) minmax(0,140px) minmax(0,1fr) auto;
+    gap:6px; align-items:center; margin-bottom:8px;
+  }
+  /* `.modal-box` na frente porque `.modal-box select{width:100%}` tem a mesma
+     especificidade e vem depois no arquivo. */
+  .modal-box .regra-cond-linha select,
+  .modal-box .regra-cond-linha input{width:100%; min-width:0; padding:8px;}
+  .modal-box .regra-cond-linha .icon{width:auto;}
+  .regra-ativa{
+    display:flex !important; flex-direction:row !important; align-items:center; gap:8px;
+    margin-top:14px;
+  }
+  .regra-ativa input{width:auto !important; flex:none;}
+  @media (max-width: 560px){
+    /* Duas linhas: os seletores em cima, o valor e o lixo embaixo. A 390px os
+       três lado a lado espremiam o valor a ponto de não dar para lê-lo, e o
+       posicionamento explícito é o que mantém o "×" ao lado do campo em vez de
+       centralizado sozinho numa terceira linha. */
+    .regra-cond-linha{
+      display:grid; grid-template-columns:1fr 1fr auto; gap:6px; align-items:center;
+      padding-bottom:10px; border-bottom:1px solid var(--border-soft); margin-bottom:10px;
+    }
+    .regra-cond-linha:last-child{border-bottom:none;}
+    .modal-box .regra-cond-linha select{width:100%;}
+    .modal-box .regra-cond-linha input{width:100%;}
+    .modal-box .regra-cond-linha select:nth-of-type(1){grid-area:1 / 1 / 2 / 2;}
+    .modal-box .regra-cond-linha select:nth-of-type(2){grid-area:1 / 2 / 2 / 4;}
+    .modal-box .regra-cond-linha input{grid-area:2 / 1 / 3 / 3;}
+    .modal-box .regra-cond-linha .icon{grid-area:2 / 3 / 3 / 4;}
+  }
+  /* ---- Possíveis duplicados ----
+     Amarelo, e não vermelho: isto é uma suspeita para conferir, não um erro
+     confirmado. Vermelho aqui ensinaria a pessoa a temer a própria lista. */
+  .dup-grupo{
+    border:1px solid rgba(255,171,0,0.35); border-radius:12px;
+    padding:10px 12px 4px; margin-bottom:12px; background:rgba(255,171,0,0.05);
+  }
+  .dup-motivo{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    flex-wrap:wrap; font-size:0.8rem; color:var(--muted); margin-bottom:6px;
+  }
+  .dup-motivo strong{color:var(--yellow); font-weight:600;}
+  /* O botão não é destrutivo nem primário: descartar a suspeita é o caminho
+     mais comum e precisa ser fácil, sem parecer a ação principal. */
+  .dup-nao{
+    background:none; border:1px solid var(--border); color:var(--muted);
+    font-size:0.74rem; padding:3px 10px; border-radius:999px; cursor:pointer;
+    white-space:nowrap;
+  }
+  .dup-nao:hover{color:var(--text); border-color:var(--muted);}
+  .dup-grupo .item{background:none; padding-left:0; padding-right:0;}
+  /* Aqui a descrição quebra em vez de cortar. Na lista comum a reticência é
+     boa — mantém tudo alinhado e o valor é o que importa. Nesta seção o que
+     decide qual dos dois apagar é justamente o fim da linha: o selo "Open
+     Finance", que diz qual veio do banco. Cortado, a seção pergunta qual
+     apagar sem mostrar o que responde.
+
+     A meta continua cortando: categoria, conta e data ajudam, mas nenhuma
+     delas decide, e deixá-la quebrar junto dobrava a altura de cada item. */
+  .dup-grupo .item .desc{white-space:normal; overflow:visible; text-overflow:clip;}
+  .item .acoes button.icon.fora-ativo{color:var(--muted);}
+  .dica-toggle{
+    font-size:0.76rem; color:var(--muted); line-height:1.45;
+    margin:-4px 0 10px; padding:0 2px;
+  }
   .badge-comprar{font-size:0.7rem; font-weight:700; padding:3px 9px; border-radius:999px; display:inline-block;}
   .badge-comprar.sim{background:rgba(0,167,111,0.15); color:var(--green);}
   .badge-comprar.nao{background:rgba(255,86,48,0.13); color:var(--red);}
@@ -1022,7 +1118,11 @@
     padding:1px 6px; border-radius:999px; background:var(--card2); color:var(--muted);}
   @media (max-width: 560px){
     .usuario-botao .usuario-nome, .usuario-botao .seta{display:none;}
-    .dropdown{position:fixed; top:60px; right:10px; left:10px; min-width:0; max-width:none;}
+    /* Ancorado na altura real da barra (medida em JS), e não num 60px fixo: com
+       duas linhas — três quando o aviso de mês aparece — o dropdown passava por
+       cima do seletor, porque o z-index dele é maior que o da barra. */
+    .dropdown{position:fixed; top:calc(var(--topbar-h, 60px) + 8px); right:10px; left:10px;
+              min-width:0; max-width:none;}
   }
 
   /* Foto de perfil no modal */
@@ -1058,18 +1158,49 @@
   .topbar-acoes{display:flex; gap:6px; margin-left:auto; align-items:center;}
   /* No celular tudo cabe em uma linha só: sem quebra, botões menores e o
      seletor de mês encolhendo em vez de empurrar as ações pra segunda linha. */
+  /* No celular a barra vira DUAS linhas: menu e ações em cima, mês embaixo.
+     A versão de uma linha só cabia escondendo as setas de mês e o aviso de
+     "não é o mês atual" — e eram justamente as duas coisas mais úteis ali.
+     Trocar de mês pelo seletor nativo custa três toques (abrir, rolar,
+     escolher); a seta custa um, e é o gesto de quem confere o mês passado.
+     Numa linha só, a 390px, sobravam menos de 60px para o seletor. */
   @media (max-width: 640px){
-    .topbar{flex-wrap:nowrap; gap:6px; padding:10px 12px;}
-    .topbar .mes-selector{flex:1; min-width:0; gap:4px;}
+    .topbar{flex-wrap:wrap; gap:6px; padding:8px 12px;}
+    .topbar .mes-selector{order:2; flex-basis:100%; min-width:0; gap:6px;}
     .topbar .mes-selector select{min-width:0; flex:1; padding:8px 6px; font-size:0.85rem;}
     .topbar-acoes{gap:2px; flex:none;}
     .topbar .icon-btn{padding:8px;}
     .topbar .icon-btn .ico{width:19px; height:19px;}
-    /* As setas de mês saem: dá pra trocar pelo próprio seletor, e assim sobra
-       espaço pros botões que só existem aqui em cima. */
-    #mesAnteriorBtn, #mesProximoBtn{display:none;}
-    .mes-aviso{display:none !important;}
+    /* O aviso ganha a linha inteira em vez de disputar largura com o seletor:
+       ele só existe quando o mês não é o atual, e nesse momento é o que a
+       pessoa mais precisa ler. */
+    /* A primeira linha ficava com um vão morto entre o menu e os botões. Ele
+       vira o campo de busca, que no celular é mais útil como campo do que como
+       lupa: dá para digitar direto, sem o toque a mais de abrir o dropdown. */
+    .topbar-acoes{flex:1; min-width:0;}
+    #areaBusca{flex:1; min-width:0; display:flex;}
+    #buscaBtn{display:none;}
+    /* O painel passa a mostrar só os resultados: quem digita é o campo da
+       barra, e dois campos de busca na mesma tela é um a mais. */
+    #dropdownBusca > input[type="search"]{display:none;}
+    /* `.topbar` na frente porque a regra que esconde o campo no desktop vem
+       DEPOIS deste bloco no arquivo: com a mesma especificidade, quem vem
+       depois ganha, e o campo não aparecia. */
+    .topbar .busca-topo{
+      display:block; width:100%; min-width:0; padding:8px 12px; font-size:0.85rem;
+      background:var(--card2); border:1px solid var(--border); border-radius:var(--radius-sm);
+      color:var(--text);
+    }
+    .topbar .mes-aviso.ativo{
+      display:flex; flex-basis:100%; justify-content:center;
+      /* Sem isto o aviso é nowrap e não encolhe: a 320px ele empurrava a
+         página 19px para fora e o corpo passava a rolar na horizontal. */
+      flex-wrap:wrap; white-space:normal; text-align:center; row-gap:4px;
+    }
   }
+  /* No desktop a busca continua sendo o botão de lupa: lá a barra é uma linha
+     só e não há vão para preencher. */
+  .busca-topo{display:none;}
   .icon-btn{
     background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;
     width:36px; height:36px; padding:0; display:flex; align-items:center; justify-content:center;
@@ -1347,6 +1478,8 @@
         <button class="icon-btn" id="temaBtn" type="button" title="Alternar tema" data-i18n-title="Alternar tema"><svg class="ico" viewBox="0 0 24 24"><use href="#i-lua"/></svg></button>
 
         <div class="menu-flutuante" id="areaBusca">
+          <input type="search" class="busca-topo" id="buscaTopoInput" placeholder="Buscar…"
+                 data-i18n-placeholder="Buscar…" autocomplete="off">
           <button class="icon-btn" id="buscaBtn" type="button" title="Buscar lançamentos" data-i18n-title="Buscar lançamentos">
             <svg class="ico" viewBox="0 0 24 24"><use href="#i-busca"/></svg>
           </button>
@@ -1586,6 +1719,16 @@
   <!-- ===================== LANÇAMENTOS ===================== -->
   <section class="painel" id="painel-lancamentos">
 
+    <div class="secao" id="secaoDuplicados" style="display:none;">
+      <h2 style="color:var(--yellow);"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-repetir"/></svg> <span data-i18n="Possíveis lançamentos duplicados">Possíveis lançamentos duplicados</span></h2>
+      <p class="of-ajuda" data-i18n="O mesmo dinheiro pode estar contado duas vezes — quase sempre algo que você lançou à mão e o extrato trouxe de novo. Nada foi mexido: confira e apague o que sobra, ou diga que não é duplicado.">
+        O mesmo dinheiro pode estar contado duas vezes — quase sempre algo que
+        você lançou à mão e o extrato trouxe de novo. Nada foi mexido: confira e
+        apague o que sobra, ou diga que não é duplicado.
+      </p>
+      <div id="listaDuplicados"></div>
+    </div>
+
     <div class="secao pendentes" id="secaoPendentes" style="display:none;">
       <h2 style="color:var(--yellow);"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-sino"/></svg> <span data-i18n="Contas pendentes do mês">Contas pendentes do mês</span></h2>
       <div id="listaPendentes"></div>
@@ -1657,6 +1800,7 @@
         estabelecimento.
       </p>
       <div class="regras-acoes">
+        <button type="button" onclick="abrirRegra()" data-i18n="Nova regra">Nova regra</button>
         <button type="button" class="secondary" onclick="aplicarRegrasHistorico()" data-i18n="Aplicar no que já existe">
           Aplicar no que já existe
         </button>
@@ -2089,6 +2233,11 @@
       <input type="checkbox" id="editRec">
       <span data-i18n="Repetir todo mês (recorrente)">Repetir todo mês (recorrente)</span>
     </label>
+    <label class="toggle-row">
+      <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-olho-fechado"/></svg> <span data-i18n="Não contar nos totais">Não contar nos totais</span></span>
+      <span class="toggle-switch"><input type="checkbox" id="editFora"><span class="toggle-slider"></span></span>
+    </label>
+    <div class="dica-toggle" data-i18n="Continua no saldo da conta, mas some dos totais do mês e do dashboard. Serve para dinheiro que só passou pela sua conta — alguém te manda o valor de um boleto e o boleto sai no mesmo dia.">Continua no saldo da conta, mas some dos totais do mês e do dashboard. Serve para dinheiro que só passou pela sua conta — alguém te manda o valor de um boleto e o boleto sai no mesmo dia.</div>
     <div class="modal-acoes">
       <button class="secondary" type="button" id="editCancelar" data-i18n="Cancelar">Cancelar</button>
       <button type="button" id="editSalvar" data-i18n="Salvar alterações">Salvar alterações</button>
@@ -2256,6 +2405,12 @@
         <span class="toggle-switch"><input type="checkbox" id="previstoInput"><span class="toggle-slider"></span></span>
       </label>
     </div>
+
+    <label class="toggle-row">
+      <span><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-olho-fechado"/></svg> <span data-i18n="Não contar nos totais">Não contar nos totais</span></span>
+      <span class="toggle-switch"><input type="checkbox" id="foraTotaisInput"><span class="toggle-slider"></span></span>
+    </label>
+    <div class="dica-toggle" data-i18n="Continua no saldo da conta, mas some dos totais do mês e do dashboard. Serve para dinheiro que só passou pela sua conta — alguém te manda o valor de um boleto e o boleto sai no mesmo dia.">Continua no saldo da conta, mas some dos totais do mês e do dashboard. Serve para dinheiro que só passou pela sua conta — alguém te manda o valor de um boleto e o boleto sai no mesmo dia.</div>
 
     <div class="modal-acoes">
       <button class="secondary" type="button" id="novoCancelar" data-i18n="Cancelar">Cancelar</button>
@@ -2488,6 +2643,46 @@
 </div>
 
 <!-- Modal de escopo ao excluir um lançamento recorrente -->
+<div class="modal-overlay" id="modalRegra">
+  <div class="modal-box">
+    <h3><span id="regraTitulo" data-i18n="Nova regra">Nova regra</span></h3>
+    <form id="regraForm" autocomplete="off">
+      <input type="hidden" id="regraId">
+      <label><span data-i18n="Nome">Nome</span>
+        <input type="text" id="regraNome" required placeholder="Ex: Postos → Combustível"
+               data-i18n-placeholder="Ex: Postos → Combustível"></label>
+
+      <label><span data-i18n="O que fazer">O que fazer</span>
+        <select id="regraDestino" required></select></label>
+
+      <label><span data-i18n="Prioridade">Prioridade</span>
+        <input type="number" id="regraPrioridade" min="1" max="99" step="1" value="10"></label>
+      <p class="of-ajuda" style="margin:-6px 0 12px;" data-i18n="Menor número decide primeiro. Use um número baixo para a regra que precisa ganhar das outras.">
+        Menor número decide primeiro. Use um número baixo para a regra que
+        precisa ganhar das outras.
+      </p>
+
+      <div class="regra-cond-titulo">
+        <span data-i18n="Condições">Condições</span>
+        <button type="button" class="secondary" id="regraAddCond" data-i18n="Adicionar condição">Adicionar condição</button>
+      </div>
+      <p class="of-ajuda" style="margin:0 0 10px;" data-i18n="Basta UMA delas casar para a regra valer. A comparação ignora acento e maiúsculas.">
+        Basta UMA delas casar para a regra valer. A comparação ignora acento e
+        maiúsculas.
+      </p>
+      <div id="regraCondicoes"></div>
+
+      <label class="regra-ativa"><input type="checkbox" id="regraAtiva" checked>
+        <span data-i18n="Regra ativa">Regra ativa</span></label>
+
+      <div class="modal-acoes">
+        <button type="button" class="secondary" id="regraCancelar" data-i18n="Cancelar">Cancelar</button>
+        <button type="submit" data-i18n="Salvar regra">Salvar regra</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalExcluirRecorrente">
   <div class="modal-box">
     <h3><span data-i18n="Excluir lançamento recorrente">Excluir lançamento recorrente</span></h3>
@@ -2958,6 +3153,15 @@ const TRADUCOES = {"en": {
 "Recebidos": "Received",
 "Receita": "Income",
 "Receitas & Despesas": "Income & Expenses",
+"Não contar nos totais": "Do not count in the totals",
+"Voltar a contar nos totais": "Count in the totals again",
+"fora dos totais": "not counted",
+"Fora dos totais — continua no saldo da conta": "Left out of the totals — still in the account balance",
+"Voltou a contar nos totais": "Counting in the totals again",
+"Não foi possível mudar esse lançamento": "Could not change this entry",
+"Transferência entre contas: move saldo, mas não é receita nem despesa": "Transfer between accounts: it moves the balance, but it is neither income nor expense",
+"Você tirou este lançamento dos totais: ele continua no saldo da conta, mas não entra no dashboard": "You left this entry out of the totals: it stays in the account balance, but not in the dashboard",
+"Continua no saldo da conta, mas some dos totais do mês e do dashboard. Serve para dinheiro que só passou pela sua conta — alguém te manda o valor de um boleto e o boleto sai no mesmo dia.": "It stays in the account balance but disappears from the month totals and the dashboard. Use it for money that merely passed through your account — someone sends you the amount of a bill and the bill is paid the same day.",
 "Receitas &amp; Despesas": "Income &amp; Expenses",
 "Receitas do mês": "Income this month",
 "Receitas e despesas na mesma lista, da mais recente para a mais antiga. Transferência entre contas fica de fora, e o que ainda vai vencer aparece em Parcelas futuras.": "Income and expenses in one list, newest first. Transfers between your own accounts are left out, and anything not due yet shows up under Upcoming instalments.",
@@ -2984,6 +3188,41 @@ const TRADUCOES = {"en": {
 "Resumo por conta": "Summary by account",
 "Retomar": "Resume",
 "Rodam da menor prioridade para a maior, e a primeira que casar decide. Elas olham a descrição do lançamento, que é onde está o nome do estabelecimento.": "They run from lowest priority to highest, and the first match decides. They look at the entry description, which is where the merchant name is.",
+"Possíveis lançamentos duplicados": "Possible duplicate entries",
+"O mesmo dinheiro pode estar contado duas vezes — quase sempre algo que você lançou à mão e o extrato trouxe de novo. Nada foi mexido: confira e apague o que sobra, ou diga que não é duplicado.": "The same money may be counted twice — usually something you entered by hand that the bank statement brought in again. Nothing was changed: check it and delete the extra one, or say it is not a duplicate.",
+"Uma transação do extrato bate com a soma destes lançamentos": "One statement transaction matches the sum of these entries",
+"Valores quase iguais, com poucos dias de diferença": "Nearly equal amounts, a few days apart",
+"diferença de": "difference of",
+"Mesmo valor, com poucos dias de diferença": "Same amount, a few days apart",
+"Não é duplicado": "Not a duplicate",
+"Certo — não vou avisar sobre esses de novo": "Got it — I won't flag these again",
+"Não foi possível guardar essa escolha": "Could not save that choice",
+"— não contar nos totais —": "— don't count in totals —",
+"transferência": "transfer",
+"Você lançou como previsão e o extrato trouxe o pagamento": "You entered it as a forecast and the statement brought the payment",
+"previsto": "forecast",
+"no banco": "in the bank",
+"Nova regra": "New rule",
+"Editar regra": "Edit rule",
+"Editar": "Edit",
+"O que fazer": "What to do",
+"Prioridade": "Priority",
+"Condições": "Conditions",
+"Adicionar condição": "Add condition",
+"Remover condição": "Remove condition",
+"Regra ativa": "Rule active",
+"Salvar regra": "Save rule",
+"Escolha…": "Choose…",
+"Regra criada": "Rule created",
+"Regra atualizada": "Rule updated",
+"Não foi possível salvar a regra": "Could not save the rule",
+"Escreva ao menos uma condição com valor": "Write at least one condition with a value",
+"Ex: Postos → Combustível": "E.g. Gas stations → Fuel",
+"descrição": "description",
+"tipo do lançamento": "entry type",
+"valor mínimo": "minimum amount",
+"Menor número decide primeiro. Use um número baixo para a regra que precisa ganhar das outras.": "Lower number decides first. Use a low number for the rule that must beat the others.",
+"Basta UMA delas casar para a regra valer. A comparação ignora acento e maiúsculas.": "Just ONE of them needs to match for the rule to apply. The comparison ignores accents and case.",
 "Sair": "Sign out",
 "Sair do demo": "Leave demo",
 "Saiu": "Money out",
@@ -3177,6 +3416,7 @@ const ICO = {
   bussola: svgIco("bussola", "ico sm"), banco: svgIco("banco", "ico lg"),
   relogio: svgIco("relogio", "ico sm"), calendario: svgIco("calendario", "ico sm"),
   chave: svgIco("chave", "ico sm"), casaIco: svgIco("casa", "ico sm"),
+  olhoSm: svgIco("olho", "ico sm"), olhoFechadoSm: svgIco("olho-fechado", "ico sm"),
 };
 let mesAtual = null;
 let categoriasCache = {receita:[], despesa:[]};
@@ -3840,6 +4080,7 @@ function abrirModalNovoLancamento(tipoInicial){
   document.querySelector('#recDuracaoSegmented button[data-modo="sempre"]').classList.add("ativo");
   document.getElementById("pagoInput").checked = false;
   document.getElementById("previstoInput").checked = false;
+  document.getElementById("foraTotaisInput").checked = false;
   document.getElementById("previstoBox").style.display = tipoInicial === "renda" ? "flex" : "none";
   document.getElementById("contaInput").value = "";
   atualizarDotPreview("contaInput", "dotConta", null);
@@ -4082,6 +4323,7 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
     recorrente: parcelar ? false : document.getElementById("recInput").checked,
     pago: parcelar ? false : document.getElementById("pagoInput").checked,
     previsto: parcelar ? false : document.getElementById("previstoInput").checked,
+    fora_dos_totais: document.getElementById("foraTotaisInput").checked,
     // 0 = repete para sempre
     recorrencia_vezes: (!parcelar && document.getElementById("recInput").checked && modoRecorrencia() === "limitado")
       ? Math.max(Number(document.getElementById("recVezesInput").value) || 2, 2)
@@ -4107,7 +4349,8 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
 async function carregarTudo(){
   diaSelecionadoCalendario = null;
   await carregarContas();
-  await Promise.all([carregarLancamentos(), carregarDashboard(), carregarCartoes(), carregarOrcamentos()]);
+  await Promise.all([carregarLancamentos(), carregarDashboard(), carregarCartoes(),
+                     carregarOrcamentos(), carregarDuplicados()]);
   if (document.getElementById("painel-calendario").classList.contains("ativo")){
     await carregarCalendario();
   }
@@ -4387,6 +4630,7 @@ function renderizarNaoCat(){
           <option value="">${t("Escolha a categoria...")}</option>
           ${opcoesCategoria(g.tipo === "renda" ? "receita" : "despesa")}
           <option value="__transf__">${t("— é transferência entre contas —")}</option>
+          <option value="__fora__">${t("— não contar nos totais —")}</option>
         </select>
         <label class="grupo-nc-regra">
           <input type="checkbox" id="gnc-regra-${i}" checked>
@@ -4403,6 +4647,7 @@ async function classificarGrupo(i){
   const escolha = document.getElementById(`gnc-cat-${i}`).value;
   if (!escolha){ showToast("Escolha a categoria primeiro", "erro"); return; }
   const transferencia = escolha === "__transf__";
+  const foraDosTotais = escolha === "__fora__";
   const criarRegra = document.getElementById(`gnc-regra-${i}`).checked;
 
   try {
@@ -4410,8 +4655,9 @@ async function classificarGrupo(i){
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({
         ids: g.ids,
-        categoria: transferencia ? "" : escolha,
+        categoria: (transferencia || foraDosTotais) ? "" : escolha,
         transferencia,
+        fora_dos_totais: foraDosTotais,
         criar_regra: criarRegra,
         condicao: g.sugestao,
       }),
@@ -4445,10 +4691,13 @@ function renderizarRegras(){
             ${escapeHtml(r.nome)}
             <span class="regra-prio">p${r.prioridade}</span>
           </div>
-          <div class="regra-cond">${cond} → <b>${escapeHtml(r.categoria || "transferência")}</b></div>
+          <div class="regra-cond">${cond} → <b>${escapeHtml(r.categoria
+            || (r.marca_fora_dos_totais ? t("fora dos totais") : t("transferência")))}</b>${r.categoria && r.marca_fora_dos_totais ? ` <span class="selo-fora">${ICO.olhoFechadoSm}${t("fora dos totais")}</span>` : ""}</div>
           ${r.vezes_aplicada ? `<div class="regra-uso">aplicada ${r.vezes_aplicada}x</div>` : ""}
         </div>
         <div class="regra-acoes">
+          <button class="icon" type="button" title="${t("Editar")}"
+                  onclick="abrirRegra(${r.id})">${ICO.lapis}</button>
           <button class="icon" type="button" title="${r.ativa ? "Desativar" : "Ativar"}"
                   onclick="alternarRegra(${r.id}, ${!r.ativa})">${r.ativa ? ICO.olho : ICO.olhoFechado || ICO.olho}</button>
           <button class="icon danger" type="button" title="Excluir"
@@ -4457,6 +4706,145 @@ function renderizarRegras(){
       </div>`;
   }).join("");
 }
+
+// ---------- Editor de regras ----------
+//
+// Até aqui só dava para criar regra de raspão, ao classificar um grupo na aba
+// Classificar, e o que saía dali era sempre "contém X → categoria Y". Editar
+// não existia: para trocar uma palavra era preciso apagar e refazer.
+//
+// As condições de uma regra são um OU: basta uma casar. Isso é do motor
+// (`regra_casa` no servidor) e precisa estar escrito na tela, senão a pessoa
+// monta a regra achando que está somando exigências.
+const REGRA_CAMPOS = [
+  ["descricao", "descrição"],
+  ["tipo", "tipo do lançamento"],
+  ["valor_min", "valor mínimo"],
+];
+const REGRA_OPERADORES = [
+  ["contem", "contém"],
+  ["comeca_com", "começa com"],
+  ["termina_com", "termina com"],
+  ["igual", "é igual a"],
+  ["palavra", "tem a palavra"],
+];
+
+function regraLinhaCondicao(c){
+  const div = document.createElement("div");
+  div.className = "regra-cond-linha";
+  const campo = document.createElement("select");
+  campo.innerHTML = REGRA_CAMPOS.map(([v, r]) =>
+    `<option value="${v}">${t(r)}</option>`).join("");
+  campo.value = c?.campo || "descricao";
+  const op = document.createElement("select");
+  op.innerHTML = REGRA_OPERADORES.map(([v, r]) =>
+    `<option value="${v}">${t(r)}</option>`).join("");
+  op.value = c?.operador || "contem";
+  const valor = document.createElement("input");
+  valor.type = "text";
+  valor.value = c?.valor ?? "";
+  const remover = document.createElement("button");
+  remover.type = "button";
+  remover.className = "icon danger";
+  remover.title = t("Remover condição");
+  remover.innerHTML = ICO.x;
+  remover.addEventListener("click", () => {
+    div.remove();
+    if (!document.querySelector("#regraCondicoes .regra-cond-linha")) regraAddCondicao();
+  });
+  // "tem a palavra" e os operadores de texto só fazem sentido na descrição; nos
+  // outros campos o motor ignora o operador, então escondê-lo evita prometer
+  // uma escolha que não muda nada.
+  const ajustar = () => { op.style.display = campo.value === "descricao" ? "" : "none"; };
+  campo.addEventListener("change", ajustar);
+  ajustar();
+  div.append(campo, op, valor, remover);
+  return div;
+}
+
+function regraAddCondicao(c){
+  document.getElementById("regraCondicoes").appendChild(regraLinhaCondicao(c));
+}
+
+function regraDestinos(atual){
+  // As categorias de despesa e receita, mais os dois destinos que não são
+  // categoria. O valor especial vai entre "__" para nunca colidir com o nome
+  // de uma categoria que a pessoa tenha criado.
+  // categoriasCache é {receita:[], despesa:[]}, e a regra vale para os dois
+  // sentidos — a mesma descrição pode entrar como receita numa conta e como
+  // despesa noutra.
+  const todas = [...(categoriasCache.receita || []), ...(categoriasCache.despesa || [])];
+  const cats = [...new Set(todas.map(c => c.nome).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const sel = document.getElementById("regraDestino");
+  sel.innerHTML =
+    `<option value="" disabled ${atual ? "" : "selected"}>${t("Escolha…")}</option>` +
+    cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("") +
+    `<option value="__transf__">${t("— é transferência entre contas —")}</option>` +
+    `<option value="__fora__">${t("— não contar nos totais —")}</option>`;
+  if (atual) sel.value = atual;
+}
+
+function abrirRegra(id){
+  const r = id ? regrasCache.find(x => x.id === id) : null;
+  document.getElementById("regraTitulo").textContent = r ? t("Editar regra") : t("Nova regra");
+  document.getElementById("regraId").value = r ? r.id : "";
+  document.getElementById("regraNome").value = r ? r.nome : "";
+  document.getElementById("regraPrioridade").value = r ? r.prioridade : 10;
+  document.getElementById("regraAtiva").checked = r ? !!r.ativa : true;
+  regraDestinos(r ? (r.categoria || (r.marca_fora_dos_totais ? "__fora__"
+                     : r.marca_transferencia ? "__transf__" : "")) : "");
+  document.getElementById("regraCondicoes").innerHTML = "";
+  const conds = (r && r.condicoes && r.condicoes.length) ? r.condicoes : [null];
+  conds.forEach(c => regraAddCondicao(c));
+  document.getElementById("modalRegra").classList.add("ativo");
+}
+
+function fecharRegra(){
+  document.getElementById("modalRegra").classList.remove("ativo");
+}
+
+document.getElementById("regraAddCond").addEventListener("click", () => regraAddCondicao());
+document.getElementById("regraCancelar").addEventListener("click", fecharRegra);
+document.getElementById("modalRegra").addEventListener("click", (e) => {
+  if (e.target.id === "modalRegra") fecharRegra();
+});
+
+document.getElementById("regraForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("regraId").value;
+  const destino = document.getElementById("regraDestino").value;
+  const condicoes = [...document.querySelectorAll("#regraCondicoes .regra-cond-linha")]
+    .map(l => {
+      const [campo, op] = l.querySelectorAll("select");
+      const valor = l.querySelector("input").value.trim();
+      return {campo: campo.value, operador: op.value, valor};
+    })
+    .filter(c => c.valor !== "");
+  if (!condicoes.length){
+    showToast(t("Escreva ao menos uma condição com valor"), "erro");
+    return;
+  }
+  const corpo = {
+    nome: document.getElementById("regraNome").value.trim(),
+    prioridade: Number(document.getElementById("regraPrioridade").value) || 10,
+    condicoes,
+    categoria: (destino === "__transf__" || destino === "__fora__") ? "" : destino,
+    marca_transferencia: destino === "__transf__",
+    marca_fora_dos_totais: destino === "__fora__",
+    ativa: document.getElementById("regraAtiva").checked,
+  };
+  try {
+    await apiFetch(id ? `${API}/regras/${id}` : `${API}/regras`, {
+      method: id ? "PUT" : "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(corpo),
+    }, {sucesso: id ? t("Regra atualizada") : t("Regra criada"),
+        erro: t("Não foi possível salvar a regra")});
+    fecharRegra();
+    await carregarClassificar();
+  } catch (e) {}
+});
 
 async function alternarRegra(id, ativa){
   const r = regrasCache.find(x => x.id === id);
@@ -4922,11 +5310,21 @@ function ligarFiltros(){
 }
 ligarFiltros();
 
+// Espelha o `entra_nos_totais()` do servidor. As duas marcas significam a
+// mesma coisa para quem lê um total — dinheiro que andou na conta sem ser ganho
+// nem gasto —, então a tela tem que somar pelo mesmo critério que a API, senão
+// o total da aba e o do dashboard passam a discordar.
+function contaNosTotais(l){
+  return !l.eh_transferencia && !l.fora_dos_totais;
+}
+
 function criarItemHTML(item){
   const hoje = hojeISO();
   const atrasado = item.tipo === "despesa" && !item.pago && item.vencimento && item.vencimento < hoje;
   const div = document.createElement("div");
-  div.className = "item" + (item.tipo === "despesa" && !item.pago ? " pendente-item" : "");
+  const foraDosTotais = !contaNosTotais(item);
+  div.className = "item" + (item.tipo === "despesa" && !item.pago ? " pendente-item" : "")
+    + (foraDosTotais ? " fora-dos-totais" : "");
   const corCat = corPara(item.categoria);
   if (corCat) div.style.setProperty("--cat-color", corCat);
 
@@ -4948,6 +5346,16 @@ function criarItemHTML(item){
       title="${ehRenda ? "Marcar como recebida" : "Marcar como paga"}"
       onchange="togglePago(${item.id}, this.checked)">`;
 
+  // Transferência não ganha a chave: ela já está fora dos totais por natureza e
+  // existe aos pares, então virar só uma das pernas deixaria o par torto.
+  const foraHTML = item.eh_transferencia ? "" : `<button class="icon${item.fora_dos_totais ? " fora-ativo" : ""}"
+      title="${item.fora_dos_totais ? t("Voltar a contar nos totais") : t("Não contar nos totais")}"
+      onclick="alternarForaDosTotais(${item.id}, ${item.fora_dos_totais ? "false" : "true"})">${item.fora_dos_totais ? ICO.olhoFechadoSm : ICO.olhoSm}</button>`;
+
+  const seloForaHTML = foraDosTotais
+    ? `<span class="selo-fora" title="${item.eh_transferencia ? t("Transferência entre contas: move saldo, mas não é receita nem despesa") : t("Você tirou este lançamento dos totais: ele continua no saldo da conta, mas não entra no dashboard")}">${ICO.olhoFechadoSm}${t("fora dos totais")}</span>`
+    : "";
+
   const comprovanteHTML = item.comprovante
     ? `<a class="comp-link com-anexo" href="${API}/comprovante/${encodeURIComponent(item.comprovante)}" target="_blank" title="Ver comprovante anexado">${ICO.clipeSm} anexo</a>`
     : `<label title="Anexar comprovante">${ICO.clipe}<input type="file" onchange="enviarComprovante(${item.id}, this.files[0])"></label>`;
@@ -4956,12 +5364,13 @@ function criarItemHTML(item){
     <div class="item-topo">
       ${checkboxHTML}
       <div class="desc-wrap">
-        <div class="desc">${escapeHtml(item.descricao)}${item.recorrente ? ` <svg class="ico sm" viewBox="0 0 24 24" style="opacity:.65" title="Repete todo mês"><use href="#i-repetir"/></svg>` : ""}${item.origem === "open_finance" ? `<span class="selo-of" title="Importado do seu banco pelo Open Finance — confira antes de considerar certo"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>Open Finance</span>` : ""}</div>
+        <div class="desc">${escapeHtml(item.descricao)}${item.recorrente ? ` <svg class="ico sm" viewBox="0 0 24 24" style="opacity:.65" title="Repete todo mês"><use href="#i-repetir"/></svg>` : ""}${item.origem === "open_finance" ? `<span class="selo-of" title="Importado do seu banco pelo Open Finance — confira antes de considerar certo"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>Open Finance</span>` : ""}${seloForaHTML}</div>
         <div class="meta ${atrasado ? 'atrasado' : ''}">${metaPartes.join(" · ")}</div>
       </div>
       <span class="valor ${ehRenda ? 'positivo' : 'negativo'}">${formatMoeda(item.valor)}</span>
       <div class="acoes">
         <button class="icon" title="Editar" onclick="abrirEdicaoPorId(${item.id})">${ICO.lapis}</button>
+        ${foraHTML}
         ${comprovanteHTML}
         <button class="icon danger" title="Excluir" onclick="excluir(${item.id})">${ICO.x}</button>
       </div>
@@ -4975,7 +5384,10 @@ function renderizarListas(lancamentos){
   const grupos = {renda:[], despesa:[]};
   lancamentos.forEach(l => grupos[l.tipo].push(l));
   const gruposTotal = {renda:[], despesa:[]};
-  lancamentosCache.forEach(l => gruposTotal[l.tipo].push(l));
+  // O total da aba usa o mesmo critério do dashboard. Transferência e
+  // lançamento tirado dos totais continuam aparecendo na lista, porque o
+  // dinheiro andou de verdade na conta — só não entram na soma.
+  lancamentosCache.filter(contaNosTotais).forEach(l => gruposTotal[l.tipo].push(l));
   for (const tipo of ["renda","despesa"]){
     const container = document.getElementById(tipo === "renda" ? "listaRenda" : "listaDespesa");
     container.innerHTML = "";
@@ -4986,6 +5398,85 @@ function renderizarListas(lancamentos){
     const total = gruposTotal[tipo].reduce((s,item) => s + item.valor, 0);
     document.getElementById(tipo === "renda" ? "totalRenda" : "totalDespesa").textContent = formatMoeda(total);
   }
+}
+
+// ---------- Possíveis duplicados ----------
+// O servidor levanta a suspeita; aqui ela vira uma seção que só existe quando
+// há o que conferir. Os itens são os MESMOS da lista de baixo (`criarItemHTML`),
+// com editar, apagar e "não contar nos totais" funcionando daqui — mandar a
+// pessoa procurar o lançamento na outra lista seria devolver para ela o
+// trabalho que este aviso existe para poupar.
+//
+// Nada é apagado sozinho, em nenhuma hipótese. Um palpite errado que apaga
+// custa um lançamento que ninguém sabe que sumiu; um palpite errado que
+// pergunta custa um clique.
+async function carregarDuplicados(){
+  const secao = document.getElementById("secaoDuplicados");
+  if (!secao) return;
+  try {
+    const res = await apiFetch(`${API}/duplicados`, undefined, {silencioso:true});
+    renderizarDuplicados(await res.json());
+  } catch (e) {
+    secao.style.display = "none";
+  }
+}
+
+function motivoDoDuplicado(g){
+  if (g.forma === "soma"){
+    return t("Uma transação do extrato bate com a soma destes lançamentos") +
+      ": " + g.parcelas.map(formatMoeda).join(" + ") + " = " + formatMoeda(g.total);
+  }
+  if (g.forma === "previsao"){
+    return t("Você lançou como previsão e o extrato trouxe o pagamento") +
+      ": " + formatMoeda(g.previsto) + " " + t("previsto") + " · " +
+      formatMoeda(g.realizado) + " " + t("no banco");
+  }
+  if (g.forma === "aproximado"){
+    return t("Valores quase iguais, com poucos dias de diferença") +
+      " — " + t("diferença de") + " " + formatMoeda(g.diferenca);
+  }
+  return t("Mesmo valor, com poucos dias de diferença");
+}
+
+function renderizarDuplicados(grupos){
+  const secao = document.getElementById("secaoDuplicados");
+  const container = document.getElementById("listaDuplicados");
+  container.innerHTML = "";
+  if (!grupos || grupos.length === 0){ secao.style.display = "none"; return; }
+  secao.style.display = "block";
+
+  grupos.forEach(g => {
+    const caixa = document.createElement("div");
+    caixa.className = "dup-grupo";
+    const motivo = document.createElement("div");
+    motivo.className = "dup-motivo";
+    const texto = document.createElement("span");
+    texto.innerHTML = `<strong>${escapeHtml(motivoDoDuplicado(g))}</strong>`;
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "dup-nao";
+    botao.textContent = t("Não é duplicado");
+    // A assinatura vai pelo dataset e o clique por addEventListener: nunca
+    // colar dado dentro de um on*="", que o navegador desescapa antes de rodar.
+    botao.dataset.assinatura = g.assinatura;
+    botao.addEventListener("click", () => descartarDuplicado(botao.dataset.assinatura));
+    motivo.appendChild(texto);
+    motivo.appendChild(botao);
+    caixa.appendChild(motivo);
+    g.lancamentos.forEach(l => caixa.appendChild(criarItemHTML(l)));
+    container.appendChild(caixa);
+  });
+}
+
+async function descartarDuplicado(assinatura){
+  try {
+    await apiFetch(`${API}/duplicados/ignorar`,
+      {method:"POST", headers:{"Content-Type":"application/json"},
+       body: JSON.stringify({assinatura})},
+      {sucesso: t("Certo — não vou avisar sobre esses de novo"),
+       erro: t("Não foi possível guardar essa escolha")});
+    await carregarDuplicados();
+  } catch (e) {}
 }
 
 function renderizarPendentes(lancamentos){
@@ -5038,6 +5529,20 @@ document.getElementById("excluirRecCancelar").addEventListener("click", () => {
   document.getElementById("modalExcluirRecorrente").classList.remove("ativo");
   idParaExcluir = null;
 });
+// Rota própria em vez do PUT de edição inteiro: o caso é um toque na lista logo
+// depois de o extrato importar uma entrada que não é sua, e abrir o modal para
+// virar uma chave seria caro para algo que se repete todo mês.
+async function alternarForaDosTotais(id, fora){
+  try {
+    await apiFetch(`${API}/lancamentos/${id}/fora-dos-totais`,
+      {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({fora_dos_totais: fora})},
+      {sucesso: fora ? t("Fora dos totais — continua no saldo da conta")
+                     : t("Voltou a contar nos totais"),
+       erro: t("Não foi possível mudar esse lançamento")});
+    carregarTudo();
+  } catch (e) {}
+}
+
 async function togglePago(id, pago){
   try {
     await apiFetch(`${API}/lancamentos/${id}/pagamento`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({pago, data_pagamento: pago ? hojeISO() : ""})},
@@ -5511,12 +6016,16 @@ function abrirExplicacao(chave){
   const listasEl = document.getElementById("explicacaoListas");
   listasEl.innerHTML = "";
 
-  const receitasPagas = lancamentosCache.filter(l => l.tipo === "renda" && l.pago);
-  const receitasPendentes = lancamentosCache.filter(l => l.tipo === "renda" && !l.pago);
-  const despesasPagas = lancamentosCache.filter(l => l.tipo === "despesa" && l.pago);
-  const despesasPendentes = lancamentosCache.filter(l => l.tipo === "despesa" && !l.pago);
-  const todasReceitas = lancamentosCache.filter(l => l.tipo === "renda");
-  const todasDespesas = lancamentosCache.filter(l => l.tipo === "despesa");
+  // Este modal explica de onde veio o número do card, então precisa listar
+  // exatamente o que o card somou — com transferência e "fora dos totais" no
+  // meio, a conta não fechava com a lista mostrada.
+  const doMes = lancamentosCache.filter(contaNosTotais);
+  const receitasPagas = doMes.filter(l => l.tipo === "renda" && l.pago);
+  const receitasPendentes = doMes.filter(l => l.tipo === "renda" && !l.pago);
+  const despesasPagas = doMes.filter(l => l.tipo === "despesa" && l.pago);
+  const despesasPendentes = doMes.filter(l => l.tipo === "despesa" && !l.pago);
+  const todasReceitas = doMes.filter(l => l.tipo === "renda");
+  const todasDespesas = doMes.filter(l => l.tipo === "despesa");
 
   if (chave === "receitas"){
     tituloEl.textContent = t("Receitas do mês");
@@ -5594,10 +6103,10 @@ function abrirDetalheCategoria(categoria){
   const listasEl = document.getElementById("explicacaoListas");
   listasEl.innerHTML = "";
 
-  // Mesmo critério do /api/dashboard: despesas do mês, sem transferência,
+  // Mesmo critério do /api/dashboard: despesas do mês que contam nos totais,
   // categoria vazia cai em "Sem categoria".
   const itens = lancamentosCache.filter(l =>
-    l.tipo === "despesa" && !l.eh_transferencia &&
+    l.tipo === "despesa" && contaNosTotais(l) &&
     (l.categoria || "Sem categoria") === categoria
   );
 
@@ -7503,6 +8012,7 @@ function abrirEdicaoPorId(id){
   document.getElementById("editConta").value = item.conta_id || "";
   document.getElementById("editObs").value = item.observacao || "";
   document.getElementById("editRec").checked = !!item.recorrente;
+  document.getElementById("editFora").checked = !!item.fora_dos_totais;
 
   // Marcar como efetivado e definir a data valem tanto para despesa quanto receita.
   const ehRenda = item.tipo === "renda";
@@ -7546,6 +8056,7 @@ document.getElementById("editSalvar").addEventListener("click", async () => {
     conta_id: document.getElementById("editConta").value || null,
     observacao: document.getElementById("editObs").value,
     recorrente: document.getElementById("editRec").checked,
+    fora_dos_totais: document.getElementById("editFora").checked,
   };
   const pago = document.getElementById("editPago").checked;
   const dataPagamento = pago ? document.getElementById("editDataPag").value : "";
@@ -7719,15 +8230,37 @@ document.getElementById("buscaBtn").addEventListener("click", (e) => {
     document.getElementById("buscaGlobalInput").focus();
   }
 });
-// Busca em todos os meses. Espera a digitação parar pra não disparar a cada tecla.
+// A barra tem duas linhas no celular, e três quando o aviso de mês aparece.
+// Os dropdowns são `position:fixed` nessa largura, então precisam saber onde a
+// barra termina — daí a altura real virar variável de CSS em vez de um número
+// escrito à mão, que quebraria de novo na próxima linha que a barra ganhar.
 (() => {
-  const campo = document.getElementById("buscaGlobalInput");
+  const barra = document.querySelector(".topbar");
+  if (!barra) return;
+  const medir = () => document.documentElement.style.setProperty(
+    "--topbar-h", Math.round(barra.getBoundingClientRect().height) + "px");
+  medir();
+  if (window.ResizeObserver) new ResizeObserver(medir).observe(barra);
+  window.addEventListener("resize", medir);
+})();
+
+// Busca em todos os meses. Espera a digitação parar pra não disparar a cada tecla.
+//
+// Dois campos entram aqui: o do dropdown (desktop) e o que fica direto na barra
+// (celular). Um handler só para os dois — duplicar a função significaria dois
+// lugares para corrigir quando a busca mudar.
+function ligarBuscaGlobal(campo){
+  if (!campo) return;
   const saida = document.getElementById("buscaGlobalResultado");
   let debounce;
   campo.addEventListener("click", (e) => e.stopPropagation());
   campo.addEventListener("input", () => {
     clearTimeout(debounce);
     const termo = campo.value.trim();
+    // Digitar no campo da barra abre o painel de resultados sozinho: no celular
+    // não há lupa para tocar antes.
+    const painel = document.getElementById("dropdownBusca");
+    if (termo.length >= 2 && painel.hidden) alternarMenuTopo("dropdownBusca");
     if (termo.length < 2){
       saida.innerHTML = `<div class="sino-vazio">Digite para procurar em todos os meses.</div>`;
       return;
@@ -7758,7 +8291,10 @@ document.getElementById("buscaBtn").addEventListener("click", (e) => {
       }
     }, 300);
   });
-})();
+}
+ligarBuscaGlobal(document.getElementById("buscaGlobalInput"));
+ligarBuscaGlobal(document.getElementById("buscaTopoInput"));
+
 // Abre o mês do resultado e leva pra lista de lançamentos.
 async function abrirBusca(mes, id){
   fecharMenusTopo(null);

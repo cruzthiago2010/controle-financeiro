@@ -121,6 +121,11 @@ Open `http://localhost:8420` and sign in as `admin`. That's it.
   automatically, and transfers between accounts (including between different
   users' accounts, e.g. from yours to your partner's) without counting as real
   income or spending.
+- **Leave out of the totals** — any income or expense can be taken out of the
+  totals and the dashboard without leaving the account. This is for money that
+  merely passes through: someone sends you the amount of a bill and the bill is
+  paid the same day — it was neither your income nor your spending, but the
+  balance still has to match the bank's.
 - **Credit cards** — limit, current bill, due day, the account linked for
   automatic payment, and a warning when the bill is near (or past) the limit.
 - **Categories** — your own income/expense categories, with colors.

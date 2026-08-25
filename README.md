@@ -124,6 +124,11 @@ Abra `http://localhost:8420` e entre com o usuário `admin`. Pronto.
   automaticamente, e transferências entre contas (inclusive entre contas de
   usuários diferentes, ex: da sua conta para a da sua esposa/marido) sem
   contar como receita/despesa real.
+- **Não contar nos totais** — qualquer receita ou despesa pode ser tirada dos
+  totais e do dashboard sem sair da conta. É o caso do dinheiro que só passa
+  pela sua conta: alguém te manda o valor de um boleto e o boleto sai no mesmo
+  dia — não foi ganho seu nem gasto seu, mas o saldo tem que continuar batendo
+  com o do banco.
 - **Cartões de crédito** — limite, fatura atual, dia de vencimento, conta
   vinculada para débito automático da fatura, e aviso quando a fatura está
   perto (ou passou) do limite.
