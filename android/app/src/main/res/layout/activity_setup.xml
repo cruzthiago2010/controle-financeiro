@@ -27,6 +27,57 @@
             android:textSize="26sp"
             android:textStyle="bold" />
 
+        <!-- Só aparece quando o app fechou sozinho: é aqui que dá para ler o
+             motivo e tirar um print, já que a tela principal é a que não abriu. -->
+        <LinearLayout
+            android:id="@+id/painelFalha"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:background="@drawable/painel_falha"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/falha_titulo"
+                android:textColor="#ffab00"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/falha_explicacao"
+                android:textColor="#919eab"
+                android:textSize="12sp"
+                android:lineSpacingMultiplier="1.3" />
+
+            <TextView
+                android:id="@+id/textoFalha"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="#d6dde5"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:textIsSelectable="true" />
+
+            <Button
+                android:id="@+id/botaoDispensarFalha"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="@string/falha_dispensar"
+                android:textColor="#919eab"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -85,12 +136,40 @@
             android:textStyle="bold"
             android:backgroundTint="#00a76f" />
 
+        <!-- Testar não salva nada: serve pra descobrir onde está o problema
+             quando conectar não dá certo, e pra confirmar que o endereço
+             responde antes de entregar o celular pra outra pessoa. -->
+        <Button
+            android:id="@+id/botaoTestar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/setup_testar"
+            android:textColor="#00a76f"
+            android:textSize="15sp"
+            android:background="@drawable/botao_contorno"
+            android:backgroundTint="@null"
+            android:stateListAnimator="@null" />
+
         <ProgressBar
             android:id="@+id/carregandoSetup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:indeterminateTint="#00a76f"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/resultadoTeste"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:padding="14dp"
+            android:background="@drawable/painel_diagnostico"
+            android:textColor="#d6dde5"
+            android:textSize="13sp"
+            android:lineSpacingMultiplier="1.25"
+            android:textIsSelectable="true"
             android:visibility="gone" />
 
         <TextView
