@@ -6,12 +6,17 @@
     <string name="setup_placeholder">financeiro.seudominio.com.br</string>
     <string name="setup_conectar">Conectar</string>
     <string name="setup_conectando">Conectando…</string>
+    <string name="setup_testar">Testar comunicação</string>
+    <string name="setup_testando">Testando…</string>
     <string name="setup_dica">Pode ser um domínio (financeiro.seusite.com.br) ou o endereço na sua rede (192.168.1.10:8420).</string>
+    <string name="setup_nao_deu">Não deu para conectar. Veja abaixo em que etapa parou.</string>
 
-    <string name="setup_endereco_invalido">Endereço inválido. Confira o que você digitou.</string>
-    <string name="setup_erro_conexao">Não foi possível falar com esse endereço. Confira se está certo, se o servidor está ligado e se você está na rede certa.</string>
-    <string name="setup_erro_resposta">O servidor respondeu, mas com erro (%1$d). Confira o endereço.</string>
-    <string name="setup_erro_nao_e_o_app">Esse endereço respondeu, mas não parece ser o FinanCerto.</string>
+    <string name="falha_titulo">O app fechou sozinho na última abertura</string>
+    <string name="falha_explicacao">Este é o motivo que ficou registrado no aparelho. Mande um print para quem cuida do servidor.</string>
+    <string name="falha_dispensar">Dispensar</string>
+
+    <string name="bloqueio_titulo">App bloqueado</string>
+    <string name="bloqueio_desbloquear">Desbloquear</string>
 
     <string name="trocar_servidor">Trocar servidor</string>
 </resources>

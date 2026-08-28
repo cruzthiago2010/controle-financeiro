@@ -16,6 +16,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.TextView
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -37,7 +38,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appUrl: String
     private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var errorView: View
+    private lateinit var bloqueioView: View
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+    private var jaAbriu = false
 
     private fun showError() {
         swipeRefresh.isRefreshing = false
@@ -84,6 +87,15 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Se o app fechou sozinho durante a abertura anterior, tentar de novo
+        // dá no mesmo: abre e fecha, e quem instalou não chega a lugar nenhum.
+        // A tela de endereço mostra o motivo e tem saída.
+        if (RegistroDeFalhas.falhouNaAbertura(this)) {
+            startActivity(Intent(this, SetupActivity::class.java))
+            finish()
+            return
+        }
+
         // Sem endereço configurado não há o que carregar: manda pro setup.
         val salvo = Servidor.url(this)
         if (salvo == null) {
@@ -92,12 +104,14 @@ class MainActivity : AppCompatActivity() {
             return
         }
         appUrl = salvo
+        RegistroDeFalhas.marcarAbrindo(this)
 
         setContentView(R.layout.activity_main)
 
         webView = findViewById(R.id.webView)
         swipeRefresh = findViewById(R.id.swipeRefresh)
         errorView = findViewById(R.id.errorView)
+        bloqueioView = findViewById(R.id.bloqueioView)
         findViewById<Button>(R.id.retryButton).setOnClickListener {
             if (hasInternet()) {
                 hideError()
@@ -109,9 +123,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<Button>(R.id.trocarServidorButton).setOnClickListener {
-            startActivity(Intent(this, SetupActivity::class.java))
-            finish()
+        findViewById<Button>(R.id.trocarServidorButton).setOnClickListener { irParaSetup() }
+        findViewById<Button>(R.id.trocarServidorBloqueio).setOnClickListener { irParaSetup() }
+        findViewById<Button>(R.id.desbloquearButton).setOnClickListener {
+            bloqueioView.visibility = View.GONE
+            autenticarEAbrir()
         }
 
         // Deixa a página saber que está dentro do app e usar a notificação nativa.
@@ -149,6 +165,12 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView, url: String) {
                 swipeRefresh.isRefreshing = false
+                if (url != "about:blank" && !jaAbriu) {
+                    // Chegou a mostrar a tela: o que vier a falhar daqui em diante
+                    // não é falha de abertura e não deve desviar a próxima.
+                    jaAbriu = true
+                    RegistroDeFalhas.marcarAberto(this@MainActivity)
+                }
                 // Garante que o cookie de sessão (login) seja gravado em disco.
                 // Sem isso, se o Android matar o processo em segundo plano, a
                 // sessão se perde e o app volta a pedir usuário/senha mesmo
@@ -211,6 +233,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun irParaSetup() {
+        startActivity(Intent(this, SetupActivity::class.java))
+        finish()
+    }
+
     private val permissaoNotificacaoLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* se negar, o app funciona normalmente, só não notifica */ }
@@ -224,60 +251,126 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Um agendamento em segundo plano é conveniência: se o WorkManager não
+    // subir neste aparelho, o app continua servindo pra ver as contas. Antes
+    // uma exceção aqui derrubava a abertura inteira.
     private fun agendarVerificacaoDeContas() {
-        val pedido = PeriodicWorkRequestBuilder<BillCheckWorker>(12, TimeUnit.HOURS).build()
-        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
-            "verificar_contas_vencendo", ExistingPeriodicWorkPolicy.KEEP, pedido
-        )
+        try {
+            val pedido = PeriodicWorkRequestBuilder<BillCheckWorker>(12, TimeUnit.HOURS).build()
+            WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "verificar_contas_vencendo", ExistingPeriodicWorkPolicy.KEEP, pedido
+            )
+        } catch (e: Exception) {
+            Log.w("ControleFinanceiro", "Não deu para agendar o aviso de contas", e)
+        }
     }
 
     private fun agendarAtualizacaoWidget() {
-        val pedido = PeriodicWorkRequestBuilder<SaldoWidgetWorker>(30, TimeUnit.MINUTES).build()
-        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
-            "atualizar_widget_saldo_periodico", ExistingPeriodicWorkPolicy.KEEP, pedido
-        )
+        try {
+            val pedido = PeriodicWorkRequestBuilder<SaldoWidgetWorker>(30, TimeUnit.MINUTES).build()
+            WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "atualizar_widget_saldo_periodico", ExistingPeriodicWorkPolicy.KEEP, pedido
+            )
+        } catch (e: Exception) {
+            Log.w("ControleFinanceiro", "Não deu para agendar o widget de saldo", e)
+        }
     }
 
-    /** Pede biometria/PIN do celular antes de abrir o app, se o aparelho tiver algum
-     * bloqueio configurado. Se não tiver (sem PIN, sem digital), abre direto —
-     * não faz sentido travar quem não protege nem a tela do celular. */
+    /**
+     * Pede biometria/PIN do celular antes de abrir, se o aparelho tiver algum
+     * bloqueio configurado. Se não tiver, abre direto — não faz sentido travar
+     * quem não protege nem a tela do celular.
+     *
+     * O desbloqueio é conveniência: quem protege os dados é o login do
+     * servidor, do outro lado. Por isso, quando o aparelho diz que dá e na
+     * hora não dá, o certo é abrir assim mesmo. Fechar o app nesse caso deixava
+     * quem instalou preso num ciclo de abrir e fechar sem explicação nenhuma.
+     */
     private fun autenticarEAbrir() {
-        val gerenciador = BiometricManager.from(this)
-        val disponivel = gerenciador.canAuthenticate(
-            BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
-        )
+        val disponivel = try {
+            BiometricManager.from(this).canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
+        } catch (e: Exception) {
+            Log.w("ControleFinanceiro", "Biometria indisponível neste aparelho", e)
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE
+        }
         if (disponivel != BiometricManager.BIOMETRIC_SUCCESS) {
-            webView.loadUrl(appUrl)
+            abrir()
             return
         }
 
         val prompt = BiometricPrompt(this, ContextCompat.getMainExecutor(this),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    webView.loadUrl(appUrl)
+                    abrir()
                 }
+
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    // Cancelou ou errou demais: fecha o app em vez de deixar uma tela em branco.
-                    finish()
+                    when (errorCode) {
+                        // O aparelho não conseguiu: segue sem o desbloqueio.
+                        BiometricPrompt.ERROR_HW_UNAVAILABLE,
+                        BiometricPrompt.ERROR_HW_NOT_PRESENT,
+                        BiometricPrompt.ERROR_UNABLE_TO_PROCESS,
+                        BiometricPrompt.ERROR_NO_BIOMETRICS,
+                        BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL,
+                        BiometricPrompt.ERROR_NO_SPACE,
+                        BiometricPrompt.ERROR_SECURITY_UPDATE_REQUIRED,
+                        BiometricPrompt.ERROR_VENDOR -> {
+                            Log.w("ControleFinanceiro", "Desbloqueio indisponível ($errorCode): $errString")
+                            abrir()
+                        }
+                        // A pessoa cancelou, ou errou vezes demais: mostra a tela
+                        // de bloqueio, com como voltar, em vez de sumir.
+                        else -> mostrarBloqueio(errString.toString())
+                    }
                 }
             })
+
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("FinanCerto")
             .setSubtitle("Desbloqueie pra ver seus dados financeiros")
             .setAllowedAuthenticators(
-                BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
             )
             .build()
-        prompt.authenticate(info)
+
+        try {
+            prompt.authenticate(info)
+        } catch (e: Exception) {
+            Log.w("ControleFinanceiro", "Não deu para pedir o desbloqueio", e)
+            abrir()
+        }
     }
 
+    private fun abrir() {
+        bloqueioView.visibility = View.GONE
+        webView.loadUrl(appUrl)
+    }
+
+    private fun mostrarBloqueio(motivo: String) {
+        findViewById<TextView>(R.id.motivoBloqueio).text = motivo
+        bloqueioView.visibility = View.VISIBLE
+        // A abertura terminou aqui, nesta tela: não é falha, e a próxima
+        // abertura não deve ser desviada por causa dela.
+        if (!jaAbriu) {
+            jaAbriu = true
+            RegistroDeFalhas.marcarAberto(this)
+        }
+    }
+
+    // Quando o onCreate desvia pro setup, ele volta antes de inflar o layout e
+    // a WebView nunca chega a existir; salvar o estado dela aí é o suficiente
+    // para derrubar o app justamente na saída do problema.
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        webView.saveState(outState)
+        if (::webView.isInitialized) webView.saveState(outState)
     }
 
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
-        webView.restoreState(savedInstanceState)
+        if (::webView.isInitialized) webView.restoreState(savedInstanceState)
     }
 }

@@ -76,4 +76,64 @@
 
     </LinearLayout>
 
+    <!-- Antes, qualquer erro no desbloqueio fechava o app; quem instalou ficava
+         com um app que abre e some, sem mensagem e sem como trocar o endereço. -->
+    <LinearLayout
+        android:id="@+id/bloqueioView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#141a21"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="&#128274;"
+            android:textSize="48sp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/bloqueio_titulo"
+            android:textColor="#ffffff"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/motivoBloqueio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#9aa4b8"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/desbloquearButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/bloqueio_desbloquear"
+            android:textColor="#06231a"
+            android:backgroundTint="#00a76f"
+            android:paddingLeft="24dp"
+            android:paddingRight="24dp" />
+
+        <Button
+            android:id="@+id/trocarServidorBloqueio"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/trocar_servidor"
+            android:textColor="#919eab"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
 </FrameLayout>
