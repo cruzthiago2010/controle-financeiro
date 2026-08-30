@@ -77,6 +77,8 @@ def teste_tags(s):
     # dentro de um atributo style na tela.
     r = s.put(f"{BASE}/api/tags/{tag_id}", json={"nome": nome + " editada",
                                                  "cor": '#fff" onload="x'}, timeout=30)
+    checa("a edição com cor inválida ainda é aceita", r.status_code == 200,
+          f"HTTP {r.status_code}")
     cor = next((t["cor"] for t in s.get(f"{BASE}/api/tags", timeout=30).json()
                 if t["id"] == tag_id), "?")
     checa("cor inválida não é gravada", cor is None, f"cor={cor!r}")
@@ -174,6 +176,8 @@ def teste_hora(s):
 
     # Cliente que não conhece o campo (o app Android) não pode apagar o horário.
     r = s.put(f"{BASE}/api/lancamentos/{com_hora}", json=base, timeout=30)
+    checa("salvar sem mandar 'hora' é aceito", r.status_code == 200,
+          f"HTTP {r.status_code}")
     lista = {l["id"]: l for l in s.get(f"{BASE}/api/lancamentos", timeout=30).json()}
     checa("salvar sem mandar 'hora' preserva o horário",
           lista.get(com_hora, {}).get("hora") == "07:05",

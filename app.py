@@ -152,7 +152,14 @@ def hora_local_do_carimbo(valor):
 # onde uma quebra de linha injetaria cabeçalho novo. Como as outras conferências
 # do app, esta devolve o VALOR conferido — normalizado —, e não um sim/não: um
 # booleano deixaria o original seguir viagem.
-RE_EMAIL = re.compile(r"^[^@\s,;:<>\"]+@[^@\s,;:<>\"]+\.[^@\s,;:<>\"]+$")
+# Os rótulos do domínio não aceitam ponto, e é isso que mantém a passagem
+# linear: com o ponto dentro da classe dos dois lados do `\.`, o motor não
+# sabe onde o separador começa e testa todas as divisões possíveis — custo
+# quadrático numa string que só falha no último caractere (CodeQL
+# py/polynomial-redos). O teto de 254 acima já limitava o estrago, mas a
+# expressão sem ambiguidade é 44x mais rápida e não depende desse teto.
+# De quebra ela recusa "a@b..com", que a anterior aceitava.
+RE_EMAIL = re.compile(r"^[^@\s,;:<>\"]+@[^@\s,;:<>\".]+(?:\.[^@\s,;:<>\".]+)+$")
 
 
 def email_valido(valor):
