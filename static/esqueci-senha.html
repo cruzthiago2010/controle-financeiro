@@ -3,11 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Criar casa — FinanCerto</title>
-<script src="/static/i18n-paginas.js"></script>
-<link rel="manifest" href="/manifest.json">
+<title>Esqueci minha senha — FinanCerto</title>
 <link rel="icon" href="/static/logo-financerto.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icones/icone-180.png">
+<script src="/static/i18n-paginas.js"></script>
 <meta name="theme-color" content="#141a21">
+<!-- O CSS é o mesmo do login, copiado como o registro.html já faz. Unificar as
+     três páginas num arquivo à parte é uma refatoração separada — e enquanto o
+     app inteiro couber em duas peças grandes, mais um arquivo estático que
+     precisa ser carregado antes de a tela aparecer é um passo para trás. -->
 <style>
   :root{
     --bg:#141a21; --card:#1c252e; --card2:#252f3a;
@@ -89,6 +93,9 @@
     color:var(--red); border-radius:12px; padding:11px 13px; font-size:0.85rem;
   }
   .erro.ativo{display:block;}
+  .esqueci{text-align:right; margin:-4px 0 2px; font-size:0.82rem;}
+  .esqueci a{color:var(--muted); text-decoration:none;}
+  .esqueci a:hover{color:var(--accent-claro); text-decoration:underline;}
   .rodape{margin-top:22px; font-size:0.85rem; color:var(--muted);}
   .rodape a{color:var(--accent-claro); text-decoration:none; font-weight:600;}
   .rodape a:hover{text-decoration:underline;}
@@ -97,7 +104,44 @@
     display:flex; align-items:center; justify-content:center; gap:6px;
   }
   .protegido svg{width:13px; height:13px;}
-</style><style>
+  .fonte-aberta{
+    margin-top:8px; font-size:0.72rem; color:var(--muted); opacity:0.7;
+    text-align:center;
+  }
+  .fonte-aberta a{color:var(--muted); text-decoration:underline;}
+  .fonte-aberta a:hover{color:var(--accent);}
+  /* Convite específico do aparelho: Android ganha o APK, iPhone ganha o passo
+     a passo do "Adicionar à Tela de Início". Some se a pessoa dispensar. */
+  .convite{
+    display:none; margin-top:20px; padding:14px; text-align:left;
+    background:rgba(0,167,111,0.07); border:1px solid rgba(0,167,111,0.28); border-radius:16px;
+  }
+  .convite.ativo{display:block;}
+  .convite-topo{display:flex; align-items:center; gap:9px;}
+  .convite-topo svg{width:19px; height:19px; color:var(--accent-claro); flex:none;}
+  .convite-titulo{font-size:0.88rem; font-weight:700;}
+  .convite-texto{font-size:0.79rem; color:var(--muted); line-height:1.5; margin-top:6px;}
+  .convite-texto b{color:var(--text); font-weight:600;}
+  .convite-acoes{display:flex; align-items:center; gap:10px; margin-top:12px;}
+  .convite-baixar{
+    flex:1; display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    background:rgba(0,167,111,0.16); border:1px solid rgba(0,167,111,0.4); border-radius:999px;
+    color:var(--accent-claro); font-size:0.84rem; font-weight:700; padding:10px 14px;
+    text-decoration:none; font-family:inherit; cursor:pointer;
+  }
+  .convite-baixar:hover{background:rgba(0,167,111,0.26);}
+  .convite-dispensar{
+    background:none; border:none; color:var(--muted); font-size:0.78rem;
+    cursor:pointer; font-family:inherit; padding:10px 4px;
+  }
+  .convite-dispensar:hover{color:var(--text);}
+  .passo{display:flex; gap:8px; margin-top:7px; font-size:0.79rem; color:var(--muted); align-items:flex-start;}
+  .passo .n{
+    width:17px; height:17px; border-radius:50%; background:rgba(0,167,111,0.2); color:var(--accent-claro);
+    font-size:0.66rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px;
+  }
+</style>
+<style>
   .campo-simples{text-align:left; margin-bottom:12px;}
   .campo-simples label{display:block; font-size:0.78rem; color:var(--muted); margin:0 0 5px 4px;}
   .campo-simples input{
@@ -108,12 +152,11 @@
   }
   .campo-simples input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,167,111,0.16);}
   .aviso{
-    margin-top:16px; background:rgba(0,167,111,0.08); border:1px solid var(--border);
-    border-radius:14px; padding:11px 13px; font-size:0.78rem; color:var(--muted); line-height:1.45; text-align:left;
+    margin-top:16px; background:rgba(0,167,111,0.08); border:1px solid rgba(0,167,111,0.25);
+    border-radius:12px; padding:12px 14px; font-size:0.83rem; color:var(--muted); line-height:1.5;
   }
+  .explica{font-size:0.83rem; color:var(--muted); line-height:1.5; margin:0 0 18px;}
 </style>
-<!-- Analytics desta instalação (opcional; veja static/analytics.js) -->
-<script async src="/static/analytics.js"></script>
 </head>
 <body>
 
@@ -138,73 +181,60 @@
     <div class="tagline" data-i18n="Seu Controle Financeiro">Seu Controle Financeiro</div>
   </div>
 
-  <h1 data-i18n="Crie sua casa no FinanCerto">Crie sua casa no FinanCerto</h1>
-  <p class="sub" data-i18n="Seus dados ficam isolados de qualquer outra casa.">Seus dados ficam isolados de qualquer outra casa.</p>
+  <h1 data-i18n="Esqueci minha senha">Esqueci minha senha</h1>
+  <p class="explica" data-i18n="Informe seu e-mail ou seu nome de usuário. Se houver uma conta, mandamos um link para você escolher uma senha nova.">Informe seu e-mail ou seu nome de usuário. Se houver uma
+    conta, mandamos um link para você escolher uma senha nova.</p>
 
-  <form id="registroForm">
-    <div class="campo-simples"><label data-i18n="Nome da casa (ex: &quot;Família Silva&quot;)">Nome da casa (ex: "Família Silva")</label>
-      <input type="text" id="nomeCasa" required></div>
-    <div class="campo-simples"><label data-i18n="Seu nome">Seu nome</label>
-      <input type="text" id="nome" required></div>
-    <div class="campo-simples"><label data-i18n="Usuário (pra fazer login)">Usuário (pra fazer login)</label>
-      <input type="text" id="username" autocomplete="username" required></div>
-    <div class="campo-simples"><label data-i18n="E-mail (opcional, para recuperar a senha)">E-mail (opcional, para recuperar a senha)</label>
-      <input type="email" id="email" autocomplete="email" placeholder="seu@email.com" data-i18n-placeholder="seu@email.com"></div>
-    <div class="campo-simples"><label data-i18n="Senha (mín. 8 caracteres)">Senha (mín. 8 caracteres)</label>
-      <input type="password" id="senha" autocomplete="new-password" required minlength="8"></div>
-    <div class="erro" id="registroErro"></div>
-    <button type="submit" class="btn-entrar" id="registroBtn" data-i18n="Criar minha casa">Criar minha casa</button>
+  <form id="pedirForm">
+    <div class="campo-simples">
+      <label data-i18n="E-mail ou nome de usuário">E-mail ou nome de usuário</label>
+      <input type="text" id="identificador" autocomplete="username" required>
+    </div>
+    <div class="erro" id="pedirErro"></div>
+    <button type="submit" class="btn-entrar" id="pedirBtn" data-i18n="Enviar link">Enviar link</button>
   </form>
 
-  <div class="divisor" data-i18n="ou">ou</div>
-  <a class="btn-google" href="/api/auth/google/login">
-    <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.5 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.5 29.6 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-2.1 14.1-5.6l-6.5-5.5C29.6 34.7 27 35.5 24 35.5c-5.3 0-9.7-3.3-11.3-8l-6.6 5.1C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.5 5.5C39.9 37 44 31 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
-    <span data-i18n="Criar minha casa com Google">Criar minha casa com Google</span>
-  </a>
+  <div class="aviso" id="pronto" style="display:none;"></div>
 
-  <div class="aviso" data-i18n="Sem e-mail cadastrado, quem esquece a senha depende do administrador da casa — e o administrador é você, então não haveria a quem recorrer.">Sem e-mail cadastrado, quem esquece a senha depende do
-    administrador da casa — e o administrador é você, então não haveria a quem
-    recorrer.</div>
-  <div class="aviso" data-i18n="Você vira o administrador dessa casa. Ninguém de outra casa vê seus dados, e você não vê os de ninguém.">Você vira o administrador dessa casa. Ninguém de outra casa vê seus dados, e você não vê os de ninguém.</div>
-  <div class="rodape"><span data-i18n="Já tem conta?">Já tem conta?</span> <a href="/login" data-i18n="Entrar">Entrar</a></div>
+  <div class="rodape"><span data-i18n="Lembrou?">Lembrou?</span> <a href="/login" data-i18n="Entrar">Entrar</a></div>
+
+  <!-- A AGPL exige que quem usa o app pela rede consiga chegar no código-fonte.
+       Por isso este link fica antes do login, alcançável por qualquer pessoa. -->
+  <div class="fonte-aberta">
+    <span data-i18n="Software livre —">Software livre —</span>
+    <a href="https://github.com/financerto/financerto-app" target="_blank" rel="noopener" data-i18n="código-fonte">código-fonte</a>
+    <span data-i18n="sob AGPL-3.0.">sob AGPL-3.0.</span>
+  </div>
 </div>
 
 <script>
-fetch("/api/auth/google/status").then(r => r.json()).then(d => {
-  if (!d.habilitado){
-    document.querySelector(".btn-google").style.display = "none";
-    document.querySelector(".divisor").style.display = "none";
-  }
-}).catch(() => {});
-document.getElementById("registroForm").addEventListener("submit", async (e) => {
+// A resposta é sempre a mesma, dê a conta em que der: o servidor não diz se o
+// endereço existe, e a tela não pode contradizer isso mostrando um caminho
+// diferente para cada caso.
+document.getElementById("pedirForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const erroEl = document.getElementById("registroErro");
-  const btn = document.getElementById("registroBtn");
+  const erroEl = document.getElementById("pedirErro");
+  const btn = document.getElementById("pedirBtn");
   erroEl.classList.remove("ativo");
   btn.disabled = true;
-  btn.textContent = t("Criando...");
+  btn.textContent = t("Enviando...");
   try {
-    const res = await fetch("/api/registro", {
+    const res = await fetch("/api/senha/recuperar", {
       method: "POST",
       headers: cabecalhoJSON(),
-      body: JSON.stringify({
-        nome_casa: document.getElementById("nomeCasa").value,
-        nome: document.getElementById("nome").value,
-        username: document.getElementById("username").value,
-        email: document.getElementById("email").value,
-        senha: document.getElementById("senha").value,
-      }),
+      body: JSON.stringify({identificador: document.getElementById("identificador").value}),
     });
-    if (!res.ok){
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j.erro || t("Não foi possível criar a casa"));
-    }
-    window.location.href = "/";
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.erro || t("Não foi possível enviar agora. Tente de novo em instantes."));
+    document.getElementById("pedirForm").style.display = "none";
+    const pronto = document.getElementById("pronto");
+    pronto.textContent = j.mensagem || t("Se houver uma conta com esse endereço, o link foi enviado.");
+    pronto.style.display = "block";
   } catch (err) {
     erroEl.textContent = err.message;
     erroEl.classList.add("ativo");
     btn.disabled = false;
-    btn.textContent = t("Criar minha casa");
+    btn.textContent = t("Enviar link");
   }
 });
 </script>

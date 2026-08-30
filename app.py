@@ -24,7 +24,10 @@ import time
 import uuid
 import shutil
 import zipfile
+import hashlib
 import secrets
+import smtplib
+import ssl
 import calendar
 import sqlite3
 import itertools
@@ -33,7 +36,8 @@ import threading
 import unicodedata
 import requests
 from urllib.parse import quote, urlparse
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
+from email.message import EmailMessage
 from werkzeug.utils import secure_filename, safe_join
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import (Flask, request, jsonify, send_from_directory, session, redirect,
@@ -53,6 +57,35 @@ HOLERITES_DIR = os.environ.get("HOLERITES_DIR", "/data/holerites")
 DEMO_DB_PATH = os.environ.get("DEMO_DB_PATH", "/data/orcamento-demo.db")
 BRAPI_TOKEN = os.environ.get("BRAPI_TOKEN", "")
 
+# ---- Envio de e-mail (recuperação de senha) ----
+#
+# Tudo opcional. Sem SMTP_HOST/SMTP_REMETENTE o envio fica desligado e o link
+# de redefinição vai para o log do container — quem hospeda sozinho continua
+# conseguindo entrar sem precisar de servidor de e-mail nenhum.
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORTA = int(os.environ.get("SMTP_PORTA") or 587)
+SMTP_USUARIO = os.environ.get("SMTP_USUARIO", "")
+SMTP_SENHA = os.environ.get("SMTP_SENHA", "")
+SMTP_SEGURANCA = (os.environ.get("SMTP_SEGURANCA") or "starttls").lower()
+SMTP_REMETENTE = os.environ.get("SMTP_REMETENTE", "")
+EMAIL_HABILITADO = bool(SMTP_HOST and SMTP_REMETENTE)
+
+# Endereço público desta instalação, usado no link do e-mail. Sem padrão
+# embutido, pela mesma razão do GOOGLE_REDIRECT_URI: o app é genérico, o
+# repositório é público, e o domínio de quem escreveu o código não pode acabar
+# dentro do link de quem hospeda.
+APP_URL = os.environ.get("APP_URL", "")
+
+# Ler X-Forwarded-For por padrão seria deixar qualquer um trocar de IP a cada
+# tentativa e escapar do limite. Só ligue quando houver de fato um proxy na
+# frente, que é quem reescreve o cabeçalho.
+CONFIAR_EM_PROXY = os.environ.get("CONFIAR_EM_PROXY") == "1"
+
+# Cookie de sessão só por HTTPS. Ligado por padrão quebraria quem acessa por
+# http://192.168.x.x:8420 na rede local e o app Android, que aponta para o
+# endereço que a pessoa digitou na instalação.
+COOKIE_SEGURO = os.environ.get("COOKIE_SEGURO") == "1"
+
 EXTENSOES_IMAGEM = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 
 
@@ -67,6 +100,102 @@ def cor_valida(cor):
     cor = (cor or "").strip()
     return cor if RE_COR.match(cor) else None
 
+
+# O horário é opcional e vive numa coluna própria (migration 0027). Ele nunca
+# entra em filtro nem em soma — é dado de exibição —, mas continua vindo de
+# fora, então tem um ponto único onde é conferido.
+# Os segundos são opcionais porque <input type="time"> com `step` manda
+# 'HH:MM:SS'. Eles entram na EXPRESSÃO, e não num corte antes dela: cortar
+# primeiro fazia '12:00:00:00' virar '12:00' e passar como horário válido.
+RE_HORA = re.compile(r"^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\.[0-9]+)?)?$")
+
+
+def hora_valida(hora):
+    """Devolve 'HH:MM' conferido, ou None quando vazio.
+
+    Levanta ValueError no que não for horário: diferente da cor, aqui o certo é
+    recusar o pedido em vez de gravar nada — quem digitou um horário quer
+    aquele horário, e engolir em silêncio faria a pessoa achar que salvou.
+    """
+    hora = (hora or "").strip()
+    if not hora:
+        return None
+    if not RE_HORA.match(hora):
+        raise ValueError("horário inválido")
+    # Só depois de conferida é que a string é encurtada: o app guarda HH:MM.
+    return hora[:5]
+
+
+def hora_local_do_carimbo(valor):
+    """'HH:MM' no fuso do servidor, a partir de um carimbo ISO.
+
+    A Pluggy devolve em UTC com Z. Sem converter, um gasto das 22h de terça
+    apareceria como 1h de quarta — o mesmo cuidado que a tela já toma ao
+    mostrar a data/hora das transações. Carimbo sem fuso é tratado como UTC,
+    que é o que a Pluggy manda.
+    """
+    if not valor:
+        return None
+    try:
+        d = datetime.fromisoformat(str(valor).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    # astimezone() sem argumento usa o fuso do processo, que é o que a variável
+    # TZ define (ver .env.example). Por isso não há fuso nenhum escrito aqui.
+    return d.astimezone().strftime("%H:%M")
+
+
+
+# O e-mail vem de fora e acaba dentro do cabeçalho To: de uma mensagem SMTP,
+# onde uma quebra de linha injetaria cabeçalho novo. Como as outras conferências
+# do app, esta devolve o VALOR conferido — normalizado —, e não um sim/não: um
+# booleano deixaria o original seguir viagem.
+# Os rótulos do domínio não aceitam ponto, e é isso que mantém a passagem
+# linear: com o ponto dentro da classe dos dois lados do `\.`, o motor não
+# sabe onde o separador começa e testa todas as divisões possíveis — custo
+# quadrático numa string que só falha no último caractere (CodeQL
+# py/polynomial-redos). O teto de 254 acima já limitava o estrago, mas a
+# expressão sem ambiguidade é 44x mais rápida e não depende desse teto.
+# De quebra ela recusa "a@b..com", que a anterior aceitava.
+RE_EMAIL = re.compile(r"^[^@\s,;:<>\"]+@[^@\s,;:<>\".]+(?:\.[^@\s,;:<>\".]+)+$")
+
+
+def email_valido(valor):
+    """Devolve o e-mail normalizado (sem espaços, minúsculo), ou None."""
+    v = (valor or "").strip().lower()
+    if len(v) > 254 or not RE_EMAIL.match(v):
+        return None
+    return v
+
+
+# Mínimo de 8, sem exigir símbolo nem maiúscula. Regra de composição empurra
+# todo mundo para "Senha@123", que é pior que uma frase longa; o que sobra é o
+# comprimento e uma lista curta do que aparece em qualquer tabela de vazamento.
+SENHA_MINIMA = 8
+SENHAS_OBVIAS = {
+    "12345678", "123456789", "1234567890", "123456789012", "senha123", "senhasenha",
+    "password", "password1", "12341234", "qwertyui", "qwerty123", "financerto",
+    "abcd1234", "11111111", "00000000",
+}
+
+
+def senha_fraca(senha, username=None):
+    """A mensagem de recusa, ou None quando a senha serve.
+
+    Só é chamada onde se DEFINE senha — nunca no login. É isso que não tranca
+    ninguém para fora: quem já tem senha de 4 caracteres continua entrando, e
+    só é obrigado a subir na próxima vez que trocar.
+    """
+    senha = senha or ""
+    if len(senha) < SENHA_MINIMA:
+        return msg("a senha precisa ter pelo menos 8 caracteres")
+    if senha.lower() in SENHAS_OBVIAS:
+        return msg("essa senha é fácil demais de adivinhar")
+    if username and senha.lower() == (username or "").strip().lower():
+        return msg("a senha não pode ser igual ao nome de usuário")
+    return None
 
 
 def caminho_em(pasta, nome):
@@ -119,6 +248,13 @@ def obter_secret_key():
 
 
 app.secret_key = obter_secret_key()
+app.config.update(
+    # Lax e não Strict: o retorno do login com Google é uma navegação GET de
+    # topo vinda de outro site, e com Strict o cookie não acompanharia — a
+    # pessoa voltaria do Google deslogada.
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=COOKIE_SEGURO,
+)
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
@@ -144,7 +280,104 @@ if GOOGLE_LOGIN_HABILITADO:
 ROTAS_PUBLICAS = {
     "/login", "/api/login", "/registro", "/api/registro", "/manifest.json", "/sw.js", "/favicon.ico",
     "/api/auth/google/login", "/api/auth/google/callback", "/api/auth/google/status",
+    # Recuperação de senha: quem chega aqui é, por definição, quem não consegue
+    # entrar. Todas se protegem sozinhas — pelo token, pelo limite de tentativas
+    # e por responderem sempre a mesma coisa.
+    "/esqueci-senha", "/redefinir-senha",
+    "/api/senha/recuperar", "/api/senha/conferir", "/api/senha/redefinir",
 }
+
+
+# ---- Limite de tentativas ----
+#
+# O app não tinha nenhum: /api/login respondia 401 sem custo, quantas vezes
+# fossem pedidas. Isto não segura botnet — para isso seria preciso estado
+# compartilhado —, mas transforma milhares de tentativas por minuto em algo
+# lento o bastante para não valer a pena.
+#
+# Em memória: reiniciar o app zera a contagem, e com vários processos cada um
+# contaria o seu. Aqui o app é um só (app.run com threads), então serve.
+_tentativas = {}
+_tentativas_lock = threading.Lock()
+
+
+def limite_excedido(chave, maximo, janela_seg):
+    """True quando `chave` já passou de `maximo` tentativas na janela."""
+    agora = time.time()
+    corte = agora - janela_seg
+    with _tentativas_lock:
+        marcas = [t for t in _tentativas.get(chave, ()) if t > corte]
+        if len(marcas) >= maximo:
+            _tentativas[chave] = marcas
+            return True
+        marcas.append(agora)
+        _tentativas[chave] = marcas
+        # Sem a poda o próprio limitador vira o vazamento de memória: cada
+        # usuário inexistente tentado deixa uma chave para sempre.
+        if len(_tentativas) > 10000:
+            for k in [k for k, v in _tentativas.items() if not v or max(v) < corte]:
+                _tentativas.pop(k, None)
+        return False
+
+
+def limpar_tentativas(chave):
+    """Acertou: a contagem daquela chave zera. Sem isto, quem erra uma vez e
+    acerta na segunda gasta o orçamento à toa e é bloqueado mais tarde."""
+    with _tentativas_lock:
+        _tentativas.pop(chave, None)
+
+
+def ip_do_pedido():
+    if CONFIAR_EM_PROXY:
+        encaminhado = request.headers.get("X-Forwarded-For", "")
+        if encaminhado:
+            return encaminhado.split(",")[0].strip()
+    return request.remote_addr or "?"
+
+
+# Hash de referência para o login gastar o mesmo tempo com usuário que não
+# existe. Sem ele, "não existe" responde na hora e "senha errada" paga o scrypt
+# inteiro — a diferença é medível de fora e diz quais nomes de usuário existem
+# neste servidor.
+HASH_DE_REFERENCIA = generate_password_hash(secrets.token_urlsafe(32))
+
+
+# A versão da sessão de cada usuário, para invalidar cookie depois de uma
+# redefinição de senha. Em memória, e não um SELECT por requisição: são dois
+# acessos ao banco a mais em CADA chamada de API, o que num Raspberry Pi custa.
+# O único ponto que sobe a versão é este mesmo processo, então o mapa é
+# autoritativo depois de carregado — e uma reinicialização só faz recarregar.
+_sessao_versoes = {}
+_sessao_versoes_lock = threading.Lock()
+
+
+def sessao_versao_de(usuario_id):
+    with _sessao_versoes_lock:
+        if usuario_id in _sessao_versoes:
+            return _sessao_versoes[usuario_id]
+    conn = get_db()
+    try:
+        row = conn.execute("SELECT sessao_versao FROM usuarios WHERE id = ?",
+                           (usuario_id,)).fetchone()
+    finally:
+        conn.close()
+    versao = row["sessao_versao"] if row else 1
+    with _sessao_versoes_lock:
+        _sessao_versoes[usuario_id] = versao
+    return versao
+
+
+def invalidar_sessoes(conn, usuario_id):
+    """Sobe a versão e derruba todo cookie emitido antes. Chamado sempre que a
+    senha muda: sem isso, quem entrou com a senha antiga (ou roubada) continua
+    dentro por 31 dias, que é a validade do cookie."""
+    conn.execute("UPDATE usuarios SET sessao_versao = sessao_versao + 1 WHERE id = ?",
+                 (usuario_id,))
+    row = conn.execute("SELECT sessao_versao FROM usuarios WHERE id = ?",
+                       (usuario_id,)).fetchone()
+    with _sessao_versoes_lock:
+        _sessao_versoes[usuario_id] = row["sessao_versao"] if row else 1
+    return row["sessao_versao"] if row else 1
 
 
 # Rotas de escrita liberadas pra usuário somente-leitura: alternar modo demo,
@@ -154,13 +387,28 @@ ROTAS_PUBLICAS = {
 # mesma e se promover a escrita total. As rotas de senha e foto já conferem
 # sozinhas que o alvo é o próprio usuário.
 PREFIXOS_ESCRITA_LIBERADOS_LEITURA = ("/api/demo", "/api/logout")
-SUFIXOS_CONTA_PROPRIA_LIBERADOS = ("/senha", "/foto")
+# "/email" entra junto: sem ele, a conta somente-leitura não consegue cadastrar
+# o próprio endereço e fica sem caminho para recuperar a senha.
+SUFIXOS_CONTA_PROPRIA_LIBERADOS = ("/senha", "/foto", "/email")
 
 
 def escrita_liberada_para_leitura(caminho):
     if caminho.startswith(PREFIXOS_ESCRITA_LIBERADOS_LEITURA):
         return True
     return caminho.startswith("/api/usuarios/") and caminho.endswith(SUFIXOS_CONTA_PROPRIA_LIBERADOS)
+
+
+def sessao_obsoleta():
+    """True quando o cookie foi emitido antes da última troca de senha.
+
+    Sessão antiga (de antes desta versão do app) não tem `sv` gravado; nesse
+    caso a comparação é dispensada, senão publicar a atualização deslogaria
+    todo mundo de uma vez sem motivo.
+    """
+    guardada = session.get("sv")
+    if guardada is None:
+        return False
+    return guardada != sessao_versao_de(session["usuario_id"])
 
 
 @app.before_request
@@ -172,11 +420,16 @@ def exigir_login():
     if request.path.startswith("/api/pluggy/webhook/"):
         return None
     if request.path == "/":
-        if not session.get("usuario_id"):
+        if not session.get("usuario_id") or sessao_obsoleta():
+            session.clear()
             return redirect("/login")
         return None
     if request.path.startswith("/api/"):
         if not session.get("usuario_id"):
+            return jsonify({"erro": msg("não autenticado")}), 401
+        # Cookie emitido antes da última redefinição de senha não vale mais.
+        if sessao_obsoleta():
+            session.clear()
             return jsonify({"erro": msg("não autenticado")}), 401
         if (
             request.method not in ("GET", "HEAD", "OPTIONS")
@@ -215,12 +468,6 @@ MENSAGENS_EN = {
         "read-only access — this account cannot make changes",
     "usuário ou senha inválidos": "wrong username or password",
     "esse usuário já existe": "that username already exists",
-    "nome, usuário e senha (mín. 4 caracteres) são obrigatórios":
-        "name, username and password (min. 4 characters) are required",
-    "nome da casa, seu nome, usuário e senha (mín. 4 caracteres) são obrigatórios":
-        "household name, your name, username and password (min. 4 characters) are required",
-    "a nova senha precisa ter pelo menos 4 caracteres":
-        "the new password must be at least 4 characters",
     "só o administrador pode adicionar usuários": "only the administrator can add users",
     "só o administrador pode redefinir a senha de outro usuário":
         "only the administrator can reset another user's password",
@@ -250,6 +497,8 @@ MENSAGENS_EN = {
     "estado inválido": "invalid status",
     "arquivo sem nome": "file has no name",
     # Open Finance
+    "já existe uma sincronização em andamento nesta casa":
+        "a sync is already running for this household",
     "esta casa ainda não cadastrou as credenciais do Meu Pluggy":
         "this household has not set up its Meu Pluggy credentials yet",
     "a Pluggy recusou as credenciais — confira o Client ID e o Client Secret":
@@ -288,6 +537,34 @@ MENSAGENS_EN = {
         "none of those entries belong to this household",
     "desligue o modo demonstração antes de restaurar":
         "turn demo mode off before restoring",
+    "nome muito longo (máximo 40 caracteres)":
+        "name too long (40 characters max)",
+    "etiqueta não encontrada":
+        "tag not found",
+    "já existe uma etiqueta com esse nome":
+        "a tag with that name already exists",
+    "horário inválido — use HH:MM":
+        "invalid time — use HH:MM",
+    "a senha precisa ter pelo menos 8 caracteres":
+        "the password must be at least 8 characters",
+    "essa senha é fácil demais de adivinhar":
+        "that password is too easy to guess",
+    "a senha não pode ser igual ao nome de usuário":
+        "the password cannot be the same as the username",
+    "nome, usuário e senha são obrigatórios":
+        "name, username and password are required",
+    "nome da casa, seu nome, usuário e senha são obrigatórios":
+        "household name, your name, username and password are required",
+    "e-mail inválido":
+        "invalid email",
+    "só é possível alterar o próprio e-mail":
+        "you can only change your own email",
+    "este link expirou ou já foi usado":
+        "this link has expired or was already used",
+    "muitas tentativas — espere alguns minutos":
+        "too many attempts — wait a few minutes",
+    "Se houver uma conta com esse endereço, o link de redefinição foi enviado. Confira também a caixa de spam.":
+        "If an account exists for that address, the reset link has been sent. Check your spam folder too.",
 }
 
 
@@ -403,6 +680,7 @@ def init_db(caminho=None, criar_usuario_inicial=True):
     migrar_contas_nome_unico_por_usuario(conn)
     migrar_series_de_recorrencia(conn)
     migrar_config_consignados_para_casas(conn)
+    limpar_tokens_de_senha(conn)
     conn.close()
 
 
@@ -976,6 +1254,19 @@ def registro_page():
     return send_from_directory("static", "registro.html")
 
 
+@app.route("/esqueci-senha")
+def esqueci_senha_page():
+    return send_from_directory("static", "esqueci-senha.html")
+
+
+@app.route("/redefinir-senha")
+def redefinir_senha_page():
+    # Sem redirecionar quem já está logado: o link pode chegar num navegador
+    # onde outra pessoa da casa está com a sessão aberta, e mandar para "/"
+    # deixaria o dono do link sem como usá-lo.
+    return send_from_directory("static", "redefinir-senha.html")
+
+
 @app.route("/manifest.json")
 def manifest():
     return send_from_directory("static", "manifest.json")
@@ -1000,15 +1291,33 @@ def login():
     data = request.get_json(force=True)
     username = (data.get("username") or "").strip().lower()
     senha = data.get("senha") or ""
+    ip = ip_do_pedido()
+    chave_ip, chave_usuario = f"login:ip:{ip}", f"login:u:{username}"
+    if limite_excedido(chave_ip, 20, 5 * 60) or limite_excedido(chave_usuario, 5, 15 * 60):
+        return jsonify({"erro": msg("muitas tentativas — espere alguns minutos")}), 429
+
     conn = get_db()
     row = conn.execute("SELECT * FROM usuarios WHERE username = ?", (username,)).fetchone()
     conn.close()
-    if not row or not check_password_hash(row["senha_hash"], senha):
+    if row:
+        ok = check_password_hash(row["senha_hash"], senha)
+    else:
+        # Paga o mesmo scrypt de quem existe. Sem isto, "usuário não existe"
+        # responde na hora e "senha errada" demora — e essa diferença, medida de
+        # fora, diz quais nomes de usuário existem neste servidor.
+        check_password_hash(HASH_DE_REFERENCIA, senha)
+        ok = False
+    if not ok:
         return jsonify({"erro": msg("usuário ou senha inválidos")}), 401
+    # Acertou: a contagem zera, senão quem erra uma vez e acerta na segunda
+    # gasta o orçamento à toa e é barrado mais tarde sem ter feito nada.
+    limpar_tentativas(chave_ip)
+    limpar_tentativas(chave_usuario)
     session.clear()
     session["usuario_id"] = row["id"]
     session["usuario_nome"] = row["nome"]
     session["somente_leitura"] = bool(row["somente_leitura"])
+    session["sv"] = row["sessao_versao"]
     session.permanent = True
     return jsonify({
         "ok": True,
@@ -1028,8 +1337,17 @@ def registro():
     nome = (data.get("nome") or "").strip()
     username = (data.get("username") or "").strip().lower()
     senha = data.get("senha") or ""
-    if not nome_casa or not nome or not username or len(senha) < 4:
-        return jsonify({"erro": msg("nome da casa, seu nome, usuário e senha (mín. 4 caracteres) são obrigatórios")}), 400
+    # E-mail é opcional, mas é ele que permite recuperar a senha depois — sem
+    # endereço, quem cria a casa e esquece a senha fica sem saída, porque o
+    # administrador dela é ele mesmo.
+    email = email_valido(data.get("email")) if (data.get("email") or "").strip() else None
+    if (data.get("email") or "").strip() and not email:
+        return jsonify({"erro": msg("e-mail inválido")}), 400
+    if not nome_casa or not nome or not username:
+        return jsonify({"erro": msg("nome da casa, seu nome, usuário e senha são obrigatórios")}), 400
+    fraca = senha_fraca(senha, username)
+    if fraca:
+        return jsonify({"erro": fraca}), 400
 
     conn = get_db()
     try:
@@ -1039,8 +1357,10 @@ def registro():
         )
         casa_id = cur.lastrowid
         cur = conn.execute(
-            "INSERT INTO usuarios (nome, username, senha_hash, casa_id, criado_em) VALUES (?, ?, ?, ?, ?)",
-            (nome, username, generate_password_hash(senha), casa_id, datetime.now().isoformat()),
+            "INSERT INTO usuarios (nome, username, senha_hash, email, casa_id, criado_em) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (nome, username, generate_password_hash(senha), email, casa_id,
+             datetime.now().isoformat()),
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -1055,6 +1375,7 @@ def registro():
     session["usuario_id"] = usuario_id
     session["usuario_nome"] = nome
     session["somente_leitura"] = False
+    session["sv"] = 1
     session.permanent = True
     return jsonify({"ok": True}), 201
 
@@ -1149,8 +1470,11 @@ def auth_google_callback():
         )
         casa_id = cur.lastrowid
         cur = conn.execute(
-            "INSERT INTO usuarios (nome, username, senha_hash, google_id, email, casa_id, criado_em) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            # senha_definida = 0: o hash abaixo é de um token aleatório que
+            # ninguém vai conhecer nunca. É essa marca que permite a ele definir
+            # uma senha depois sem informar a "atual", que não existe.
+            "INSERT INTO usuarios (nome, username, senha_hash, google_id, email, casa_id, criado_em, senha_definida) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 0)",
             (nome, username, generate_password_hash(secrets.token_urlsafe(32)), google_id, email,
              casa_id, datetime.now().isoformat()),
         )
@@ -1163,6 +1487,7 @@ def auth_google_callback():
     session["usuario_id"] = usuario_id
     session["usuario_nome"] = usuario_nome
     session["somente_leitura"] = somente_leitura
+    session["sv"] = sessao_versao_de(usuario_id)
     session.permanent = True
     return redirect("/")
 
@@ -1177,7 +1502,8 @@ def logout():
 def usuario_atual():
     conn = get_db()
     row = conn.execute(
-        "SELECT id, nome, username, foto, somente_leitura, google_id, email FROM usuarios WHERE id = ?",
+        "SELECT id, nome, username, foto, somente_leitura, google_id, email, senha_definida "
+        "FROM usuarios WHERE id = ?",
         (uid(),),
     ).fetchone()
     if not row:
@@ -1213,8 +1539,14 @@ def criar_usuario():
     username = (data.get("username") or "").strip().lower()
     senha = data.get("senha") or ""
     somente_leitura = bool(data.get("somente_leitura"))
-    if not nome or not username or len(senha) < 4:
-        return jsonify({"erro": msg("nome, usuário e senha (mín. 4 caracteres) são obrigatórios")}), 400
+    email = email_valido(data.get("email")) if (data.get("email") or "").strip() else None
+    if (data.get("email") or "").strip() and not email:
+        return jsonify({"erro": msg("e-mail inválido")}), 400
+    if not nome or not username:
+        return jsonify({"erro": msg("nome, usuário e senha são obrigatórios")}), 400
+    fraca = senha_fraca(senha, username)
+    if fraca:
+        return jsonify({"erro": fraca}), 400
     conn = get_db()
     # Quem entra na casa decide quem mais entra: sem isso, qualquer conta com
     # escrita podia criar outra pessoa com acesso aos dados da família.
@@ -1223,9 +1555,9 @@ def criar_usuario():
         return jsonify({"erro": msg("só o administrador pode adicionar usuários")}), 403
     try:
         conn.execute(
-            "INSERT INTO usuarios (nome, username, senha_hash, casa_id, criado_em, somente_leitura) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (nome, username, generate_password_hash(senha), minha_casa_id(conn),
+            "INSERT INTO usuarios (nome, username, senha_hash, email, casa_id, criado_em, somente_leitura) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (nome, username, generate_password_hash(senha), email, minha_casa_id(conn),
              datetime.now().isoformat(), int(somente_leitura)),
         )
         conn.commit()
@@ -1266,16 +1598,30 @@ def trocar_senha(item_id):
     data = request.get_json(force=True)
     senha_atual = data.get("senha_atual") or ""
     nova_senha = data.get("nova_senha") or ""
-    if len(nova_senha) < 4:
-        return jsonify({"erro": msg("a nova senha precisa ter pelo menos 4 caracteres")}), 400
     conn = get_db()
     row = conn.execute("SELECT * FROM usuarios WHERE id = ?", (item_id,)).fetchone()
-    if not row or not check_password_hash(row["senha_hash"], senha_atual):
+    if not row:
+        conn.close()
+        return jsonify({"erro": msg("usuário não encontrado")}), 404
+    fraca = senha_fraca(nova_senha, row["username"])
+    if fraca:
+        conn.close()
+        return jsonify({"erro": fraca}), 400
+    # Quem entrou pelo Google nunca escolheu senha: o senha_hash dele é o hash
+    # de um token descartado, que ninguém conhece. Exigir a "senha atual" dele
+    # seria pedir um segredo que não existe — e é por isso que, até aqui, esse
+    # usuário não tinha caminho nenhum para ter senha.
+    if row["senha_definida"] and not check_password_hash(row["senha_hash"], senha_atual):
         conn.close()
         return jsonify({"erro": msg("senha atual incorreta")}), 400
-    conn.execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (generate_password_hash(nova_senha), item_id))
+    conn.execute("UPDATE usuarios SET senha_hash = ?, senha_definida = 1 WHERE id = ?",
+                 (generate_password_hash(nova_senha), item_id))
+    versao = invalidar_sessoes(conn, item_id)
     conn.commit()
     conn.close()
+    # A própria sessão continua valendo: quem trocou a senha sabendo a antiga
+    # não precisa entrar de novo. O que cai são os outros aparelhos.
+    session["sv"] = versao
     return jsonify({"ok": True})
 
 
@@ -1286,8 +1632,6 @@ def trocar_senha_como_admin(item_id):
     (ex: esqueceu a senha e pediu pro administrador resetar)."""
     data = request.get_json(force=True)
     nova_senha = data.get("nova_senha") or ""
-    if len(nova_senha) < 4:
-        return jsonify({"erro": msg("a nova senha precisa ter pelo menos 4 caracteres")}), 400
     conn = get_db()
     if not eh_administrador(conn):
         conn.close()
@@ -1295,10 +1639,292 @@ def trocar_senha_como_admin(item_id):
     if not pertence_a_minha_casa(conn, "usuarios", item_id):
         conn.close()
         return jsonify({"erro": msg("usuário não encontrado")}), 404
-    conn.execute("UPDATE usuarios SET senha_hash = ? WHERE id = ?", (generate_password_hash(nova_senha), item_id))
+    alvo = conn.execute("SELECT username FROM usuarios WHERE id = ?", (item_id,)).fetchone()
+    fraca = senha_fraca(nova_senha, alvo["username"] if alvo else None)
+    if fraca:
+        conn.close()
+        return jsonify({"erro": fraca}), 400
+    conn.execute("UPDATE usuarios SET senha_hash = ?, senha_definida = 1 WHERE id = ?",
+                 (generate_password_hash(nova_senha), item_id))
+    # As sessões abertas do membro caem: se a senha estava sendo redefinida
+    # porque vazou, deixar o cookie antigo de pé não resolveria nada.
+    invalidar_sessoes(conn, item_id)
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
+
+
+# ---------------- Envio de e-mail ----------------
+#
+# smtplib e email.message são da biblioteca padrão: nenhuma dependência nova
+# entra por causa disto.
+
+
+def url_base_do_app():
+    """De onde sai o link do e-mail.
+
+    NUNCA de `request.url_root`: aquilo vem do cabeçalho Host, que quem faz o
+    pedido controla. Um Host forjado mandaria o token de redefinição para o
+    servidor de quem forjou — a pessoa clicaria no link achando que é o app e
+    entregaria a conta.
+
+    PLUGGY_WEBHOOK_URL serve de segunda opção porque ela já é, por definição, o
+    endereço público HTTPS desta instalação.
+    """
+    return (APP_URL or PLUGGY_WEBHOOK_URL or "").rstrip("/")
+
+
+def enviar_email(destino, assunto, corpo):
+    """True se a mensagem foi entregue ao servidor SMTP.
+
+    Sem SMTP configurado devolve False sem estourar: quem chama decide o que
+    fazer, e aqui a decisão é imprimir o link no log, para quem hospeda sozinho
+    continuar conseguindo entrar.
+    """
+    if not EMAIL_HABILITADO:
+        return False
+    try:
+        msgm = EmailMessage()
+        msgm["Subject"] = assunto
+        msgm["From"] = SMTP_REMETENTE
+        msgm["To"] = destino
+        msgm.set_content(corpo)
+        contexto = ssl.create_default_context()
+        if SMTP_SEGURANCA == "ssl":
+            servidor = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORTA, context=contexto, timeout=20)
+        else:
+            servidor = smtplib.SMTP(SMTP_HOST, SMTP_PORTA, timeout=20)
+        with servidor:
+            if SMTP_SEGURANCA == "starttls":
+                servidor.starttls(context=contexto)
+            if SMTP_USUARIO:
+                servidor.login(SMTP_USUARIO, SMTP_SENHA)
+            servidor.send_message(msgm)
+        return True
+    except Exception as e:
+        # A exceção não sobe: a rota que chama responde sempre a mesma coisa, e
+        # um erro de SMTP virando 500 contaria ao visitante que aquele endereço
+        # existe no banco.
+        print(f"[email] falhou o envio para {destino}: {e}", flush=True)
+        return False
+
+
+def enviar_email_em_segundo_plano(destino, assunto, corpo):
+    """A rota responde antes de o SMTP terminar.
+
+    Um servidor de e-mail lento faria o tempo de resposta variar entre "a conta
+    existe" (envia) e "não existe" (não envia) — que é exatamente o que a frase
+    única existe para esconder.
+    """
+    threading.Thread(target=enviar_email, args=(destino, assunto, corpo),
+                     daemon=True).start()
+
+
+# ---------------- Esqueci minha senha ----------------
+#
+# Antes disto, só o administrador da casa redefinia senha — e o administrador é
+# o usuário de menor id, então a casa cujo primeiro usuário esquecia a senha
+# ficava sem saída.
+
+TOKEN_SENHA_MINUTOS = 60
+# Um e-mail compartilhado não pode virar amplificador de envio.
+MAX_CONTAS_POR_PEDIDO = 3
+
+
+def _hash_do_token(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def limpar_tokens_de_senha(conn):
+    """Tokens de mais de 7 dias não servem para nada — o prazo é de 1 hora."""
+    corte = (datetime.now() - timedelta(days=7)).isoformat()
+    conn.execute("DELETE FROM senha_tokens WHERE criado_em < ?", (corte,))
+    conn.commit()
+
+
+def criar_token_de_senha(conn, usuario_id, ip):
+    """Gera o token, guarda só o hash e invalida os anteriores do usuário."""
+    token = secrets.token_urlsafe(32)
+    agora = datetime.now()
+    conn.execute(
+        "UPDATE senha_tokens SET usado_em = ? WHERE usuario_id = ? AND usado_em IS NULL",
+        (agora.isoformat(), usuario_id),
+    )
+    conn.execute(
+        "INSERT INTO senha_tokens (usuario_id, token_hash, criado_em, expira_em, ip) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (usuario_id, _hash_do_token(token), agora.isoformat(),
+         (agora + timedelta(minutes=TOKEN_SENHA_MINUTOS)).isoformat(), ip),
+    )
+    conn.commit()
+    return token
+
+
+def usuario_do_token(conn, token):
+    """O usuário dono de um token válido, ou None.
+
+    Válido é: existe, não foi usado e não expirou. As três condições numa
+    consulta só, para não haver caminho que confira duas e esqueça a terceira.
+    """
+    if not token or len(token) > 200:
+        return None
+    return conn.execute(
+        "SELECT u.* FROM senha_tokens st JOIN usuarios u ON u.id = st.usuario_id "
+        "WHERE st.token_hash = ? AND st.usado_em IS NULL AND st.expira_em > ?",
+        (_hash_do_token(token), datetime.now().isoformat()),
+    ).fetchone()
+
+
+# A MESMA frase em todos os casos: conta encontrada, conta inexistente, conta
+# sem e-mail cadastrado e limite de tentativas estourado. É o que impede usar a
+# tela para descobrir quem tem conta neste servidor.
+RESPOSTA_RECUPERACAO = ("Se houver uma conta com esse endereço, o link de redefinição "
+                        "foi enviado. Confira também a caixa de spam.")
+
+
+@app.route("/api/senha/recuperar", methods=["POST"])
+def pedir_recuperacao_senha():
+    data = request.get_json(silent=True) or {}
+    identificador = (data.get("identificador") or "").strip()
+    ip = ip_do_pedido()
+
+    resposta = jsonify({"ok": True, "mensagem": msg(RESPOSTA_RECUPERACAO)})
+    if not identificador:
+        return resposta
+    # Limite estourado devolve a MESMA resposta, e não 429: um 429 aqui
+    # contaria ao atacante que aquele endereço já tinha sido pedido.
+    if (limite_excedido(f"recuperar:ip:{ip}", 5, 15 * 60)
+            or limite_excedido(f"recuperar:id:{identificador.lower()}", 3, 60 * 60)):
+        return resposta
+
+    conn = get_db()
+    try:
+        como_email = email_valido(identificador)
+        if como_email:
+            # Sem UNIQUE na coluna, o mesmo endereço pode estar em mais de uma
+            # conta. Sai um link para cada, e cada e-mail diz de qual conta se
+            # trata: "escolha a conta" mostraria os nomes de usuário a quem
+            # digitou um endereço alheio, e recusar deixaria sem saída quem
+            # legitimamente tem duas contas.
+            alvos = conn.execute(
+                "SELECT * FROM usuarios WHERE LOWER(email) = ? ORDER BY id "
+                f"LIMIT {MAX_CONTAS_POR_PEDIDO}",
+                (como_email,),
+            ).fetchall()
+        else:
+            alvos = conn.execute(
+                "SELECT * FROM usuarios WHERE username = ? "
+                "AND email IS NOT NULL AND email != ''",
+                (identificador.lower(),),
+            ).fetchall()
+
+        if not alvos:
+            # Diagnóstico só no log, para quem hospeda sozinho entender por que
+            # o e-mail não chegou. A resposta ao visitante não muda.
+            print(f"[senha] pedido de recuperação sem alvo para '{identificador}'", flush=True)
+            return resposta
+
+        base = url_base_do_app()
+        for u in alvos:
+            token = criar_token_de_senha(conn, u["id"], ip)
+            # O token vai no FRAGMENTO da URL: o navegador não manda fragmento
+            # ao servidor, então ele não aparece no log de acesso nem no
+            # cabeçalho Referer de nada que a página carregue.
+            link = f"{base}/redefinir-senha#{token}" if base else None
+            if EMAIL_HABILITADO and link and u["email"]:
+                enviar_email_em_segundo_plano(
+                    u["email"],
+                    f"Redefinir a senha da conta @{u['username']} no FinanCerto",
+                    f"Olá, {u['nome']}.\n\n"
+                    f"Alguém pediu para redefinir a senha da conta @{u['username']}.\n"
+                    f"Se foi você, abra o link abaixo. Ele vale por "
+                    f"{TOKEN_SENHA_MINUTOS} minutos e só pode ser usado uma vez.\n\n"
+                    f"{link}\n\n"
+                    f"Se não foi você, ignore esta mensagem: sua senha continua a mesma.\n")
+            else:
+                # Sem SMTP (ou sem endereço público configurado), o link vai
+                # para o log. Nunca as duas coisas: com SMTP ativo, imprimir
+                # aqui deixaria o token no log de produção.
+                print("=" * 64, flush=True)
+                print(f"LINK DE REDEFINIÇÃO DE SENHA — usuário: {u['username']}", flush=True)
+                print(link or f"(defina APP_URL no .env) token: {token}", flush=True)
+                print(f"Vale por {TOKEN_SENHA_MINUTOS} minutos e só pode ser usado uma vez.",
+                      flush=True)
+                print("(Configure SMTP_HOST, SMTP_REMETENTE e APP_URL no .env "
+                      "para enviar por e-mail.)", flush=True)
+                print("=" * 64, flush=True)
+        return resposta
+    finally:
+        conn.close()
+
+
+@app.route("/api/senha/conferir", methods=["POST"])
+def conferir_token_senha():
+    """Diz se o link ainda vale, para a página mostrar o formulário ou o aviso
+    de expirado antes de a pessoa digitar a senha nova."""
+    data = request.get_json(silent=True) or {}
+    conn = get_db()
+    try:
+        u = usuario_do_token(conn, data.get("token"))
+        if not u:
+            return jsonify({"valido": False})
+        return jsonify({"valido": True, "nome": u["nome"], "username": u["username"]})
+    finally:
+        conn.close()
+
+
+@app.route("/api/senha/redefinir", methods=["POST"])
+def redefinir_senha():
+    data = request.get_json(silent=True) or {}
+    token = data.get("token")
+    nova_senha = data.get("nova_senha") or ""
+    conn = get_db()
+    try:
+        u = usuario_do_token(conn, token)
+        if not u:
+            return jsonify({"erro": msg("este link expirou ou já foi usado")}), 400
+        fraca = senha_fraca(nova_senha, u["username"])
+        if fraca:
+            return jsonify({"erro": fraca}), 400
+        conn.execute(
+            "UPDATE usuarios SET senha_hash = ?, senha_definida = 1 WHERE id = ?",
+            (generate_password_hash(nova_senha), u["id"]),
+        )
+        # Todos os tokens do usuário, e não só o usado: se havia dois pedidos em
+        # aberto, o outro deixa de valer no mesmo instante.
+        conn.execute(
+            "UPDATE senha_tokens SET usado_em = ? WHERE usuario_id = ? AND usado_em IS NULL",
+            (datetime.now().isoformat(), u["id"]),
+        )
+        invalidar_sessoes(conn, u["id"])
+        conn.commit()
+        # Não cria sessão de propósito: quem redefiniu prova que sabe a senha
+        # nova entrando com ela, e assim o link não é, ele mesmo, um login.
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/usuarios/<int:item_id>/email", methods=["PUT"])
+def salvar_email_do_usuario(item_id):
+    """O e-mail de recuperação. Só o próprio dono, como em /senha e /foto."""
+    if item_id != session.get("usuario_id"):
+        return jsonify({"erro": msg("só é possível alterar o próprio e-mail")}), 403
+    data = request.get_json(force=True)
+    bruto = (data.get("email") or "").strip()
+    if not bruto:
+        email = None          # vazio apaga: é como se remove o endereço
+    else:
+        email = email_valido(bruto)
+        if not email:
+            return jsonify({"erro": msg("e-mail inválido")}), 400
+    conn = get_db()
+    try:
+        conn.execute("UPDATE usuarios SET email = ? WHERE id = ?", (email, item_id))
+        conn.commit()
+        return jsonify({"ok": True, "email": email})
+    finally:
+        conn.close()
 
 
 @app.route("/api/casa", methods=["GET"])
@@ -1492,6 +2118,187 @@ def deletar_categoria(item_id):
     return jsonify({"ok": True})
 
 
+# ---------------- Tags (etiquetas) dos lançamentos ----------------
+#
+# Categoria responde "que tipo de gasto é este" e é uma só; tag responde "a que
+# isso pertence" e pode ser várias. A viagem de julho tem lançamento de
+# Combustível, de Alimentação e de Lazer — o que a pessoa quer somar é a viagem.
+#
+# São da CASA, como as categorias: quem divide a casa divide o vocabulário.
+
+
+def tags_da_casa(conn):
+    return conn.execute(
+        "SELECT * FROM tags WHERE casa_id = ? ORDER BY nome COLLATE NOCASE",
+        (minha_casa_id(conn),),
+    ).fetchall()
+
+
+def _tag_por_nome(conn, casa_id, nome):
+    """A tag com esse nome nesta casa, se já existir. É o que faz o POST
+    reaproveitar em vez de recusar — o pedido explícito era não duplicar e
+    permitir reutilizar."""
+    return conn.execute(
+        "SELECT * FROM tags WHERE casa_id = ? AND nome = ? COLLATE NOCASE",
+        (casa_id, nome),
+    ).fetchone()
+
+
+def gravar_tags_do_lancamento(conn, lancamento_id, usuario_id, tags):
+    """Substitui as tags de um lançamento pela lista recebida.
+
+    Só aceita tag da própria casa: o id vem da tela e, sem esta conferência,
+    um pedido montado à mão marcaria o lançamento com a etiqueta de outra
+    família — e o nome dela apareceria na lista de quem recebeu.
+    """
+    casa_id = minha_casa_id(conn)
+    validas = []
+    for tag_id in (tags or []):
+        try:
+            tag_id = int(tag_id)
+        except (TypeError, ValueError):
+            continue
+        row = conn.execute("SELECT 1 FROM tags WHERE id = ? AND casa_id = ?",
+                           (tag_id, casa_id)).fetchone()
+        if row:
+            validas.append(tag_id)
+    conn.execute("DELETE FROM lancamento_tags WHERE lancamento_id = ?", (lancamento_id,))
+    for tag_id in validas:
+        conn.execute(
+            "INSERT OR IGNORE INTO lancamento_tags (lancamento_id, tag_id, usuario_id) "
+            "VALUES (?, ?, ?)",
+            (lancamento_id, tag_id, usuario_id),
+        )
+    return validas
+
+
+@app.route("/api/tags", methods=["GET"])
+def listar_tags():
+    conn = get_db()
+    try:
+        return jsonify([dict(r) for r in tags_da_casa(conn)])
+    finally:
+        conn.close()
+
+
+@app.route("/api/tags", methods=["POST"])
+def criar_tag():
+    data = request.get_json(force=True)
+    nome = (data.get("nome") or "").strip()
+    cor = cor_valida(data.get("cor"))
+    if not nome:
+        return jsonify({"erro": msg("nome é obrigatório")}), 400
+    if len(nome) > 40:
+        return jsonify({"erro": msg("nome muito longo (máximo 40 caracteres)")}), 400
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+        # Já existe? Devolve a que existe, com 200. Recusar obrigaria a tela a
+        # tratar o erro só para acabar usando a mesma tag — e o que se quer de
+        # "criar tag" no meio de um lançamento é justamente reaproveitar.
+        existente = _tag_por_nome(conn, casa_id, nome)
+        if existente:
+            return jsonify({"ok": True, "id": existente["id"],
+                            "nome": existente["nome"], "cor": existente["cor"],
+                            "reaproveitada": True})
+        cur = conn.execute(
+            "INSERT INTO tags (nome, cor, casa_id, criado_em) VALUES (?, ?, ?, ?)",
+            (nome, cor, casa_id, datetime.now().isoformat()),
+        )
+        conn.commit()
+        return jsonify({"ok": True, "id": cur.lastrowid, "nome": nome, "cor": cor}), 201
+    finally:
+        conn.close()
+
+
+@app.route("/api/tags/<int:item_id>", methods=["PUT"])
+def editar_tag(item_id):
+    data = request.get_json(force=True)
+    nome = (data.get("nome") or "").strip()
+    cor = cor_valida(data.get("cor"))
+    if not nome:
+        return jsonify({"erro": msg("nome é obrigatório")}), 400
+    if len(nome) > 40:
+        return jsonify({"erro": msg("nome muito longo (máximo 40 caracteres)")}), 400
+    conn = get_db()
+    try:
+        if not pertence_a_minha_casa(conn, "tags", item_id):
+            return jsonify({"erro": msg("etiqueta não encontrada")}), 404
+        try:
+            conn.execute("UPDATE tags SET nome = ?, cor = ? WHERE id = ?", (nome, cor, item_id))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            return jsonify({"erro": msg("já existe uma etiqueta com esse nome")}), 400
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/tags/<int:item_id>", methods=["DELETE"])
+def deletar_tag(item_id):
+    conn = get_db()
+    try:
+        if not pertence_a_minha_casa(conn, "tags", item_id):
+            return jsonify({"erro": msg("etiqueta não encontrada")}), 404
+        # As ligações saem junto: sem isso o lançamento ficaria apontando para
+        # uma tag que não existe mais, e o mapa de tags devolveria linha vazia.
+        conn.execute("DELETE FROM lancamento_tags WHERE tag_id = ?", (item_id,))
+        conn.execute("DELETE FROM tags WHERE id = ?", (item_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@app.route("/api/lancamentos/tags", methods=["GET"])
+def mapa_de_tags():
+    """{lancamento_id: [tag, ...]} de TODOS os lançamentos deste usuário.
+
+    Um mapa só, e não uma coluna a mais em cada listagem: `/api/lancamentos`,
+    `/api/ultimos-lancamentos` e `/api/busca` usam `SELECT *` e a tela monta o
+    item a partir das colunas — mexer nos três significaria mexer em três
+    consultas para o mesmo dado. E como o mapa não é por mês, ele serve
+    também a Últimos lançamentos, à busca e ao detalhe do Money Map, que
+    mostram lançamento de fora do mês aberto.
+    """
+    conn = get_db()
+    try:
+        linhas = conn.execute(
+            "SELECT lt.lancamento_id, t.id, t.nome, t.cor FROM lancamento_tags lt "
+            "JOIN tags t ON t.id = lt.tag_id WHERE lt.usuario_id = ? "
+            "ORDER BY t.nome COLLATE NOCASE",
+            (uid(),),
+        ).fetchall()
+        mapa = {}
+        for r in linhas:
+            mapa.setdefault(str(r["lancamento_id"]), []).append(
+                {"id": r["id"], "nome": r["nome"], "cor": r["cor"]})
+        return jsonify(mapa)
+    finally:
+        conn.close()
+
+
+@app.route("/api/lancamentos/<int:item_id>/tags", methods=["PUT"])
+def marcar_tags(item_id):
+    """Rota própria, no molde do /fora-dos-totais.
+
+    Não entra no PUT principal do lançamento de propósito: aquele usa COALESCE
+    justamente para um cliente antigo (o app Android) não desfazer campo que
+    não conhece, e uma lista de tags no corpo dele apagaria as etiquetas a cada
+    salvamento vindo do Android.
+    """
+    data = request.get_json(force=True)
+    conn = get_db()
+    try:
+        if not pertence_ao_usuario(conn, "lancamentos", item_id):
+            return jsonify({"erro": msg("lançamento não encontrado")}), 404
+        validas = gravar_tags_do_lancamento(conn, item_id, uid(), data.get("tags"))
+        conn.commit()
+        return jsonify({"ok": True, "tags": validas})
+    finally:
+        conn.close()
+
+
 # ---------------- Orçamento por categoria ----------------
 
 @app.route("/api/orcamentos", methods=["GET"])
@@ -1582,10 +2389,20 @@ def listar_lancamentos():
     # pra elas não ficarem "escondidas" num mês passado que ninguém mais abre.
     # Para séries recorrentes (ex: Francisco todo mês), só a ocorrência não paga mais
     # antiga aparece — senão cada mês sem pagar acumularia mais uma cópia na lista.
+    # O filtro por etiqueta entra nas DUAS metades do UNION: aplicar só na
+    # primeira deixaria passar a despesa atrasada de mês anterior, que é
+    # justamente a que a pessoa está procurando quando filtra por tag.
+    try:
+        tag_id = int(request.args["tag_id"]) if request.args.get("tag_id") else None
+    except (TypeError, ValueError):
+        tag_id = None
+    filtro_tag = ("AND id IN (SELECT lancamento_id FROM lancamento_tags WHERE tag_id = ?) "
+                  if tag_id else "")
+    params = [mes, uid()] + ([tag_id] if tag_id else []) + [mes, uid()] + ([tag_id] if tag_id else [])
     rows = conn.execute(
-        "SELECT * FROM lancamentos WHERE mes = ? AND usuario_id = ? "
+        f"SELECT * FROM lancamentos WHERE mes = ? AND usuario_id = ? {filtro_tag}"
         "UNION "
-        "SELECT * FROM lancamentos WHERE mes < ? AND usuario_id = ? "
+        f"SELECT * FROM lancamentos WHERE mes < ? AND usuario_id = ? {filtro_tag}"
         "AND tipo = 'despesa' AND pago = 0 AND eh_transferencia = 0 "
         "AND ("
         "  grupo_recorrencia IS NULL"
@@ -1594,7 +2411,7 @@ def listar_lancamentos():
         "            AND l2.pago = 0 AND l2.usuario_id = lancamentos.usuario_id)"
         ") "
         "ORDER BY tipo, id",
-        (mes, uid(), mes, uid()),
+        params,
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
@@ -1795,6 +2612,10 @@ def criar_lancamento():
     previsto = 1 if data.get("previsto") else 0
     fora_dos_totais = 1 if data.get("fora_dos_totais") else 0
     data_pagamento = data.get("data_pagamento") or (datetime.now().strftime("%Y-%m-%d") if pago else "")
+    try:
+        hora = hora_valida(data.get("hora"))
+    except ValueError:
+        return jsonify({"erro": msg("horário inválido — use HH:MM")}), 400
 
     if tipo not in ("renda", "despesa"):
         return jsonify({"erro": msg("tipo inválido")}), 400
@@ -1818,16 +2639,20 @@ def criar_lancamento():
                 dia_ajustado = min(dia, ultimo_dia)
                 venc_parcela = f"{ano_p}-{mes_p:02d}-{dia_ajustado:02d}"
             desc_parcela = f"{descricao} ({i+1}/{parcelas})"
-            conn.execute(
+            cur = conn.execute(
                 """INSERT INTO lancamentos
                    (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
                     grupo_parcela, parcela_num, parcela_total, pago, data_pagamento, observacao,
-                    criado_em, usuario_id, fora_dos_totais)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, '', ?, ?, ?, ?)""",
+                    criado_em, usuario_id, fora_dos_totais, hora)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0, '', ?, ?, ?, ?, ?)""",
                 (mes_parcela, tipo, desc_parcela, valor, venc_parcela, categoria, conta, conta_id,
                  grupo, i + 1, parcelas, observacao, datetime.now().isoformat(), uid(),
-                 fora_dos_totais),
+                 fora_dos_totais, hora),
             )
+            # A etiqueta vale para a série inteira: quem marca "Viagem" numa
+            # compra em 6x quer as seis parcelas dentro da viagem, senão o
+            # filtro mostraria só a primeira.
+            gravar_tags_do_lancamento(conn, cur.lastrowid, uid(), data.get("tags"))
         conn.commit()
         conn.close()
         return jsonify({"ok": True, "parcelas_criadas": parcelas}), 201
@@ -1849,14 +2674,15 @@ def criar_lancamento():
         """INSERT INTO lancamentos
            (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
             pago, data_pagamento, observacao, criado_em, usuario_id, grupo_recorrencia,
-            recorrencia_ate, previsto, fora_dos_totais)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            recorrencia_ate, previsto, fora_dos_totais, hora)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id, recorrente,
          pago, data_pagamento, observacao, datetime.now().isoformat(), uid(), grupo_recorrencia,
-         recorrencia_ate, previsto, fora_dos_totais),
+         recorrencia_ate, previsto, fora_dos_totais, hora),
     )
-    conn.commit()
     novo_id = cur.lastrowid
+    gravar_tags_do_lancamento(conn, novo_id, uid(), data.get("tags"))
+    conn.commit()
     conn.close()
     return jsonify({"ok": True, "id": novo_id}), 201
 
@@ -1889,6 +2715,11 @@ def deletar_lancamento(item_id):
         ).fetchall():
             apagar_comprovante(r["comprovante"])
         conn.execute(
+            "DELETE FROM lancamento_tags WHERE lancamento_id IN "
+            "(SELECT id FROM lancamentos WHERE grupo_recorrencia = ? AND usuario_id = ?)",
+            (grupo, uid()),
+        )
+        conn.execute(
             "DELETE FROM lancamentos WHERE grupo_recorrencia = ? AND usuario_id = ?", (grupo, uid())
         )
         # A série deixou de existir, então os pulos dela não fazem mais sentido.
@@ -1898,6 +2729,9 @@ def deletar_lancamento(item_id):
         return jsonify({"ok": True, "escopo": "todos"})
 
     apagar_comprovante(row["comprovante"])
+    # As etiquetas saem junto: ligação apontando para lançamento que não existe
+    # mais faria o mapa de tags crescer para sempre.
+    conn.execute("DELETE FROM lancamento_tags WHERE lancamento_id = ?", (item_id,))
     conn.execute("DELETE FROM lancamentos WHERE id = ?", (item_id,))
     # Sem isso a recorrência voltaria sozinha na próxima vez que o mês fosse aberto.
     if row["grupo_recorrencia"]:
@@ -1908,6 +2742,11 @@ def deletar_lancamento(item_id):
     # Transferência é um evento único: apagar uma perna apaga a outra,
     # mesmo que a outra perna pertença ao outro usuário.
     if row["eh_transferencia"] and row["grupo_transferencia"]:
+        conn.execute(
+            "DELETE FROM lancamento_tags WHERE lancamento_id IN "
+            "(SELECT id FROM lancamentos WHERE grupo_transferencia = ? AND id != ?)",
+            (row["grupo_transferencia"], item_id),
+        )
         conn.execute(
             "DELETE FROM lancamentos WHERE grupo_transferencia = ? AND id != ?",
             (row["grupo_transferencia"], item_id),
@@ -1933,14 +2772,31 @@ def editar_lancamento(item_id):
     # (uma versão antiga do app Android, por exemplo) não pode desfazer sem
     # querer a marca de "fora dos totais" que a pessoa pôs pela web.
     fora = None if "fora_dos_totais" not in data else (1 if data.get("fora_dos_totais") else 0)
+    # Mesma ideia do `fora`, e pelo mesmo motivo: o app Android não conhece o
+    # campo `hora`, e sem o COALESCE cada salvamento vindo de lá apagaria o
+    # horário que a pessoa pôs pela web. Aqui, porém, a string vazia PRECISA
+    # gravar NULL — é assim que se apaga um horário de propósito —, então o
+    # sentinela é a ausência da chave, não o valor vazio.
+    if "hora" not in data:
+        hora = None
+        muda_hora = False
+    else:
+        try:
+            hora = hora_valida(data.get("hora"))
+        except ValueError:
+            conn.close()
+            return jsonify({"erro": msg("horário inválido — use HH:MM")}), 400
+        muda_hora = True
     conn.execute(
         """UPDATE lancamentos SET descricao = ?, valor = ?, vencimento = ?, categoria = ?,
            conta = ?, conta_id = ?, recorrente = ?, observacao = ?,
-           fora_dos_totais = COALESCE(?, fora_dos_totais) WHERE id = ?""",
+           fora_dos_totais = COALESCE(?, fora_dos_totais),
+           hora = CASE WHEN ? THEN ? ELSE hora END WHERE id = ?""",
         (
             data.get("descricao"), float(data.get("valor", 0) or 0), data.get("vencimento", ""),
             data.get("categoria", ""), conta, conta_id,
-            1 if data.get("recorrente") else 0, data.get("observacao", ""), fora, item_id,
+            1 if data.get("recorrente") else 0, data.get("observacao", ""), fora,
+            1 if muda_hora else 0, hora, item_id,
         ),
     )
     conn.commit()
@@ -6246,6 +7102,12 @@ def pluggy_listar_itens():
 
 @app.route("/api/pluggy/itens/<item_id>/sincronizar", methods=["POST"])
 def pluggy_sincronizar_item(item_id):
+    # Esta rota atualiza só status e saldo — não importa transação nenhuma, e
+    # por isso fica de fora da trava por casa. Quem evita a confusão de rodá-la
+    # junto com a sincronização completa é a tela, que desabilita o botão de
+    # cada banco enquanto a global está correndo.
+    if em_demo():
+        return jsonify({"erro": msg("o modo demonstração não conecta em banco de verdade")}), 400
     conn = get_db()
     try:
         casa_id = minha_casa_id(conn)
@@ -6693,29 +7555,49 @@ def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None
                 """INSERT INTO lancamentos
                        (mes, tipo, descricao, valor, vencimento, categoria, conta, conta_id,
                         pago, data_pagamento, eh_transferencia, usuario_id, criado_em, origem,
-                        fora_dos_totais)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'open_finance', ?)""",
+                        fora_dos_totais, hora)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, 'open_finance', ?, ?)""",
                 (mes, tipo, descricao, valor, data, categoria,
                  conn.execute("SELECT nome FROM contas WHERE id = ?", (conta_id,)).fetchone()["nome"],
                  conta_id, data, eh_transf, usuario_id, datetime.now().isoformat(),
-                 int(fora_regra)),
+                 int(fora_regra),
+                 # O extrato é a única fonte que sabe a hora de verdade do
+                 # gasto — a pessoa, digitando depois, quase nunca sabe.
+                 hora_local_do_carimbo(t.get("date"))),
             )
             lancamento_id = cur.lastrowid
             estado = "aprovada"
             relatorio["criadas"] += 1
 
-        conn.execute(
-            """INSERT INTO pluggy_transacoes
-                   (transacao_id, account_id, casa_id, usuario_id, descricao, valor, tipo,
-                    data, categoria_pluggy, situacao, parcela_num, parcela_total,
-                    compra_em, fatura_id, estado, lancamento_id, criado_em)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (transacao_id, account_id, casa_id, usuario_id, descricao, bruto, pluggy_tipo,
-             data, categoria_pluggy, t.get("status"), cc.get("installmentNumber"),
-             cc.get("totalInstallments"), (cc.get("purchaseDate") or "")[:10] or None,
-             str(cc.get("billId")) if cc.get("billId") else None,
-             estado, lancamento_id, datetime.now().isoformat()),
-        )
+        try:
+            conn.execute(
+                """INSERT INTO pluggy_transacoes
+                       (transacao_id, account_id, casa_id, usuario_id, descricao, valor, tipo,
+                        data, categoria_pluggy, situacao, parcela_num, parcela_total,
+                        compra_em, fatura_id, estado, lancamento_id, criado_em)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (transacao_id, account_id, casa_id, usuario_id, descricao, bruto, pluggy_tipo,
+                 data, categoria_pluggy, t.get("status"), cc.get("installmentNumber"),
+                 cc.get("totalInstallments"), (cc.get("purchaseDate") or "")[:10] or None,
+                 str(cc.get("billId")) if cc.get("billId") else None,
+                 estado, lancamento_id, datetime.now().isoformat()),
+            )
+        except sqlite3.IntegrityError:
+            # `transacao_id` é UNIQUE, e outra passagem registrou esta transação
+            # entre o SELECT lá em cima e este INSERT. O problema não é o INSERT
+            # perdido: é que o LANÇAMENTO já foi criado alguns comandos acima e
+            # ficaria no financeiro sem transação que o explique — exatamente a
+            # duplicata silenciosa que o casamento existe para evitar. Por isso
+            # ele é desfeito aqui.
+            #
+            # Não vale trocar por INSERT OR IGNORE: aquilo engoliria qualquer
+            # constraint, deixaria o lançamento órfão de pé e ainda faria
+            # `criadas` mentir.
+            if estado == "aprovada" and lancamento_id:
+                conn.execute("DELETE FROM lancamentos WHERE id = ?", (lancamento_id,))
+                relatorio["criadas"] -= 1
+            relatorio["ja_importadas"] += 1
+            continue
 
     conn.commit()
     return relatorio
@@ -6728,7 +7610,99 @@ def pluggy_importar_conta(conn, casa_id, pluggy_conta, mes_de=None, mes_ate=None
 # marcando 513,85 quando o real já era 158,47.
 
 
-def pluggy_sincronizar_tudo(conn, casa_id, criar=True):
+# Uma sincronização por casa, no máximo. Três caminhos chamam a mesma função —
+# o botão da tela, o ciclo diário e a fila do webhook — e sem trava eles se
+# atropelam: `transacao_id` é UNIQUE, então o segundo INSERT estoura no meio do
+# laço, e o lançamento que já tinha sido criado ficaria órfão no financeiro.
+#
+# O mesmo dicionário é a trava E o progresso. Dois seriam duas coisas para
+# manter em sincronia, e o estado é o mesmo: quem está rodando, desde quando e
+# em que pé está.
+#
+# É memória, e não tabela, pelo mesmo motivo do cache de apiKey: é estado de
+# uma execução, não dado do usuário. Gravá-lo a cada conta ainda disputaria o
+# lock de escrita do SQLite com a própria importação. Reiniciar o container
+# apaga tudo — o que isso significa está em `pluggy_estado_sincronizacao`.
+_pluggy_sincronias = {}
+_pluggy_sincronias_lock = threading.Lock()
+
+
+def _pluggy_reservar_sincronia(casa_id, origem):
+    """Reserva a vez desta casa.
+
+    Devolve o progresso recém-criado, ou None se já existe uma sincronização em
+    andamento — é este None que impede a duplicada, e quem chama precisa
+    tratá-lo (não é erro: é 'já tem uma rodando')."""
+    with _pluggy_sincronias_lock:
+        atual = _pluggy_sincronias.get(casa_id)
+        if atual and atual["estado"] == "rodando":
+            return None
+        novo = {"estado": "rodando", "origem": origem,
+                "iniciada_em": datetime.now().isoformat(), "terminada_em": None,
+                "etapa": "começando", "feitos": 0, "total": 0,
+                "resumo": None, "erro": None}
+        _pluggy_sincronias[casa_id] = novo
+        return dict(novo)
+
+
+def _pluggy_marcar_etapa(casa_id, etapa, feitos=0, total=0):
+    with _pluggy_sincronias_lock:
+        atual = _pluggy_sincronias.get(casa_id)
+        if atual and atual["estado"] == "rodando":
+            atual["etapa"] = etapa
+            atual["feitos"] = feitos
+            atual["total"] = total
+
+
+def _pluggy_encerrar_sincronia(casa_id, resumo=None, erro=None):
+    with _pluggy_sincronias_lock:
+        atual = _pluggy_sincronias.get(casa_id)
+        if not atual:
+            return
+        atual["estado"] = "falhou" if erro else "concluida"
+        atual["terminada_em"] = datetime.now().isoformat()
+        atual["resumo"] = resumo
+        atual["erro"] = erro
+        atual["etapa"] = ""
+
+
+def _pluggy_progresso_publico(casa_id):
+    """Cópia do progresso, para não devolver o dicionário vivo ao jsonify."""
+    with _pluggy_sincronias_lock:
+        atual = _pluggy_sincronias.get(casa_id)
+        return dict(atual) if atual else None
+
+
+def pluggy_sincronizar_com_trava(conn, casa_id, origem, criar=True):
+    """Único caminho para `pluggy_sincronizar_tudo` fora da rota que dispara em
+    segundo plano. Devolve o resumo, ou None quando a casa já está
+    sincronizando."""
+    if _pluggy_reservar_sincronia(casa_id, origem) is None:
+        return None
+    try:
+        resumo = pluggy_sincronizar_tudo(
+            conn, casa_id, criar=criar,
+            ao_progredir=lambda etapa, f, t: _pluggy_marcar_etapa(casa_id, etapa, f, t))
+        _pluggy_encerrar_sincronia(casa_id, resumo=resumo)
+        return resumo
+    except Exception as e:
+        _pluggy_encerrar_sincronia(casa_id, erro=str(e))
+        raise
+
+
+def _nome_do_banco(conn, item_id):
+    """Nome do conector (Itaú, Nubank…), para a tela dizer QUAL banco falhou."""
+    row = conn.execute("SELECT conector_nome FROM pluggy_itens WHERE item_id = ?",
+                       (item_id,)).fetchone()
+    return (row["conector_nome"] if row else None) or "Banco"
+
+
+def _nome_da_conta_do_app(conn, tabela, item_id):
+    row = conn.execute(f"SELECT nome FROM {tabela} WHERE id = ?", (item_id,)).fetchone()
+    return row["nome"] if row else "?"
+
+
+def pluggy_sincronizar_tudo(conn, casa_id, criar=True, ao_progredir=None):
     """Atualiza itens e contas pela Pluggy, importa o que chegou de novo e
     recalibra o saldo inicial de cada conta vinculada.
 
@@ -6736,12 +7710,45 @@ def pluggy_sincronizar_tudo(conn, casa_id, criar=True):
     tampão: absorve qualquer diferença, inclusive a que vier de transação que
     a Pluggy ainda não reportou. Por isso `descompasso` volta no relatório —
     diferença grande é sinal de extrato incompleto, não de conta certa.
-    """
-    resumo = {"itens": 0, "contas": 0, "criadas": 0, "descompasso": {}}
 
-    for it in conn.execute(
+    `ao_progredir(etapa, feitos, total)` é opcional e serve só para a tela
+    acompanhar; ele nunca pode derrubar a sincronização, então vai protegido.
+
+    O relatório GANHOU chaves (`sincronizadas`, `falhas`) e não perdeu nenhuma:
+    quem já lia `itens`/`contas`/`criadas`/`descompasso` continua funcionando.
+    Antes, o que falhava era engolido em silêncio e "3 contas" podia significar
+    "3 de 7" sem ninguém ficar sabendo.
+    """
+    resumo = {"itens": 0, "contas": 0, "criadas": 0, "descompasso": {},
+              "sincronizadas": [], "falhas": []}
+
+    itens = conn.execute(
         "SELECT item_id FROM pluggy_itens WHERE casa_id = ?", (casa_id,)
-    ).fetchall():
+    ).fetchall()
+    contas = conn.execute(
+        "SELECT * FROM pluggy_contas WHERE casa_id = ? AND conta_id IS NOT NULL AND ignorada = 0",
+        (casa_id,),
+    ).fetchall()
+    cartoes = conn.execute(
+        "SELECT * FROM pluggy_contas WHERE casa_id = ? AND cartao_id IS NOT NULL AND ignorada = 0",
+        (casa_id,),
+    ).fetchall()
+    total = len(itens) + len(contas) + len(cartoes)
+    feitos = 0
+
+    def progresso(etapa):
+        if not ao_progredir:
+            return
+        try:
+            ao_progredir(etapa, feitos, total)
+        except Exception:
+            # Relatar progresso não pode ser motivo para perder a importação
+            # que já rodou. É informação de tela, não dado financeiro.
+            pass
+
+    for it in itens:
+        banco = _nome_do_banco(conn, it["item_id"])
+        progresso(f"{banco} — conferindo a conexão")
         try:
             item = pluggy_pedir(conn, casa_id, "GET", f"/items/{quote(str(it['item_id']), safe='')}")
             conn.execute(
@@ -6757,54 +7764,79 @@ def pluggy_sincronizar_tudo(conn, casa_id, criar=True):
                 )
             conn.commit()
             resumo["itens"] += 1
-        except PluggyErro:
-            # Um banco fora do ar não pode impedir os outros de sincronizar.
-            continue
+        except Exception as e:
+            # Exception e não só PluggyErro: um banco fora do ar não pode
+            # impedir os outros de sincronizar, e isso vale igual para
+            # "database is locked" ou para um erro de integridade — que antes
+            # matavam o ciclo inteiro no meio, deixando as contas seguintes
+            # sem sincronizar e sem ninguém avisado.
+            resumo["falhas"].append({"banco": banco, "conta": None, "erro": str(e)})
+        finally:
+            feitos += 1
 
-    for pc in conn.execute(
-        "SELECT * FROM pluggy_contas WHERE casa_id = ? AND conta_id IS NOT NULL AND ignorada = 0",
-        (casa_id,),
-    ).fetchall():
+    for pc in contas:
+        banco = _nome_do_banco(conn, pc["item_id"])
+        nome_conta = _nome_da_conta_do_app(conn, "contas", pc["conta_id"])
+        progresso(f"{banco} · {nome_conta} — importando o extrato")
         try:
             rel = pluggy_importar_conta(conn, casa_id, pc, criar=criar)
-        except PluggyErro:
+        except Exception as e:
+            resumo["falhas"].append({"banco": banco, "conta": nome_conta, "erro": str(e)})
+            feitos += 1
             continue
         resumo["contas"] += 1
         resumo["criadas"] += rel["criadas"]
+        linha = {"banco": banco, "conta": nome_conta,
+                 "criadas": rel["criadas"], "conciliadas": rel["conciliadas"],
+                 "descompasso": None}
 
         alvo = pc["saldo"]
-        if alvo is None:
-            continue
-        atual = _saldo_calculado(conn, pc["conta_id"])
-        ini = conn.execute(
-            "SELECT saldo_inicial FROM contas WHERE id = ?", (pc["conta_id"],)
-        ).fetchone()["saldo_inicial"]
-        ajuste = alvo - atual
-        if abs(ajuste) > 0.005:
-            conn.execute(
-                "UPDATE contas SET saldo_inicial = ? WHERE id = ?",
-                (ini + ajuste, pc["conta_id"]),
-            )
-            nome = conn.execute(
-                "SELECT nome FROM contas WHERE id = ?", (pc["conta_id"],)
-            ).fetchone()["nome"]
-            resumo["descompasso"][nome] = round(ajuste, 2)
-        conn.commit()
+        if alvo is not None:
+            ajuste = alvo - _saldo_calculado(conn, pc["conta_id"])
+            if abs(ajuste) > 0.005:
+                # Escrito como valor ABSOLUTO derivado do alvo, e não como
+                # "saldo_inicial + ajuste": a segunda forma lê o saldo antes e
+                # grava depois, então duas passagens sobre a mesma conta somam
+                # o mesmo ajuste duas vezes e o saldo passa a mentir em
+                # silêncio. Nesta forma, rodar de novo dá o mesmo resultado —
+                # é a mesma conta do _saldo_calculado, resolvida para o inicial.
+                conn.execute(
+                    """UPDATE contas SET saldo_inicial = ? - COALESCE((
+                           SELECT SUM(CASE WHEN tipo = 'renda'   THEN valor
+                                           WHEN tipo = 'despesa' THEN -valor
+                                           ELSE 0 END)
+                           FROM lancamentos WHERE conta_id = contas.id AND pago = 1), 0)
+                       WHERE id = ?""",
+                    (alvo, pc["conta_id"]),
+                )
+                resumo["descompasso"][nome_conta] = round(ajuste, 2)
+                linha["descompasso"] = round(ajuste, 2)
+            conn.commit()
+        resumo["sincronizadas"].append(linha)
+        feitos += 1
 
     # Cartões: extrato próprio, que não mexe em saldo de conta nenhuma. O que
     # sai da conta é o pagamento da fatura, e esse vem pelo extrato bancário.
-    for pc in conn.execute(
-        "SELECT * FROM pluggy_contas WHERE casa_id = ? AND cartao_id IS NOT NULL AND ignorada = 0",
-        (casa_id,),
-    ).fetchall():
+    for pc in cartoes:
+        banco = _nome_do_banco(conn, pc["item_id"])
+        nome_cartao = _nome_da_conta_do_app(conn, "cartoes", pc["cartao_id"])
+        progresso(f"{banco} · {nome_cartao} — importando a fatura")
         try:
             rel = pluggy_importar_cartao(conn, casa_id, pc, criar=criar)
             pluggy_atualizar_cartao(conn, casa_id, pc)
-        except PluggyErro:
+        except Exception as e:
+            resumo["falhas"].append({"banco": banco, "conta": nome_cartao, "erro": str(e)})
+            feitos += 1
             continue
         resumo["cartoes"] = resumo.get("cartoes", 0) + 1
         resumo["compras"] = resumo.get("compras", 0) + rel["criadas"]
+        resumo["sincronizadas"].append({
+            "banco": banco, "conta": nome_cartao, "cartao": True,
+            "criadas": rel["criadas"], "conciliadas": 0, "descompasso": None,
+        })
+        feitos += 1
 
+    progresso("terminando")
     return resumo
 
 
@@ -6818,16 +7850,74 @@ def _saldo_calculado(conn, conta_id):
     return ini + r - d
 
 
+def _pluggy_sincronizar_em_segundo_plano(casa_id):
+    """Roda a sincronização já reservada pela rota.
+
+    Conexão própria: `get_db` depende da sessão do Flask (modo demonstração) e
+    não existe fora da requisição. É o mesmo que os dois laços de fundo fazem.
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        conn.row_factory = sqlite3.Row
+        try:
+            resumo = pluggy_sincronizar_tudo(
+                conn, casa_id,
+                ao_progredir=lambda etapa, f, t: _pluggy_marcar_etapa(casa_id, etapa, f, t))
+            _pluggy_encerrar_sincronia(casa_id, resumo=resumo)
+        finally:
+            conn.close()
+    except Exception as e:
+        print(f"[pluggy] sincronização da casa {casa_id} falhou: {e}", flush=True)
+        _pluggy_encerrar_sincronia(casa_id, erro=str(e))
+
+
 @app.route("/api/pluggy/sincronizar", methods=["POST"])
 def pluggy_sincronizar_agora():
+    """Dispara a sincronização da casa e devolve na hora.
+
+    Ela baixa o extrato inteiro de cada conta vinculada e leva de dezenas de
+    segundos a vários minutos; uma requisição desse tamanho não sobrevive ao
+    proxy/túnel que costuma ficar na frente do app. Quem acompanha é
+    GET /api/pluggy/sincronizacao.
+
+    A vez é reservada AQUI, e não dentro da thread: reservar lá deixaria uma
+    janela entre dois cliques em que as duas passariam e virariam duas threads.
+    """
     if em_demo():
         return jsonify({"erro": msg("o modo demonstração não conecta em banco de verdade")}), 400
     conn = get_db()
     try:
         casa_id = minha_casa_id(conn)
-        return jsonify(pluggy_sincronizar_tudo(conn, casa_id))
+        if not pluggy_credencial_da_casa(conn, casa_id):
+            return jsonify({"erro": msg("esta casa ainda não cadastrou as credenciais do Meu Pluggy")}), 400
     finally:
         conn.close()
+
+    if _pluggy_reservar_sincronia(casa_id, "tela") is None:
+        return jsonify({"erro": msg("já existe uma sincronização em andamento nesta casa"),
+                        "estado": _pluggy_progresso_publico(casa_id)}), 409
+
+    threading.Thread(target=_pluggy_sincronizar_em_segundo_plano,
+                     args=(casa_id,), daemon=True).start()
+    return jsonify(_pluggy_progresso_publico(casa_id)), 202
+
+
+@app.route("/api/pluggy/sincronizacao", methods=["GET"])
+def pluggy_estado_sincronizacao():
+    """Progresso da sincronização desta casa.
+
+    `estado: "nenhuma"` quer dizer "não sei", e não "terminou": o progresso vive
+    em memória, então reiniciar o container o apaga. O trabalho já feito não se
+    perde — cada conta é comitada ao terminar — e rodar de novo é seguro, porque
+    `transacao_id` é UNIQUE e a recalibração de saldo é um tampão que reabsorve
+    a diferença. Por isso a tela nunca deve traduzir isto como "concluído".
+    """
+    conn = get_db()
+    try:
+        casa_id = minha_casa_id(conn)
+    finally:
+        conn.close()
+    return jsonify(_pluggy_progresso_publico(casa_id) or {"estado": "nenhuma"})
 
 
 def _loop_pluggy():
@@ -6840,7 +7930,9 @@ def _loop_pluggy():
             conn.row_factory = sqlite3.Row
             for casa in conn.execute("SELECT DISTINCT casa_id FROM pluggy_credenciais").fetchall():
                 try:
-                    pluggy_sincronizar_tudo(conn, casa["casa_id"])
+                    if pluggy_sincronizar_com_trava(conn, casa["casa_id"], "ciclo diário") is None:
+                        print(f"[pluggy] casa {casa['casa_id']} já estava sincronizando, pulei",
+                              flush=True)
                 except Exception as e:
                     print(f"[pluggy] casa {casa['casa_id']}: {e}", flush=True)
             conn.close()
@@ -6919,17 +8011,23 @@ def pluggy_importar_cartao(conn, casa_id, pluggy_conta, criar=True):
         if tipo == "pagamento":
             relatorio["pagamentos"] += 1
 
-        conn.execute(
-            """INSERT INTO cartao_transacoes
-                   (cartao_id, descricao, valor, data, categoria, usuario_id, criado_em,
-                    transacao_id, origem, parcela_num, parcela_total, fatura_mes, tipo)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open_finance', ?, ?, ?, ?)""",
-            (cartao_id, (t.get("description") or "Sem descrição").strip(), valor, data,
-             categoria, usuario_id, datetime.now().isoformat(), transacao_id,
-             parcela_num if isinstance(parcela_num, int) else None,
-             parcela_total if isinstance(parcela_total, int) else None,
-             _mes_da_fatura(t), tipo),
-        )
+        try:
+            conn.execute(
+                """INSERT INTO cartao_transacoes
+                       (cartao_id, descricao, valor, data, categoria, usuario_id, criado_em,
+                        transacao_id, origem, parcela_num, parcela_total, fatura_mes, tipo)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open_finance', ?, ?, ?, ?)""",
+                (cartao_id, (t.get("description") or "Sem descrição").strip(), valor, data,
+                 categoria, usuario_id, datetime.now().isoformat(), transacao_id,
+                 parcela_num if isinstance(parcela_num, int) else None,
+                 parcela_total if isinstance(parcela_total, int) else None,
+                 _mes_da_fatura(t), tipo),
+            )
+        except sqlite3.IntegrityError:
+            # Outra passagem já registrou esta compra. Aqui não há lançamento a
+            # desfazer — compra de cartão não vira despesa de conta.
+            relatorio["ja_importadas"] += 1
+            continue
         relatorio["criadas"] += 1
 
     conn.commit()
@@ -7166,15 +8264,23 @@ def _loop_webhook():
         try:
             conn = sqlite3.connect(DB_PATH, timeout=30)
             conn.row_factory = sqlite3.Row
-            casas = set()
+            casas = {}
             for item_id in pendentes:
                 row = conn.execute("SELECT casa_id FROM pluggy_itens WHERE item_id = ?",
                                    (item_id,)).fetchone()
                 if row:
-                    casas.add(row["casa_id"])
-            for casa_id in casas:
+                    casas.setdefault(row["casa_id"], []).append(item_id)
+            for casa_id, itens_da_casa in casas.items():
                 try:
-                    pluggy_sincronizar_tudo(conn, casa_id)
+                    if pluggy_sincronizar_com_trava(conn, casa_id, "webhook") is None:
+                        # Devolve para a fila em vez de descartar: a sincronia em
+                        # curso pode ter começado ANTES deste aviso chegar, e aí
+                        # ela não veria a transação que o motivou. A fila é
+                        # drenada de novo em 20s.
+                        with _pluggy_fila_lock:
+                            _pluggy_fila.extend(itens_da_casa)
+                        print(f"[webhook] casa {casa_id} sincronizando, devolvi à fila",
+                              flush=True)
                 except Exception as e:
                     print(f"[webhook] casa {casa_id}: {e}", flush=True)
             conn.close()
@@ -7740,6 +8846,51 @@ def _intervalo_money_map(periodo):
     return (hoje - timedelta(days=dias)).isoformat(), hoje.isoformat()
 
 
+# O período do Money Map é o dele, e não o mês aberto na barra. Por isso o
+# detalhe de uma categoria precisa da MESMA condição da faixa clicada: pago = 1,
+# entra_nos_totais() e a data efetiva dentro do intervalo. Repetir o WHERE à mão
+# num segundo lugar é o caminho mais curto para os dois números discordarem, e
+# um total do detalhe diferente do total da faixa é pior que não ter detalhe.
+CONDICAO_MONEY_MAP = (
+    "usuario_id = ? AND pago = 1 AND {totais} "
+    "AND COALESCE(data_pagamento, vencimento, mes || '-15') BETWEEN ? AND ?"
+)
+
+# Acima de 8 fatias a legenda vira ilegível e as faixas somem de finas. O que
+# sobra vira "Outros" — some do detalhe, não da conta.
+MONEY_MAP_LIMITE = 6
+
+
+def _money_map_ranking(conn, inicio, fim):
+    """Categorias somadas por tipo, da maior para a menor. É a base do desenho
+    e também do detalhe, então mora numa função só."""
+    linhas = conn.execute(
+        f"""SELECT tipo, COALESCE(NULLIF(categoria,''), 'Sem categoria') AS categoria,
+                  SUM(valor) AS total, COUNT(*) AS n
+           FROM lancamentos
+           WHERE {CONDICAO_MONEY_MAP.format(totais=entra_nos_totais())}
+           GROUP BY tipo, categoria""",
+        (uid(), inicio, fim),
+    ).fetchall()
+    por_tipo = {}
+    for chave, tipo_sql in (("receitas", "renda"), ("despesas", "despesa")):
+        por_tipo[chave] = sorted(
+            [{"nome": r["categoria"], "valor": r["total"], "n": r["n"]}
+             for r in linhas if r["tipo"] == tipo_sql],
+            key=lambda x: -x["valor"])
+    return por_tipo
+
+
+def _agrupar_money_map(lista, limite=MONEY_MAP_LIMITE):
+    if len(lista) <= limite:
+        return lista
+    resto = lista[limite:]
+    return lista[:limite] + [{
+        "nome": "Outros", "valor": sum(x["valor"] for x in resto),
+        "n": sum(x["n"] for x in resto), "agrupado": len(resto),
+    }]
+
+
 @app.route("/api/money-map", methods=["GET"])
 def money_map():
     periodo = request.args.get("periodo", "30d")
@@ -7749,35 +8900,9 @@ def money_map():
     try:
         # Só o que foi efetivado: previsão não é dinheiro que andou, e
         # misturar os dois faria o mapa mostrar um mês que ainda não aconteceu.
-        linhas = conn.execute(
-            f"""SELECT tipo, COALESCE(NULLIF(categoria,''), 'Sem categoria') AS categoria,
-                      SUM(valor) AS total, COUNT(*) AS n
-               FROM lancamentos
-               WHERE usuario_id = ? AND pago = 1 AND {entra_nos_totais()}
-                 AND COALESCE(data_pagamento, vencimento, mes || '-15') BETWEEN ? AND ?
-               GROUP BY tipo, categoria""",
-            (uid(), inicio, fim),
-        ).fetchall()
-
-        receitas = sorted(
-            [{"nome": r["categoria"], "valor": r["total"], "n": r["n"]}
-             for r in linhas if r["tipo"] == "renda"],
-            key=lambda x: -x["valor"])
-        despesas = sorted(
-            [{"nome": r["categoria"], "valor": r["total"], "n": r["n"]}
-             for r in linhas if r["tipo"] == "despesa"],
-            key=lambda x: -x["valor"])
-
-        # Acima de 8 fatias a legenda vira ilegível e as faixas somem de finas.
-        # O que sobra vira "Outros" — some do detalhe, não da conta.
-        def agrupar(lista, limite=6):
-            if len(lista) <= limite:
-                return lista
-            resto = lista[limite:]
-            return lista[:limite] + [{
-                "nome": "Outros", "valor": sum(x["valor"] for x in resto),
-                "n": sum(x["n"] for x in resto), "agrupado": len(resto),
-            }]
+        ranking = _money_map_ranking(conn, inicio, fim)
+        receitas, despesas = ranking["receitas"], ranking["despesas"]
+        agrupar = _agrupar_money_map
 
         total_receita = sum(r["valor"] for r in receitas)
         total_despesa = sum(d["valor"] for d in despesas)
@@ -7792,6 +8917,65 @@ def money_map():
             "total_despesa": total_despesa,
             "saldo": total_receita - total_despesa,
         })
+    finally:
+        conn.close()
+
+
+@app.route("/api/money-map/lancamentos", methods=["GET"])
+def money_map_lancamentos():
+    """Os lançamentos que somam UMA faixa do Money Map.
+
+    Não dá para a tela filtrar o cache do mês: o Money Map cobre 30 dias, 3
+    meses, 6 meses, um ano ou o ano corrente, e conta só o que foi efetivado.
+    Filtrando o cache, o total do detalhe sairia diferente do total da faixa
+    clicada — que é exatamente a divergência que "Fora dos totais" já custou
+    caro para eliminar.
+
+    Duas categorias não são categorias de verdade:
+      - "Sem categoria" é o rótulo do que está vazio ou nulo;
+      - "Outros" é o resto além das seis maiores, então precisa refazer o mesmo
+        ranking do desenho para saber quais categorias caíram ali.
+    """
+    periodo = request.args.get("periodo", "30d")
+    tipo = request.args.get("tipo")
+    categoria = request.args.get("categoria") or ""
+    if tipo not in ("renda", "despesa"):
+        return jsonify({"erro": msg("tipo inválido")}), 400
+    inicio, fim = _intervalo_money_map(periodo)
+
+    conn = get_db()
+    try:
+        condicao = CONDICAO_MONEY_MAP.format(totais=entra_nos_totais())
+        params = [uid(), inicio, fim, tipo]
+        extra = ""
+        if categoria == "Outros":
+            chave = "receitas" if tipo == "renda" else "despesas"
+            resto = _money_map_ranking(conn, inicio, fim)[chave][MONEY_MAP_LIMITE:]
+            nomes = [x["nome"] for x in resto]
+            if not nomes:
+                return jsonify({"inicio": inicio, "fim": fim, "lancamentos": []})
+            # "Sem categoria" pode estar no resto, e no banco ela é NULL ou ''.
+            partes = []
+            reais = [n for n in nomes if n != "Sem categoria"]
+            if reais:
+                partes.append(f"categoria IN ({','.join('?' * len(reais))})")
+                params.extend(reais)
+            if "Sem categoria" in nomes:
+                partes.append("categoria IS NULL OR categoria = ''")
+            extra = " AND (" + " OR ".join(partes) + ")"
+        elif categoria == "Sem categoria":
+            extra = " AND (categoria IS NULL OR categoria = '')"
+        else:
+            extra = " AND categoria = ?"
+            params.append(categoria)
+
+        rows = conn.execute(
+            f"SELECT * FROM lancamentos WHERE {condicao} AND tipo = ?{extra} "
+            "ORDER BY COALESCE(data_pagamento, vencimento, mes || '-15') DESC, id DESC",
+            params,
+        ).fetchall()
+        return jsonify({"inicio": inicio, "fim": fim,
+                        "lancamentos": [dict(r) for r in rows]})
     finally:
         conn.close()
 

@@ -47,3 +47,12 @@ CLAUDE.md
 # disco de quem publica, fora do repositório público.
 publicar.sh
 publicar-staging.sh
+
+# Banco da instância descartável de teste (porta 8499). Não tem dado real, mas
+# é banco — não entra no repositório.
+.dados-teste/
+
+# Backups do banco e das notas pessoais — nunca versionar (repo público)
+backups/
+*.db
+*.md.bak

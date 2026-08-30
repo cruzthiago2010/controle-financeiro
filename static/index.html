@@ -315,6 +315,10 @@
   .mm-fluxo:hover{opacity:0.78;}
   .mm-rot{font-size:13px; font-weight:600; fill:var(--text);}
   .mm-val{font-size:12px; fill:var(--muted);}
+  .mm-clicavel{cursor:pointer;}
+  /* Contorno visível no foco de teclado: as faixas são SVG e não ganham o
+     realce que o navegador dá a botão. */
+  .mm-clicavel:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
   .mm-vazio{color:var(--muted-soft); font-size:0.86rem; padding:26px 10px; text-align:center;}
   .nav-selo{
     margin-left:auto; background:var(--yellow); color:#3a2c00; font-size:0.68rem;
@@ -379,6 +383,20 @@
   /* select de vínculo: sem isto o `input` global de 100% estica e quebra a linha */
   .of-conta select{max-width:220px; flex:0 1 220px;}
   .of-aviso{color:var(--muted); font-size:0.78rem; margin-top:10px; line-height:1.5;}
+  /* `flex-wrap` porque no celular o botão e a frase de progresso não cabem na
+     mesma linha, e a frase é justamente a que não pode ser cortada. */
+  #ofAcoesGlobais{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 2px;}
+  #ofAcoesGlobais[hidden]{display:none;}
+  #ofSincProgresso{background:var(--card3); border-radius:999px; height:7px; overflow:hidden; margin:8px 0 2px;}
+  #ofSincProgresso[hidden]{display:none;}
+  #ofSincProgresso .fill{height:100%; border-radius:999px; background:var(--accent);
+    width:0; transition:width 0.3s ease;}
+  #ofSincResultado:not(:empty){margin:10px 0 2px;}
+  .of-sinc-linha{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+    font-size:0.79rem; padding:4px 0; border-bottom:1px solid var(--border-soft);}
+  .of-sinc-linha:last-child{border-bottom:none;}
+  .of-sinc-linha .quem{font-weight:600;}
+  .of-sinc-linha .oque{color:var(--muted);}
   .footer-actions{display:flex; gap:8px; margin-top:16px;}
   .footer-actions button{flex:1;}
 
@@ -535,6 +553,44 @@
     margin-left:6px; white-space:nowrap;
   }
   .selo-fora svg{width:11px; height:11px;}
+
+  /* ---- Etiquetas (tags) ----
+     O selo do item usa a cor da etiqueta só na bolinha, e não no fundo: cor
+     escolhida a dedo raramente passa no contraste contra os dois temas, e um
+     selo inteiro pintado ficava ilegível no claro. */
+  .selo-tag{
+    font-size:0.66rem; font-weight:600; padding:2px 7px; border-radius:999px;
+    background:var(--card2); color:var(--muted);
+    display:inline-flex; align-items:center; gap:5px; vertical-align:middle;
+    margin-left:6px; white-space:nowrap;
+  }
+  .selo-tag .ponto{width:7px; height:7px; border-radius:50%; flex:none; background:var(--muted);}
+  /* A linha de etiquetas quebra em vez de cortar: com reticência, a segunda
+     etiqueta some e a pessoa não sabe que ela existe. */
+  .item-tags{display:flex; flex-wrap:wrap; gap:2px; margin-top:3px;}
+  .item-tags .selo-tag{margin-left:0;}
+
+  .tags-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px;}
+
+  /* Escolha de etiquetas dentro do modal. `button` e não `label`+checkbox
+     porque o estado é lido do próprio elemento (aria-pressed), o que evita
+     um input escondido por etiqueta dentro de um modal que já é comprido. */
+  .tags-escolha{display:flex; flex-wrap:wrap; gap:6px; margin-top:2px;}
+  .tags-escolha .vazio{font-size:0.78rem; color:var(--muted);}
+  .tag-chip{
+    background:var(--card2); color:var(--text); border:1px solid var(--border); box-shadow:none;
+    font-size:0.78rem; font-weight:600; padding:5px 11px; border-radius:999px;
+    display:inline-flex; align-items:center; gap:6px; width:auto; flex:none;
+  }
+  .tag-chip:hover{background:var(--card3); transform:none; box-shadow:none;}
+  .tag-chip .ponto{width:8px; height:8px; border-radius:50%; flex:none; background:var(--muted);}
+  .tag-chip[aria-pressed="true"]{border-color:var(--accent); color:var(--accent);
+    background:rgba(0,167,111,0.12);}
+  .tags-nova{display:flex; gap:8px; margin-top:8px; align-items:center;}
+  /* `input` global é width:100%, então sem o flex o botão era empurrado para
+     fora da caixa do modal. */
+  .tags-nova input{flex:1; min-width:0;}
+  .tags-nova button{flex:none; width:auto;}
   /* O valor riscado é o que faz a lista bater com o total sem precisar de
      explicação: o item continua ali, o número não conta. */
   .item.fora-dos-totais .valor{opacity:.5; text-decoration:line-through;}
@@ -1110,6 +1166,17 @@
   .teclado-grade .apagar{color:var(--yellow);}
   .teclado-grade .ok{background:linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; border:none; grid-row:span 2;}
   .dropdown-busca{min-width:330px; max-width:420px;}
+  /* No desktop quem fecha é a própria lupa, que alterna o painel — um X ao
+     lado dela seria um segundo controle para a mesma coisa. */
+  .busca-cabecalho{display:none;}
+  .busca-titulo{font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--muted); font-weight:700;}
+  .busca-fechar{
+    background:var(--card2); color:var(--muted); border:1px solid var(--border); box-shadow:none;
+    width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center;
+    border-radius:var(--radius-sm); flex:none;
+  }
+  .busca-fechar:hover{background:var(--card3); color:var(--text); transform:none; box-shadow:none;}
   .dropdown-busca input[type="search"]{width:100%; margin-bottom:6px;}
   #buscaGlobalResultado{max-height:340px; overflow-y:auto;}
   /* Cada resultado mostra em que mês está, já que a busca varre todos. */
@@ -1183,6 +1250,12 @@
     /* O painel passa a mostrar só os resultados: quem digita é o campo da
        barra, e dois campos de busca na mesma tela é um a mais. */
     #dropdownBusca > input[type="search"]{display:none;}
+    /* `.dropdown` na frente pela mesma razão do `.topbar` logo abaixo: a regra
+       que esconde o cabeçalho no desktop vem DEPOIS deste bloco no arquivo. */
+    .dropdown .busca-cabecalho{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:6px 4px 8px; border-bottom:1px solid var(--border-soft); margin-bottom:6px;
+    }
     /* `.topbar` na frente porque a regra que esconde o campo no desktop vem
        DEPOIS deste bloco no arquivo: com a mesma especificidade, quem vem
        depois ganha, e o campo não aparecia. */
@@ -1484,6 +1557,15 @@
             <svg class="ico" viewBox="0 0 24 24"><use href="#i-busca"/></svg>
           </button>
           <div class="dropdown dropdown-busca" id="dropdownBusca" hidden>
+            <!-- Só aparece no celular. Lá o campo de dentro do painel fica
+                 escondido e a lupa some, então sem este X não sobra nenhum
+                 controle de fechar dentro do próprio painel. -->
+            <div class="busca-cabecalho">
+              <span class="busca-titulo" data-i18n="Resultados">Resultados</span>
+              <button class="busca-fechar" id="buscaFechar" type="button" title="Fechar a busca" data-i18n-title="Fechar a busca">
+                <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-x"/></svg>
+              </button>
+            </div>
             <input type="search" id="buscaGlobalInput" placeholder="Buscar por descrição, categoria ou valor…" data-i18n-placeholder="Buscar por descrição, categoria ou valor…" autocomplete="off">
             <div id="buscaGlobalResultado">
               <div class="sino-vazio" data-i18n="Digite para procurar em todos os meses.">Digite para procurar em todos os meses.</div>
@@ -1707,6 +1789,14 @@
       </p>
 
       <div id="ofCredencial"></div>
+      <!-- Faixa de ação da seção inteira. Fica fora do #ofConexoes porque não
+           pertence a nenhum banco: é a sincronização da casa toda. -->
+      <div id="ofAcoesGlobais" hidden>
+        <button type="button" id="btnSincronizarTudoOF" data-i18n="Sincronizar todas as contas">Sincronizar todas as contas</button>
+        <span class="of-conta-sub" id="ofSincEstado"></span>
+      </div>
+      <div id="ofSincProgresso" hidden><div class="fill"></div></div>
+      <div id="ofSincResultado"></div>
       <div id="ofConexoes"></div>
 
       <form class="add-form" id="ofItemForm" hidden>
@@ -1753,6 +1843,7 @@
       <input type="text" id="buscaInput" placeholder="Buscar por descrição" data-i18n-placeholder="Buscar por descrição">
       <select id="filtroCategoria"><option value="" data-i18n="Todas categorias">Todas categorias</option></select>
       <select id="filtroConta"><option value="" data-i18n="Todas contas">Todas contas</option></select>
+      <select id="filtroTag"><option value="" data-i18n="Todas etiquetas">Todas etiquetas</option></select>
       <select id="filtroStatus">
         <option value="" data-i18n="Todos status">Todos status</option>
         <option value="pago" data-i18n="Pago">Pago</option>
@@ -1786,8 +1877,8 @@
   <section class="painel" id="painel-regras">
     <h2><span data-i18n="Não categorizados">Não categorizados</span></h2>
     <p class="of-ajuda">
-      O que o banco mandou e ninguém soube classificar. Estão agrupados por
-      descrição: você resolve o grupo inteiro de uma vez e, marcando
+      <span data-i18n="O que o banco mandou e ninguém soube classificar. Estão agrupados por descrição: você resolve o grupo inteiro de uma vez e, marcando">O que o banco mandou e ninguém soube classificar. Estão agrupados por
+      descrição: você resolve o grupo inteiro de uma vez e, marcando</span>
       <b data-i18n="criar regra">criar regra</b><span data-i18n=", o próximo que aparecer já vem pronto.">, o próximo que aparecer já vem pronto.</span>
     </p>
     <div id="listaNaoCat"><div class="loading-msg" data-i18n="Carregando...">Carregando...</div></div>
@@ -1818,6 +1909,24 @@
       <h2><span data-i18n="Categorias de Despesa">Categorias de Despesa</span></h2>
       <div class="categorias-grid" id="listaCategoriasDespesa"></div>
     </div>
+    <div class="secao">
+      <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-tag"/></svg> <span data-i18n="Etiquetas">Etiquetas</span></h2>
+      <p class="of-ajuda" data-i18n="Categoria diz que tipo de gasto é, e é uma só. Etiqueta diz a que aquilo pertence, e podem ser várias — a viagem de julho tem combustível, alimentação e lazer, e o que você quer somar é a viagem.">
+        Categoria diz que tipo de gasto é, e é uma só. Etiqueta diz a que aquilo
+        pertence, e podem ser várias — a viagem de julho tem combustível,
+        alimentação e lazer, e o que você quer somar é a viagem.
+      </p>
+      <div class="tags-grid" id="listaTags"></div>
+      <form class="add-form" id="tagForm">
+        <input type="text" id="tagFormNome" placeholder="Nome da etiqueta" data-i18n-placeholder="Nome da etiqueta" maxlength="40" required>
+        <label class="toggle-row" style="width:auto; gap:8px; padding:0;">
+          <span data-i18n="Cor">Cor</span>
+          <input type="color" id="tagFormCor" value="#00a76f" style="width:44px; padding:2px; height:38px; flex:none;">
+        </label>
+        <button type="submit" data-i18n="Adicionar etiqueta">Adicionar etiqueta</button>
+      </form>
+    </div>
+
     <div class="secao">
       <h2><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-carteira"/></svg> <span data-i18n="Orçamento mensal por categoria">Orçamento mensal por categoria</span></h2>
       <div id="listaOrcamentos" style="display:flex; flex-direction:column; gap:8px;"></div>
@@ -2094,10 +2203,10 @@
       <h2><span data-i18n="Com o app fechado">Com o app fechado</span></h2>
       <div class="card">
         <p class="notif-ajuda" style="margin:0;">
-          Pelo navegador, os avisos só aparecem enquanto o FinanCerto está aberto —
+          <span data-i18n="Pelo navegador, os avisos só aparecem enquanto o FinanCerto está aberto — é uma limitação de quem roda o próprio servidor, sem um serviço de push. Para receber com o celular guardado, use o">Pelo navegador, os avisos só aparecem enquanto o FinanCerto está aberto —
           é uma limitação de quem roda o próprio servidor, sem um serviço de push.
-          Para receber com o celular guardado, use o <b data-i18n="app do Android">app do Android</b>, que
-          confere as contas em segundo plano.
+          Para receber com o celular guardado, use o</span> <b data-i18n="app do Android">app do Android</b><span data-i18n=", que confere as contas em segundo plano.">, que
+          confere as contas em segundo plano.</span>
         </p>
         <a class="secondary" id="notifBaixarApp" href="https://github.com/financerto/financerto-app/releases/latest"
            target="_blank" rel="noopener"
@@ -2219,8 +2328,17 @@
     <select id="editCategoria"></select>
     <label data-i18n="Vencimento / data">Vencimento / data</label>
     <input type="date" id="editVenc">
+    <label><span data-i18n="Horário (opcional)">Horário (opcional)</span></label>
+    <input type="time" id="editHora">
     <label data-i18n="Conta">Conta</label>
     <select id="editConta"><option value="" data-i18n="Sem conta">Sem conta</option></select>
+
+    <label><span data-i18n="Etiquetas">Etiquetas</span></label>
+    <div class="tags-escolha" id="tagsEdicao"></div>
+    <div class="tags-nova">
+      <input type="text" id="novaTagNomeEdicao" placeholder="Nova etiqueta" data-i18n-placeholder="Nova etiqueta" autocomplete="off" maxlength="40">
+      <button type="button" class="secondary" id="novaTagBtnEdicao" data-i18n="Criar">Criar</button>
+    </div>
     <label class="toggle-row">
       <span id="editPagoLabel"><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-check-circulo"/></svg> <span data-i18n="Já paga">Já paga</span></span>
       <span class="toggle-switch"><input type="checkbox" id="editPago"><span class="toggle-slider"></span></span>
@@ -2341,6 +2459,11 @@
     <label data-i18n="Data / vencimento">Data / vencimento</label>
     <input type="date" id="vencInput">
 
+    <!-- `data-i18n` vai no <span>: input não tem textContent, e a marcação
+         direta nele não faria efeito nenhum. -->
+    <label><span data-i18n="Horário (opcional)">Horário (opcional)</span></label>
+    <input type="time" id="horaInput">
+
     <label data-i18n="Categoria">Categoria</label>
     <div class="select-com-icone">
       <span class="dot-preview" id="dotCategoria"></span>
@@ -2360,6 +2483,13 @@
     <div class="select-com-icone">
       <span class="dot-preview" id="dotConta"></span>
       <select id="contaInput"><option value="" data-i18n="Sem conta">Sem conta</option></select>
+    </div>
+
+    <label><span data-i18n="Etiquetas">Etiquetas</span></label>
+    <div class="tags-escolha" id="tagsNovo"></div>
+    <div class="tags-nova">
+      <input type="text" id="novaTagNomeNovo" placeholder="Nova etiqueta" data-i18n-placeholder="Nova etiqueta" autocomplete="off" maxlength="40">
+      <button type="button" class="secondary" id="novaTagBtnNovo" data-i18n="Criar">Criar</button>
     </div>
 
     <label class="toggle-row">
@@ -2726,6 +2856,22 @@
   </div>
 </div>
 
+<!-- Modal de edição de etiqueta -->
+<div class="modal-overlay" id="modalEdicaoTag">
+  <div class="modal-box">
+    <h3><span data-i18n="Editar etiqueta">Editar etiqueta</span></h3>
+    <input type="hidden" id="editTagId">
+    <label data-i18n="Nome">Nome</label>
+    <input type="text" id="editTagNome" maxlength="40">
+    <label data-i18n="Cor">Cor</label>
+    <input type="color" id="editTagCor" style="width:60px; padding:2px; height:40px;">
+    <div class="modal-acoes">
+      <button class="secondary" type="button" id="editTagCancelar" data-i18n="Cancelar">Cancelar</button>
+      <button type="button" id="editTagSalvar" data-i18n="Salvar alterações">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal de adicionar usuário -->
 <div class="modal-overlay" id="modalNovoUsuario">
   <div class="modal-box">
@@ -2735,7 +2881,7 @@
     <label data-i18n="Usuário (login)">Usuário (login)</label>
     <input type="text" id="novoUsuarioUsername" placeholder="ex: esposa" data-i18n-placeholder="ex: esposa" autocapitalize="off">
     <label data-i18n="Senha">Senha</label>
-    <input type="password" id="novoUsuarioSenha" placeholder="mínimo 4 caracteres" data-i18n-placeholder="mínimo 4 caracteres">
+    <input type="password" id="novoUsuarioSenha" placeholder="mínimo 8 caracteres" data-i18n-placeholder="mínimo 8 caracteres">
     <label class="toggle-row">
       <span data-i18n="Somente leitura (não pode editar, só ver)">Somente leitura (não pode editar, só ver)</span>
       <span class="toggle-switch"><input type="checkbox" id="novoUsuarioSomenteLeitura"><span class="toggle-slider"></span></span>
@@ -2755,7 +2901,7 @@
       Não é preciso saber a senha atual — só o administrador acessa esta tela.
     </p>
     <label data-i18n="Nova senha">Nova senha</label>
-    <input type="password" id="senhaMembroNova" placeholder="mínimo 4 caracteres" data-i18n-placeholder="mínimo 4 caracteres">
+    <input type="password" id="senhaMembroNova" placeholder="mínimo 8 caracteres" data-i18n-placeholder="mínimo 8 caracteres">
     <label data-i18n="Confirmar nova senha">Confirmar nova senha</label>
     <input type="password" id="senhaMembroConfirmar" placeholder="repita a nova senha" data-i18n-placeholder="repita a nova senha">
     <div class="modal-acoes">
@@ -2805,11 +2951,25 @@
     <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;"><span data-i18n="Login com Google">Login com Google</span></h3>
     <div id="googleVinculoBox" style="margin-top:8px;"></div>
 
-    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;"><span data-i18n="Trocar senha">Trocar senha</span></h3>
-    <label data-i18n="Senha atual">Senha atual</label>
-    <input type="password" id="senhaAtualInput">
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;"><span data-i18n="E-mail para recuperação">E-mail para recuperação</span></h3>
+    <p style="font-size:0.78rem; color:var(--muted-soft); margin:6px 0 10px;" data-i18n="Sem e-mail cadastrado, quem esquece a senha depende do administrador da casa — e se você for o administrador, não há a quem recorrer.">
+      Sem e-mail cadastrado, quem esquece a senha depende do administrador da
+      casa — e se você for o administrador, não há a quem recorrer.
+    </p>
+    <input type="email" id="perfilEmailInput" placeholder="seu@email.com" data-i18n-placeholder="seu@email.com" autocomplete="email">
+    <button type="button" class="secondary" id="perfilEmailSalvar" style="width:auto; margin-top:8px;" data-i18n="Salvar e-mail">Salvar e-mail</button>
+
+    <h3 style="font-size:0.85rem; color:var(--muted); margin:22px 0 0;" id="tituloTrocarSenha"><span data-i18n="Trocar senha">Trocar senha</span></h3>
+    <p style="font-size:0.78rem; color:var(--muted-soft); margin:6px 0 10px; display:none;" id="avisoSemSenha" data-i18n="Você entra pelo Google e nunca escolheu uma senha. Defina uma para poder entrar também por usuário e senha.">
+      Você entra pelo Google e nunca escolheu uma senha. Defina uma para poder
+      entrar também por usuário e senha.
+    </p>
+    <div id="senhaAtualBox">
+      <label data-i18n="Senha atual">Senha atual</label>
+      <input type="password" id="senhaAtualInput">
+    </div>
     <label data-i18n="Nova senha">Nova senha</label>
-    <input type="password" id="novaSenhaInput" placeholder="mínimo 4 caracteres" data-i18n-placeholder="mínimo 4 caracteres">
+    <input type="password" id="novaSenhaInput" placeholder="mínimo 8 caracteres" data-i18n-placeholder="mínimo 8 caracteres">
     <div class="modal-acoes">
       <button class="secondary" type="button" id="trocarSenhaCancelar" data-i18n="Fechar">Fechar</button>
       <button type="button" id="trocarSenhaSalvar" data-i18n="Salvar nova senha">Salvar nova senha</button>
@@ -2832,6 +2992,37 @@ const svgIco = (nome, cls = "ico") => `<svg class="${cls}" viewBox="0 0 24 24"><
 // Elementos estáticos carregam data-i18n com o texto original, então trocar de
 // idioma e voltar não perde nada. Conteúdo montado por JS passa por t().
 const TRADUCOES = {"en": {
+// Entradas acrescentadas na auditoria de 30/08/2026. A maior parte do que
+// faltava não era chave ausente: era HTML montado por JS que nunca chamava
+// t(), ou texto solto ao lado de um <b>, que marcação automática não pega.
+"Nenhuma conta vencida ou vencendo nos próximos 7 dias.": "No bill overdue or due in the next 7 days.",
+"Conta: {0}": "Account: {0}",
+"Tudo em dia por aqui": "All clear here",
+"✓ recebido": "✓ received",
+"✓ pago": "✓ paid",
+"repete até {0}": "repeats until {0}",
+"repete todo mês": "repeats every month",
+"previsão — some ao importar o holerite": "forecast — disappears when the payslip is imported",
+"Já recebida": "Already received",
+"Modo demonstração LIGADO": "Demo mode ON",
+"Lucro total": "Total profit",
+"Proventos recebidos (12M)": "Dividends received (12M)",
+"Rentabilidade (12M)": "Return (12M)",
+"Valor investido: {0}": "Invested: {0}",
+"Ganho de capital: {0}": "Capital gain: {0}",
+"Proventos recebidos: {0}": "Dividends received: {0}",
+"Total da carteira: {0}": "Portfolio total: {0}",
+"Rentabilidade total: {0}": "Total return: {0}",
+"Um .zip com todos os lançamentos, {0} comprovante(s) e {1} foto(s) — cerca de {2}.": "A .zip with every entry, {0} receipt(s) and {1} photo(s) — about {2}.",
+"{0} (você)": "{0} (you)",
+"Valor": "Amount",
+"Excluir empréstimo": "Delete loan",
+"Excluir operação": "Delete transaction",
+"Excluir holerite": "Delete payslip",
+"Baixar PDF": "Download PDF",
+"Desativar": "Turn off",
+"Ativar": "Turn on",
+"seu@email.com": "you@email.com",
 "% do CDI": "% of CDI",
 "+ Adicionar ativo": "+ Add asset",
 "+ Adicionar categoria": "+ Add category",
@@ -2849,7 +3040,9 @@ const TRADUCOES = {"en": {
 "A conta": "Account",
 "A conta {0} está negativa em {1}.": "Account {0} is {1} overdrawn.",
 "A leitura é automática e pode errar alguns dígitos — confira tudo antes de lançar.": "Scanning is automatic and may misread digits — check everything before saving.",
+"A nova senha precisa ter pelo menos 8 caracteres": "The new password must be at least 8 characters",
 "A receber": "Expected",
+"A sincronização falhou.": "The sync failed.",
 "Aberto pelo navegador": "Opened in the browser",
 "Abre em tela cheia, sem a barra do navegador.": "Opens full screen, without the browser bar.",
 "Adiantada": "Ahead",
@@ -2858,6 +3051,7 @@ const TRADUCOES = {"en": {
 "Adicionar cartão": "Add card",
 "Adicionar conta": "Add account",
 "Adicionar empréstimo": "Add loan",
+"Adicionar etiqueta": "Add tag",
 "Adicionar lançamento": "Add entry",
 "Adicionar usuário": "Add user",
 "Administrador": "Administrator",
@@ -2909,6 +3103,7 @@ const TRADUCOES = {"en": {
 "Cartões de crédito": "Credit cards",
 "Casa": "Household",
 "Categoria": "Category",
+"Categoria diz que tipo de gasto é, e é uma só. Etiqueta diz a que aquilo pertence, e podem ser várias — a viagem de julho tem combustível, alimentação e lazer, e o que você quer somar é a viagem.": "A category says what kind of spending it is, and there is only one. A tag says what it belongs to, and there can be several — July's trip has fuel, food and leisure, and what you want to add up is the trip.",
 "Categorias": "Categories",
 "Categorias de Despesa": "Expense categories",
 "Categorias de Receita": "Income categories",
@@ -2938,6 +3133,7 @@ const TRADUCOES = {"en": {
 "Convidar usuário": "Invite user",
 "Convide outra pessoa da família para entrar nessa casa com o próprio login.": "Invite someone else in the family to join this household with their own login.",
 "Cor": "Color",
+"Criar": "Create",
 "Criar meta": "Create goal",
 "Criar nova categoria": "Create new category",
 "Criptomoeda": "Cryptocurrency",
@@ -2956,13 +3152,44 @@ const TRADUCOES = {"en": {
 "Debênture": "Debenture",
 "Defina a porcentagem ideal pra cada classe de ativo que você quer ter na carteira. Com base nisso, o app mostra se cada uma está acima ou abaixo da meta.": "Set the target share for each asset class in your portfolio. From that, the app shows whether each one is above or below target.",
 "Definir orçamento": "Set budget",
+"Definir senha": "Set password",
+"Definir uma senha": "Set a password",
 "Descrição": "Description",
 "Descrição (opcional)": "Description (optional)",
 "Desligado": "Off",
 "Despesa": "Expense",
 "Despesas": "Expenses",
 "Despesas do mês": "Expenses this month",
+"Despesas em": "Expenses in",
 "Dia de vencimento": "Due day",
+"E-mail para recuperação": "Recovery email",
+"E-mail salvo": "Email saved",
+"Editar etiqueta": "Edit tag",
+"Etiqueta atualizada": "Tag updated",
+"Etiqueta criada": "Tag created",
+"Etiqueta excluída": "Tag deleted",
+"Etiquetas": "Tags",
+"Excluir esta etiqueta? Ela sai dos lançamentos que a usam.": "Delete this tag? It will be removed from the entries using it.",
+"Fechar a busca": "Close search",
+"Horário (opcional)": "Time (optional)",
+"Já havia uma sincronização em andamento — acompanhando ela.": "A sync was already running — following that one.",
+"Lançamentos": "Entries",
+"Nada novo no extrato.": "Nothing new in the statement.",
+"Nenhum lançamento encontrado.": "No entries found.",
+"Nenhuma etiqueta ainda — crie uma abaixo.": "No tags yet — create one below.",
+"Nenhuma etiqueta ainda.": "No tags yet.",
+"Nome da etiqueta": "Tag name",
+"Nova etiqueta": "New tag",
+"Não deu para acompanhar — recarregue a página e confira o resultado.": "Could not follow it — reload the page and check the result.",
+"Não foi possível abrir os lançamentos": "Could not open the entries",
+"Não foi possível acompanhar a sincronização.": "Could not follow the sync.",
+"Não foi possível criar a etiqueta": "Could not create the tag",
+"Não foi possível excluir a etiqueta": "Could not delete the tag",
+"Não foi possível salvar a etiqueta": "Could not save the tag",
+"Não foi possível salvar o e-mail": "Could not save the email",
+"Não foi possível sincronizar": "Could not sync",
+"Receitas em": "Income in",
+"Resultados": "Results",
 "Digite para procurar em todos os meses.": "Type to search across every month.",
 "Digite pra buscar (ex: petrobras, bitcoin)": "Type to search (e.g. petrobras, bitcoin)",
 "Dinheiro disponível (mês)": "Money available (month)",
@@ -3154,7 +3381,15 @@ const TRADUCOES = {"en": {
 "Receita": "Income",
 "Receitas & Despesas": "Income & Expenses",
 "Não contar nos totais": "Do not count in the totals",
+"Salvar e-mail": "Save email",
+"Sem e-mail cadastrado, quem esquece a senha depende do administrador da casa — e se você for o administrador, não há a quem recorrer.": "Without an email on file, whoever forgets the password depends on the household admin — and if you are the admin, there is no one to turn to.",
+"Sincronizando…": "Syncing…",
+"Sincronizar todas as contas": "Sync every account",
+"Todas etiquetas": "All tags",
+"Total no período ({0} a {1})": "Total for the period ({0} to {1})",
+"Você entra pelo Google e nunca escolheu uma senha. Defina uma para poder entrar também por usuário e senha.": "You sign in with Google and never chose a password. Set one so you can also sign in with username and password.",
 "Voltar a contar nos totais": "Count in the totals again",
+"ciclo diário": "daily cycle",
 "fora dos totais": "not counted",
 "Fora dos totais — continua no saldo da conta": "Left out of the totals — still in the account balance",
 "Voltou a contar nos totais": "Counting in the totals again",
@@ -3197,6 +3432,13 @@ const TRADUCOES = {"en": {
 "Não é duplicado": "Not a duplicate",
 "Certo — não vou avisar sobre esses de novo": "Got it — I won't flag these again",
 "Não foi possível guardar essa escolha": "Could not save that choice",
+"saldo ajustado em {0}": "balance adjusted by {0}",
+"webhook": "webhook",
+"{0} conciliados": "{0} matched",
+"{0} contas sincronizadas · {1} lançamentos novos": "{0} accounts synced · {1} new entries",
+"{0} de {1} contas sincronizadas — {2} falhou": "{0} of {1} accounts synced — {2} failed",
+"{0} novos": "{0} new",
+"às": "at",
 "— não contar nos totais —": "— don't count in totals —",
 "transferência": "transfer",
 "Você lançou como previsão e o extrato trouxe o pagamento": "You entered it as a forecast and the statement brought the payment",
@@ -3338,7 +3580,7 @@ const TRADUCOES = {"en": {
 "lançamentos": "entries",
 "meses": "months",
 "mês": "month",
-"mínimo 4 caracteres": "at least 4 characters",
+"mínimo 8 caracteres": "at least 8 characters",
 "o compartilhamento, use o aplicativo do seu banco — é lá que o consentimento vive.": "the sharing, use your bank's app — that is where the consent lives.",
 "ou": "or",
 "paga": "paid",
@@ -3467,7 +3709,7 @@ let alocacaoIdealCache = {};
 let dashboardCache = null;
 let usuariosCache = [];
 let usuarioAtual = null;
-let filtros = {busca:"", categoria:"", conta:"", status:"", ordenacao:"padrao"};
+let filtros = {busca:"", categoria:"", conta:"", status:"", tag:"", ordenacao:"padrao"};
 
 const PALETA_CORES = ["#00a76f","#00a76f","#ff5630","#ffab00","#8e33ff","#4dd0e1","#f78fb3","#82e0aa","#f0932b","#c8d6e5"];
 let categoriaCorCache = {};
@@ -3645,6 +3887,18 @@ function formatData(v){
   if (p.length !== 3) return v;
   return `${p[2]}/${p[1]}/${p[0]}`;
 }
+// Data com o horário quando ele existe. Textual como a `formatData`, e pelo
+// mesmo motivo: montar um Date aqui traria de volta o bug clássico de
+// `new Date('2026-08-24')` ser lido como UTC e virar dia 23 no Brasil.
+//
+// Sem horário devolve só a data — nunca um "00:00" que ninguém digitou, que
+// faria toda linha antiga parecer ter acontecido à meia-noite.
+function formatDataComHora(data, hora){
+  const d = formatData(data);
+  if (!d) return "";
+  const h = (hora || "").slice(0, 5);
+  return h ? `${d} ${t("às")} ${h}` : d;
+}
 function hojeISO(){ return new Date().toISOString().slice(0,10); }
 
 // ---------- Navegação (sidebar) ----------
@@ -3791,7 +4045,7 @@ function renderizarPainelCategorias(){
       <span class="nome">${escapeHtml(c.nome)}</span>
       <div class="acoes">
         <button class="icon" onclick="abrirEdicaoCategoria(${c.id})" title="Editar">${ICO.lapis}</button>
-        <button class="icon danger" onclick="excluirCategoria(${c.id})" title="Excluir">${ICO.x}</button>
+        <button class="icon danger" onclick="excluirCategoria(${c.id})" title="${t("Excluir")}">${ICO.x}</button>
       </div>
     `;
     return div;
@@ -3880,6 +4134,199 @@ document.getElementById("categoriaForm").addEventListener("submit", async (e) =>
     await carregarCategorias();
   } catch (e) {}
 });
+
+// ---------- Etiquetas (tags) ----------
+//
+// Categoria é uma só por lançamento e responde "que tipo de gasto é este";
+// etiqueta pode ser várias e responde "a que isso pertence". São da casa
+// inteira, como as categorias.
+let tagsCache = [];
+// {id do lançamento: [tag]}. Vem num pedido só, e não numa coluna a mais em
+// cada listagem: /lancamentos, /ultimos-lancamentos e /busca usam SELECT * e a
+// tela monta o item pelas colunas — seria o mesmo dado em três consultas.
+let tagsPorLancamento = {};
+
+async function carregarTags(){
+  try {
+    const res = await apiFetch(`${API}/tags`, undefined, {silencioso:true});
+    tagsCache = await res.json();
+  } catch (e) { tagsCache = []; }
+  try {
+    const res = await apiFetch(`${API}/lancamentos/tags`, undefined, {silencioso:true});
+    tagsPorLancamento = await res.json();
+  } catch (e) { tagsPorLancamento = {}; }
+  renderizarPainelTags();
+  atualizarFiltroTags();
+}
+
+function corDaTag(tag){
+  return corSegura(tag.cor) || corHash(tag.nome);
+}
+
+function renderizarPainelTags(){
+  const alvo = document.getElementById("listaTags");
+  if (!alvo) return;
+  alvo.innerHTML = "";
+  if (!tagsCache.length){
+    alvo.innerHTML = `<div class="empty">${t("Nenhuma etiqueta ainda.")}</div>`;
+    return;
+  }
+  tagsCache.forEach(tag => {
+    const div = document.createElement("div");
+    div.className = "categoria-card";
+    div.innerHTML = `
+      <span class="dot" style="background:${corDaTag(tag)}"></span>
+      <span class="nome">${escapeHtml(tag.nome)}</span>
+      <div class="acoes">
+        <button class="icon" data-tag-id="${tag.id}" title="${t("Editar")}">${ICO.lapis}</button>
+        <button class="icon danger" data-tag-id="${tag.id}" title="${t("Excluir")}">${ICO.x}</button>
+      </div>`;
+    // addEventListener e não onclick com o nome interpolado: o nome da etiqueta
+    // é texto do usuário, e o navegador desescapa o atributo antes de executar.
+    const [editar, excluir] = div.querySelectorAll("button");
+    editar.addEventListener("click", () => abrirEdicaoTag(tag.id));
+    excluir.addEventListener("click", () => excluirTag(tag.id));
+    alvo.appendChild(div);
+  });
+}
+
+function atualizarFiltroTags(){
+  const sel = document.getElementById("filtroTag");
+  if (!sel) return;
+  const atual = sel.value;
+  sel.innerHTML = `<option value="">${t("Todas etiquetas")}</option>`;
+  tagsCache.forEach(tag => {
+    const opt = document.createElement("option");
+    opt.value = String(tag.id);
+    opt.textContent = tag.nome;
+    sel.appendChild(opt);
+  });
+  sel.value = atual;
+  // Se a etiqueta filtrada foi apagada, o select cai para vazio sozinho e o
+  // filtro precisa acompanhar, senão a lista fica presa num filtro invisível.
+  if (sel.value !== atual) renderizarListasFiltradas();
+}
+
+// Os selos que aparecem no item da lista.
+function selosDeTags(lancamentoId){
+  const tags = tagsPorLancamento[String(lancamentoId)] || [];
+  if (!tags.length) return "";
+  return `<div class="item-tags">` + tags.map(tag =>
+    `<span class="selo-tag"><span class="ponto" style="background:${corDaTag(tag)}"></span>${escapeHtml(tag.nome)}</span>`
+  ).join("") + `</div>`;
+}
+
+// ---- escolha de etiquetas dentro dos modais ----
+function renderizarEscolhaTags(idLista, selecionadas){
+  const alvo = document.getElementById(idLista);
+  if (!alvo) return;
+  const marcadas = new Set((selecionadas || []).map(Number));
+  alvo.innerHTML = "";
+  if (!tagsCache.length){
+    alvo.innerHTML = `<span class="vazio">${t("Nenhuma etiqueta ainda — crie uma abaixo.")}</span>`;
+    return;
+  }
+  tagsCache.forEach(tag => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tag-chip";
+    b.dataset.tagId = String(tag.id);
+    b.setAttribute("aria-pressed", marcadas.has(tag.id) ? "true" : "false");
+    b.innerHTML = `<span class="ponto" style="background:${corDaTag(tag)}"></span>${escapeHtml(tag.nome)}`;
+    b.addEventListener("click", () => {
+      b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+    });
+    alvo.appendChild(b);
+  });
+}
+
+function tagsSelecionadas(idLista){
+  const alvo = document.getElementById(idLista);
+  if (!alvo) return [];
+  return [...alvo.querySelectorAll('.tag-chip[aria-pressed="true"]')]
+    .map(b => Number(b.dataset.tagId));
+}
+
+// Criar sem sair do modal. O servidor devolve a etiqueta existente quando o
+// nome já existe (reaproveitar é o objetivo), então isto nunca dá erro por
+// repetição — só marca a que já havia.
+async function criarTagInline(idNome, idLista){
+  const campo = document.getElementById(idNome);
+  const nome = campo.value.trim();
+  if (!nome) return;
+  const escolhidas = tagsSelecionadas(idLista);
+  try {
+    const res = await apiFetch(`${API}/tags`,
+      {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({nome})},
+      {erro:"Não foi possível criar a etiqueta"});
+    const nova = await res.json();
+    campo.value = "";
+    await carregarTags();
+    renderizarEscolhaTags(idLista, [...escolhidas, nova.id]);
+  } catch (e) {}
+}
+
+async function salvarTagsDoLancamento(id, tags){
+  await apiFetch(`${API}/lancamentos/${id}/tags`,
+    {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({tags})},
+    {silencioso:true});
+}
+
+function abrirEdicaoTag(id){
+  const tag = tagsCache.find(x => x.id === id);
+  if (!tag) return;
+  document.getElementById("editTagId").value = tag.id;
+  document.getElementById("editTagNome").value = tag.nome;
+  document.getElementById("editTagCor").value = corDaTag(tag);
+  document.getElementById("modalEdicaoTag").classList.add("ativo");
+}
+document.getElementById("editTagCancelar").addEventListener("click", () => {
+  document.getElementById("modalEdicaoTag").classList.remove("ativo");
+});
+document.getElementById("editTagSalvar").addEventListener("click", async () => {
+  const id = document.getElementById("editTagId").value;
+  const body = {
+    nome: document.getElementById("editTagNome").value,
+    cor: document.getElementById("editTagCor").value,
+  };
+  try {
+    await apiFetch(`${API}/tags/${id}`,
+      {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)},
+      {sucesso:"Etiqueta atualizada", erro:"Não foi possível salvar a etiqueta"});
+    document.getElementById("modalEdicaoTag").classList.remove("ativo");
+    await carregarTags();
+    renderizarListasFiltradas();
+  } catch (e) {}
+});
+
+async function excluirTag(id){
+  if (!confirm(t("Excluir esta etiqueta? Ela sai dos lançamentos que a usam."))) return;
+  try {
+    await apiFetch(`${API}/tags/${id}`, {method:"DELETE"},
+      {sucesso:"Etiqueta excluída", erro:"Não foi possível excluir a etiqueta"});
+    await carregarTags();
+    renderizarListasFiltradas();
+  } catch (e) {}
+}
+
+document.getElementById("tagForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nome = document.getElementById("tagFormNome").value.trim();
+  const cor = document.getElementById("tagFormCor").value;
+  if (!nome) return;
+  try {
+    await apiFetch(`${API}/tags`,
+      {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({nome, cor})},
+      {sucesso:"Etiqueta criada", erro:"Não foi possível criar a etiqueta"});
+    e.target.reset();
+    document.getElementById("tagFormCor").value = "#00a76f";
+    await carregarTags();
+  } catch (e) {}
+});
+document.getElementById("novaTagBtnNovo").addEventListener("click",
+  () => criarTagInline("novaTagNomeNovo", "tagsNovo"));
+document.getElementById("novaTagBtnEdicao").addEventListener("click",
+  () => criarTagInline("novaTagNomeEdicao", "tagsEdicao"));
 
 function abrirEdicaoCategoria(id){
   const todas = [...(categoriasCache.receita_full || []), ...(categoriasCache.despesa_full || [])];
@@ -3978,7 +4425,7 @@ document.querySelectorAll("#tipoSegmented button").forEach(btn => {
     btn.classList.add("ativo");
     const tipo = btn.dataset.tipo;
     document.getElementById("tipoInput").value = tipo;
-    document.getElementById("labelEfetivada").innerHTML = ICO.checkCirculo + (tipo === "renda" ? " Já recebida" : " Já paga");
+    document.getElementById("labelEfetivada").innerHTML = ICO.checkCirculo + " " + (tipo === "renda" ? t("Já recebida") : t("Já paga"));
     document.getElementById("novoSalvar").style.background = tipo === "renda"
       ? "linear-gradient(135deg, var(--green), #2fb377)"
       : "linear-gradient(135deg, var(--red), #e05353)";
@@ -4064,6 +4511,11 @@ function abrirModalNovoLancamento(tipoInicial){
   document.getElementById("descInput").value = "";
   document.getElementById("valorInput").value = "";
   document.getElementById("vencInput").value = hojeISO();
+  // Vazio de propósito: preencher com a hora de agora encheria o histórico de
+  // horários que são o da digitação, não o do gasto.
+  document.getElementById("horaInput").value = "";
+  renderizarEscolhaTags("tagsNovo", []);
+  document.getElementById("novaTagNomeNovo").value = "";
   document.getElementById("novaCategoriaBox").style.display = "none";
   document.getElementById("parcelarInput").checked = false;
   document.getElementById("parcelasInput").value = 2;
@@ -4087,7 +4539,7 @@ function abrirModalNovoLancamento(tipoInicial){
   document.querySelectorAll("#tipoSegmented button").forEach(b => b.classList.remove("ativo"));
   document.querySelector(`#tipoSegmented button[data-tipo="${tipoInicial}"]`).classList.add("ativo");
   document.getElementById("tipoInput").value = tipoInicial;
-  document.getElementById("labelEfetivada").innerHTML = ICO.checkCirculo + (tipoInicial === "renda" ? " Já recebida" : " Já paga");
+  document.getElementById("labelEfetivada").innerHTML = ICO.checkCirculo + " " + (tipoInicial === "renda" ? t("Já recebida") : t("Já paga"));
   document.getElementById("novoSalvar").style.background = tipoInicial === "renda"
     ? "linear-gradient(135deg, var(--green), #2fb377)"
     : "linear-gradient(135deg, var(--red), #e05353)";
@@ -4317,6 +4769,8 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
     descricao: document.getElementById("descInput").value,
     valor: valorParaEnviar,
     vencimento: document.getElementById("vencInput").value,
+    hora: document.getElementById("horaInput").value,
+    tags: tagsSelecionadas("tagsNovo"),
     conta_id: document.getElementById("contaInput").value || null,
     parcelas: numParcelas,
     observacao: document.getElementById("obsInput").value,
@@ -4349,6 +4803,9 @@ document.getElementById("novoSalvar").addEventListener("click", async () => {
 async function carregarTudo(){
   diaSelecionadoCalendario = null;
   await carregarContas();
+  // As etiquetas vêm ANTES das listas: `criarItemHTML` lê `tagsPorLancamento`,
+  // e com o mapa vazio os selos não apareceriam até o próximo carregamento.
+  await carregarTags();
   await Promise.all([carregarLancamentos(), carregarDashboard(), carregarCartoes(),
                      carregarOrcamentos(), carregarDuplicados()]);
   if (document.getElementById("painel-calendario").classList.contains("ativo")){
@@ -4465,6 +4922,66 @@ function renderizarMoneyMap(){
   alvo.innerHTML = desenharSankey(mmDados, entra, sai);
 }
 
+// Delegação, e não um listener por elemento: o SVG inteiro é recriado a cada
+// `innerHTML`, e listeners pendurados nos nós morreriam junto.
+(() => {
+  const grafico = document.getElementById("mmGrafico");
+  if (!grafico) return;
+  const acionar = (ev) => {
+    const alvo = ev.target.closest("[data-mm-categoria]");
+    if (!alvo) return;
+    abrirDetalheMoneyMap(alvo.dataset.mmTipo, alvo.dataset.mmCategoria);
+  };
+  grafico.addEventListener("click", acionar);
+  grafico.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); acionar(ev); }
+  });
+})();
+
+// Reaproveita o modal de explicação do dashboard, mas NÃO o
+// `abrirDetalheCategoria`: aquele filtra o cache do mês aberto e ignora `pago`,
+// enquanto o Money Map cobre até um ano e conta só o que foi efetivado. O total
+// do detalhe tem que ser o mesmo da faixa clicada, então quem responde é o
+// servidor, com a mesma condição que desenhou a faixa.
+async function abrirDetalheMoneyMap(tipo, categoria){
+  const tituloEl = document.getElementById("explicacaoTitulo");
+  const formulaEl = document.getElementById("explicacaoFormula");
+  const listasEl = document.getElementById("explicacaoListas");
+  listasEl.innerHTML = `<div class="loading-msg">${t("Carregando...")}</div>`;
+  formulaEl.innerHTML = "";
+  tituloEl.textContent = categoria;
+  document.getElementById("modalExplicacao").classList.add("ativo");
+
+  let dados;
+  try {
+    const res = await apiFetch(
+      `${API}/money-map/lancamentos?periodo=${encodeURIComponent(mmPeriodo)}`
+      + `&tipo=${encodeURIComponent(tipo)}&categoria=${encodeURIComponent(categoria)}`,
+      undefined, {erro:"Não foi possível abrir os lançamentos"});
+    dados = await res.json();
+  } catch (e) {
+    listasEl.innerHTML = `<div class="empty">${t("Não foi possível abrir os lançamentos")}</div>`;
+    return;
+  }
+
+  const itens = dados.lancamentos || [];
+  // Sem isto o lápis não faz nada em tudo que vier de fora do mês aberto:
+  // `abrirEdicaoPorId` lê `itensPorId` e desiste quando não acha o id.
+  itens.forEach(l => itensPorId[l.id] = l);
+
+  const rotulo = tipo === "renda" ? t("Receitas em") : t("Despesas em");
+  tituloEl.textContent = `${rotulo} "${categoria}"`;
+  formulaEl.innerHTML =
+    formulaLinha(tf("Total no período ({0} a {1})",
+                    formatData(dados.inicio), formatData(dados.fim)),
+                 somaValor(itens), "total");
+  listasEl.innerHTML = "";
+  adicionarGrupoExplicacao(listasEl, t("Lançamentos"), itens);
+  if (listasEl.children.length === 0){
+    listasEl.innerHTML = `<div class="empty">${t("Nenhum lançamento encontrado.")}</div>`;
+  }
+}
+
 function desenharSankey(d, corEntra, corSai){
   const receitas = d.receitas, despesas = d.despesas;
   const totalR = d.total_receita || 0, totalD = d.total_despesa || 0;
@@ -4514,10 +5031,11 @@ function desenharSankey(d, corEntra, corSai){
   let y = gap, yc = yR;
   for (const r of ladoR){
     const cy = y + r.linha / 2;
+    const at = alvoMM(r.item, "renda");
     svg += fluxo(xEsq + noL, cy - r.faixa / 2, xCentro, yc, r.faixa, corEntra,
-                 `${r.item.nome}: ${formatMoeda(r.item.valor)}`);
-    svg += `<rect x="${xEsq}" y="${cy - r.faixa / 2}" width="${noL}" height="${r.faixa}" rx="3" fill="${corEntra}"/>`;
-    svg += rotulo(xEsq - 12, cy, r.item, "end");
+                 `${r.item.nome}: ${formatMoeda(r.item.valor)}`, at);
+    svg += `<rect ${at} class="mm-clicavel" x="${xEsq}" y="${cy - r.faixa / 2}" width="${noL}" height="${r.faixa}" rx="3" fill="${corEntra}"/>`;
+    svg += rotulo(xEsq - 12, cy, r.item, "end", at);
     y += r.linha + gap; yc += r.faixa;
   }
 
@@ -4525,28 +5043,41 @@ function desenharSankey(d, corEntra, corSai){
   y = gap; yc = yD;
   for (const g of ladoD){
     const cy = y + g.linha / 2;
+    const at = alvoMM(g.item, "despesa");
     svg += fluxo(xDir + noL, yc, xDir + noL + 60, cy - g.faixa / 2, g.faixa, corSai,
-                 `${g.item.nome}: ${formatMoeda(g.item.valor)}`);
-    svg += rotulo(xDir + noL + 70, cy, g.item, "start");
+                 `${g.item.nome}: ${formatMoeda(g.item.valor)}`, at);
+    svg += rotulo(xDir + noL + 70, cy, g.item, "start", at);
     y += g.linha + gap; yc += g.faixa;
   }
 
   return svg + "</svg>";
 
-  function rotulo(x, cy, item, ancora){
+  // Os atributos que tornam a faixa (e o rótulo dela) clicável. O nome da
+  // categoria é texto do usuário, então vai num data-* lido pelo handler —
+  // nunca dentro de um on*, que o navegador desescapa antes de executar.
+  // Só os atributos que NÃO são `class`: cada chamador escreve a classe dele,
+  // e dois atributos `class` no mesmo elemento fazem o navegador ignorar o
+  // segundo — o que apagaria o .mm-fluxo e o .mm-rot.
+  function alvoMM(item, tipo){
+    return `role="button" tabindex="0"`
+         + ` data-mm-tipo="${tipo}" data-mm-categoria="${escapeHtml(item.nome)}"`;
+  }
+
+  function rotulo(x, cy, item, ancora, attrs){
     const nome = item.nome.length > 22 ? item.nome.slice(0, 21) + "…" : item.nome;
     const extra = item.agrupado ? ` (${item.agrupado})` : "";
-    return `<text class="mm-rot" x="${x}" y="${cy - 2}" text-anchor="${ancora}">${escapeHtml(nome + extra)}</text>`
-         + `<text class="mm-val" x="${x}" y="${cy + 13}" text-anchor="${ancora}">${formatMoeda(item.valor)}</text>`;
+    const at = attrs || "";
+    return `<text ${at} class="mm-rot mm-clicavel" x="${x}" y="${cy - 2}" text-anchor="${ancora}">${escapeHtml(nome + extra)}</text>`
+         + `<text ${at} class="mm-val mm-clicavel" x="${x}" y="${cy + 13}" text-anchor="${ancora}">${formatMoeda(item.valor)}</text>`;
   }
 
   // Curva ligando duas alturas. O <title> dentro do path dá o tooltip nativo,
   // sem precisar de biblioteca.
-  function fluxo(x1, y1, x2, y2, h, cor, texto){
+  function fluxo(x1, y1, x2, y2, h, cor, texto, attrs){
     const cx = (x1 + x2) / 2;
     const dd = `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}
                 L ${x2} ${y2 + h} C ${cx} ${y2 + h}, ${cx} ${y1 + h}, ${x1} ${y1 + h} Z`;
-    return `<path class="mm-fluxo" d="${dd}" fill="${cor}"><title>${escapeHtml(texto)}</title></path>`;
+    return `<path ${attrs || ""} class="mm-fluxo${attrs ? " mm-clicavel" : ""}" d="${dd}" fill="${cor}"><title>${escapeHtml(texto)}</title></path>`;
   }
 }
 
@@ -4698,9 +5229,9 @@ function renderizarRegras(){
         <div class="regra-acoes">
           <button class="icon" type="button" title="${t("Editar")}"
                   onclick="abrirRegra(${r.id})">${ICO.lapis}</button>
-          <button class="icon" type="button" title="${r.ativa ? "Desativar" : "Ativar"}"
+          <button class="icon" type="button" title="${r.ativa ? t("Desativar") : t("Ativar")}"
                   onclick="alternarRegra(${r.id}, ${!r.ativa})">${r.ativa ? ICO.olho : ICO.olhoFechado || ICO.olho}</button>
-          <button class="icon danger" type="button" title="Excluir"
+          <button class="icon danger" type="button" title="${t("Excluir")}"
                   onclick="excluirRegra(${r.id})">${ICO.x}</button>
         </div>
       </div>`;
@@ -4898,6 +5429,10 @@ async function carregarOpenFinance(){
     ofItensCache = [];
   }
   renderizarOpenFinance();
+  // Uma sincronização pode ter sido disparada em outra aba, ou estar rodando
+  // pelo ciclo diário / pelo webhook. Sem esta consulta a tela ofereceria o
+  // botão como se nada estivesse acontecendo.
+  acompanharSincronizacaoOF({inicial: true});
 }
 
 function renderizarOpenFinance(){
@@ -4949,9 +5484,11 @@ function renderizarOpenFinance(){
 
   form.hidden = false;
 
+  document.getElementById("ofAcoesGlobais").hidden = !ofItensCache.length;
+
   if (!ofItensCache.length){
-    elCon.innerHTML = `<div class="empty">Nenhum banco conectado ainda.
-      Conecte no meu.pluggy.ai e cole o Item ID abaixo.</div>`;
+    elCon.innerHTML = `<div class="empty">${t(
+      "Nenhum banco conectado ainda. Conecte no meu.pluggy.ai e cole o Item ID abaixo.")}</div>`;
     return;
   }
 
@@ -5071,6 +5608,145 @@ async function conectarItemOF(ev){
   } catch (e) {}
 }
 
+// ---------- Sincronizar a casa inteira ----------
+//
+// Duas rotas parecidas e MUITO diferentes: `itens/<id>/sincronizar` (abaixo)
+// atualiza só o status da conexão e o saldo que o banco reporta, sem trazer
+// lançamento nenhum; `POST /pluggy/sincronizar` é a que baixa o extrato,
+// importa o que falta e recalibra o saldo.
+//
+// A segunda leva de dezenas de segundos a vários minutos, então o servidor
+// responde 202 e o acompanhamento é por consulta — esperar a resposta na
+// própria requisição não sobrevive ao proxy/túnel na frente do app.
+let ofSincTimer = null;
+
+function ofBotoesDeBanco(){
+  return [...document.querySelectorAll('#ofConexoes button[onclick^="sincronizarItemOF"]')];
+}
+
+function ofTravarBotoes(travado){
+  const btn = document.getElementById("btnSincronizarTudoOF");
+  if (btn) btn.disabled = travado;
+  // Os ↻ de cada banco saem junto: eles não passam pela trava do servidor
+  // (não importam nada), mas deixá-los ativos durante a sincronização global
+  // convida a pessoa a clicar e concluir que "não fez nada".
+  ofBotoesDeBanco().forEach(b => { b.disabled = travado; });
+}
+
+async function sincronizarTudoOF(){
+  ofTravarBotoes(true);
+  document.getElementById("ofSincResultado").innerHTML = "";
+  try {
+    const res = await fetch(`${API}/pluggy/sincronizar`, {
+      method: "POST", headers: {"X-Idioma": idiomaAtual},
+    });
+    if (res.status === 409){
+      // Não é erro: outra aba, o ciclo diário ou o webhook chegaram antes.
+      // O certo é acompanhar a que já existe, não disparar outra.
+      showToast(t("Já havia uma sincronização em andamento — acompanhando ela."), "ok");
+    } else if (!res.ok){
+      let erro = t("Não foi possível sincronizar");
+      try { const j = await res.json(); if (j && j.erro) erro = j.erro; } catch (e) {}
+      throw new Error(erro);
+    }
+  } catch (e) {
+    showToast(e.message, "erro");
+    ofTravarBotoes(false);
+    return;
+  }
+  acompanharSincronizacaoOF({});
+}
+
+async function acompanharSincronizacaoOF(opts){
+  const inicial = !!opts.inicial;
+  if (ofSincTimer){ clearTimeout(ofSincTimer); ofSincTimer = null; }
+  let estado;
+  try {
+    const res = await apiFetch(`${API}/pluggy/sincronizacao`, undefined, {silencioso:true});
+    estado = await res.json();
+  } catch (e) {
+    if (!inicial) showToast(t("Não foi possível acompanhar a sincronização."), "erro");
+    ofTravarBotoes(false);
+    return;
+  }
+
+  if (estado.estado === "rodando"){
+    ofTravarBotoes(true);
+    renderizarProgressoSincOF(estado);
+    ofSincTimer = setTimeout(() => acompanharSincronizacaoOF({}), 3000);
+    return;
+  }
+
+  renderizarProgressoSincOF(null);
+  ofTravarBotoes(false);
+
+  // Na primeira carga da aba não há nada a anunciar: o que interessa ali é só
+  // saber se ALGO está rodando agora.
+  if (inicial) return;
+
+  if (estado.estado === "falhou"){
+    showToast(estado.erro || t("A sincronização falhou."), "erro");
+    return;
+  }
+  if (estado.estado === "concluida"){
+    renderizarResultadoSincOF(estado.resumo || {});
+    // carregarTudo e não carregarOpenFinance: a importação mexe em lançamentos,
+    // contas, dashboard, cartões e na lista de duplicados.
+    await carregarTudo();
+    return;
+  }
+  // "nenhuma" quer dizer que o servidor não sabe — o progresso vive em memória
+  // e o container pode ter reiniciado no meio. Dizer "concluído" aqui seria
+  // afirmar o que não se sabe.
+  document.getElementById("ofSincEstado").textContent =
+    t("Não deu para acompanhar — recarregue a página e confira o resultado.");
+}
+
+function renderizarProgressoSincOF(estado){
+  const texto = document.getElementById("ofSincEstado");
+  const barra = document.getElementById("ofSincProgresso");
+  if (!estado){
+    texto.textContent = "";
+    barra.hidden = true;
+    return;
+  }
+  const origem = estado.origem && estado.origem !== "tela" ? ` (${t(estado.origem)})` : "";
+  texto.textContent = (estado.etapa || t("Sincronizando…")) + origem;
+  barra.hidden = false;
+  const pct = estado.total ? Math.round((estado.feitos / estado.total) * 100) : 0;
+  barra.querySelector(".fill").style.width = `${pct}%`;
+}
+
+function renderizarResultadoSincOF(resumo){
+  const alvo = document.getElementById("ofSincResultado");
+  const feitas = resumo.sincronizadas || [];
+  const falhas = resumo.falhas || [];
+
+  const linhas = feitas.map(l => {
+    const partes = [tf("{0} novos", l.criadas || 0)];
+    if (l.conciliadas) partes.push(tf("{0} conciliados", l.conciliadas));
+    if (l.descompasso) partes.push(tf("saldo ajustado em {0}", formatMoeda(l.descompasso)));
+    return `<div class="of-sinc-linha">
+        <span class="quem">${escapeHtml(l.banco)} · ${escapeHtml(l.conta)}</span>
+        <span class="oque">${escapeHtml(partes.join(" · "))}</span>
+      </div>`;
+  }).concat(falhas.map(f => `<div class="of-sinc-linha">
+        <span class="quem">${escapeHtml(f.banco)}${f.conta ? " · " + escapeHtml(f.conta) : ""}</span>
+        <span class="of-selo atencao">${escapeHtml(f.erro)}</span>
+      </div>`)).join("");
+
+  alvo.innerHTML = linhas || `<div class="of-conta-sub">${t("Nada novo no extrato.")}</div>`;
+
+  const criadas = (resumo.criadas || 0) + (resumo.compras || 0);
+  if (falhas.length){
+    showToast(tf("{0} de {1} contas sincronizadas — {2} falhou",
+                 feitas.length, feitas.length + falhas.length, falhas.length), "erro");
+  } else {
+    showToast(tf("{0} contas sincronizadas · {1} lançamentos novos",
+                 feitas.length, criadas), "ok");
+  }
+}
+
 async function sincronizarItemOF(itemId){
   try {
     await apiFetch(`${API}/pluggy/itens/${itemId}/sincronizar`, {method:"POST"},
@@ -5145,7 +5821,7 @@ function renderizarContas(){
       </div>
       <div class="conta-acoes">
         <button class="icon" onclick="abrirEdicaoConta(${c.id})" title="Editar">${ICO.lapis}</button>
-        <button class="icon danger" onclick="excluirConta(${c.id})" title="Excluir">${ICO.x}</button>
+        <button class="icon danger" onclick="excluirConta(${c.id})" title="${t("Excluir")}">${ICO.x}</button>
       </div>
     `;
     container.appendChild(div);
@@ -5185,6 +5861,7 @@ function popularSelectsConta(){
 }
 
 document.getElementById("ofItemForm").addEventListener("submit", conectarItemOF);
+document.getElementById("btnSincronizarTudoOF").addEventListener("click", sincronizarTudoOF);
 document.getElementById("contaForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const body = {
@@ -5280,6 +5957,13 @@ function aplicarFiltrosOrdenacao(lancamentos){
     if (filtros.conta && Number(filtros.conta) !== l.conta_id) return false;
     if (filtros.status === "pago" && !l.pago) return false;
     if (filtros.status === "pendente" && l.pago) return false;
+    // Filtra o cache que a tela já tem, como os outros quatro filtros — trocar
+    // a etiqueta não recarrega o mês. (A API tem `?tag_id=`, que serve a quem
+    // consome a rota sem manter cache.)
+    if (filtros.tag){
+      const tags = tagsPorLancamento[String(l.id)] || [];
+      if (!tags.some(x => String(x.id) === filtros.tag)) return false;
+    }
     return true;
   });
   const ordenacoes = {
@@ -5306,6 +5990,7 @@ function ligarFiltros(){
   document.getElementById("filtroCategoria").addEventListener("change", (e) => { filtros.categoria = e.target.value; renderizarListasFiltradas(); });
   document.getElementById("filtroConta").addEventListener("change", (e) => { filtros.conta = e.target.value; renderizarListasFiltradas(); });
   document.getElementById("filtroStatus").addEventListener("change", (e) => { filtros.status = e.target.value; renderizarListasFiltradas(); });
+  document.getElementById("filtroTag").addEventListener("change", (e) => { filtros.tag = e.target.value; renderizarListasFiltradas(); });
   document.getElementById("ordenacaoSelect").addEventListener("change", (e) => { filtros.ordenacao = e.target.value; renderizarListasFiltradas(); });
 }
 ligarFiltros();
@@ -5332,13 +6017,13 @@ function criarItemHTML(item){
   const metaPartes = [];
   if (item.categoria) metaPartes.push(escapeHtml(item.categoria));
   if (item.conta) metaPartes.push(escapeHtml(item.conta));
-  if (item.vencimento) metaPartes.push((atrasado ? "Venc " : "Venc ") + formatData(item.vencimento) + (atrasado ? " (atrasado)" : ""));
+  if (item.vencimento) metaPartes.push((atrasado ? "Venc " : "Venc ") + formatDataComHora(item.vencimento, item.hora) + (atrasado ? " (atrasado)" : ""));
   if (item.parcela_total > 1) metaPartes.push(`${item.parcela_num}/${item.parcela_total}`);
   if (item.recorrente){
-    metaPartes.push(item.recorrencia_ate ? `repete até ${formatMes(item.recorrencia_ate)}` : "repete todo mês");
+    metaPartes.push(item.recorrencia_ate ? tf("repete até {0}", formatMes(item.recorrencia_ate)) : t("repete todo mês"));
   }
-  if (item.pago) metaPartes.push((ehRenda ? "✓ recebido" : "✓ pago") + (item.data_pagamento ? " " + formatData(item.data_pagamento) : ""));
-  if (item.previsto) metaPartes.push("previsão — some ao importar o holerite");
+  if (item.pago) metaPartes.push((ehRenda ? t("✓ recebido") : t("✓ pago")) + (item.data_pagamento ? " " + formatData(item.data_pagamento) : ""));
+  if (item.previsto) metaPartes.push(t("previsão — some ao importar o holerite"));
   if (item.observacao) metaPartes.push(escapeHtml(item.observacao));
 
   // Efetivar e anexar valem para receita e despesa.
@@ -5366,13 +6051,14 @@ function criarItemHTML(item){
       <div class="desc-wrap">
         <div class="desc">${escapeHtml(item.descricao)}${item.recorrente ? ` <svg class="ico sm" viewBox="0 0 24 24" style="opacity:.65" title="Repete todo mês"><use href="#i-repetir"/></svg>` : ""}${item.origem === "open_finance" ? `<span class="selo-of" title="Importado do seu banco pelo Open Finance — confira antes de considerar certo"><svg viewBox="0 0 24 24"><use href="#i-trocas"/></svg>Open Finance</span>` : ""}${seloForaHTML}</div>
         <div class="meta ${atrasado ? 'atrasado' : ''}">${metaPartes.join(" · ")}</div>
+        ${selosDeTags(item.id)}
       </div>
       <span class="valor ${ehRenda ? 'positivo' : 'negativo'}">${formatMoeda(item.valor)}</span>
       <div class="acoes">
         <button class="icon" title="Editar" onclick="abrirEdicaoPorId(${item.id})">${ICO.lapis}</button>
         ${foraHTML}
         ${comprovanteHTML}
-        <button class="icon danger" title="Excluir" onclick="excluir(${item.id})">${ICO.x}</button>
+        <button class="icon danger" title="${t("Excluir")}" onclick="excluir(${item.id})">${ICO.x}</button>
       </div>
     </div>
   `;
@@ -5810,7 +6496,7 @@ async function carregarDashboard(){
   const vencContainer = document.getElementById("listaVencendo");
   vencContainer.innerHTML = "";
   if (d.contas_vencendo.length === 0){
-    vencContainer.innerHTML = `<div class="empty">Nenhuma conta vencida ou vencendo nos próximos 7 dias.</div>`;
+    vencContainer.innerHTML = `<div class="empty">${t("Nenhuma conta vencida ou vencendo nos próximos 7 dias.")}</div>`;
   } else {
     // Podem ser de outro mês, então registra no cache para a edição encontrá-las.
     d.contas_vencendo.forEach(item => { itensPorId[item.id] = item; });
@@ -6145,12 +6831,12 @@ async function carregarCartoes(){
         ${marcaHTML(c.nome, "cartao-icone")}
         <div>
           <div class="cartao-nome">${escapeHtml(c.nome)}</div>
-          <div class="cartao-sub">${c.conta_nome ? "Conta: " + escapeHtml(c.conta_nome) : "Sem conta vinculada"}</div>
+          <div class="cartao-sub">${c.conta_nome ? tf("Conta: {0}", escapeHtml(c.conta_nome)) : t("Sem conta vinculada")}</div>
         </div>
         <div class="cartao-acoes">
           <button class="icon" onclick="carregarFaturas(${c.id})" title="${t("Ver faturas")}">${ICO.recibo}</button>
           <button class="icon" onclick="abrirEdicaoCartao(${c.id})" title="Editar">${ICO.lapis}</button>
-          <button class="icon danger" onclick="excluirCartao(${c.id})" title="Excluir">${ICO.x}</button>
+          <button class="icon danger" onclick="excluirCartao(${c.id})" title="${t("Excluir")}">${ICO.x}</button>
         </div>
       </div>
       <div id="faturas-${c.id}" class="faturas-box" hidden></div>
@@ -6169,12 +6855,12 @@ async function carregarCartoes(){
         <button class="link" onclick="alternarTransacoesCartao(${c.id})">${t("Ver lançamentos do cartão")} ▾</button>
       </div>
       <div class="cartao-transacoes" id="transacoes-cartao-${c.id}" style="display:none">
-        <div class="lista-transacoes-cartao" id="lista-transacoes-${c.id}"><div class="loading-msg">Carregando...</div></div>
+        <div class="lista-transacoes-cartao" id="lista-transacoes-${c.id}"><div class="loading-msg">${t("Carregando...")}</div></div>
         <form class="form-transacao-cartao" onsubmit="return adicionarTransacaoCartao(event, ${c.id})">
-          <input type="text" placeholder="Descrição" required class="tc-descricao">
-          <input type="number" step="0.01" placeholder="Valor" required class="tc-valor">
+          <input type="text" placeholder="${t("Descrição")}" required class="tc-descricao">
+          <input type="number" step="0.01" placeholder="${t("Valor")}" required class="tc-valor">
           <input type="date" class="tc-data">
-          <button type="submit" class="secondary">Adicionar</button>
+          <button type="submit" class="secondary">${t("Adicionar")}</button>
         </form>
       </div>
     `;
@@ -6207,7 +6893,7 @@ async function carregarTransacoesCartao(cartaoId){
         <span class="tc-desc">${escapeHtml(t.descricao)}</span>
         <span class="tc-data-txt">${t.data ? formatData(t.data) : ""}</span>
         <span class="tc-valor-txt">${formatMoeda(t.valor)}</span>
-        <button class="icon danger" onclick="excluirTransacaoCartao(${t.id}, ${cartaoId})" title="Excluir">${ICO.x}</button>
+        <button class="icon danger" onclick="excluirTransacaoCartao(${t.id}, ${cartaoId})" title="${t("Excluir")}">${ICO.x}</button>
       </div>
     `).join("");
   } catch (e) {
@@ -6533,7 +7219,7 @@ function criarConsignadoCardHTML(c){
   div.innerHTML = `
     <div class="meta-topo">
       <span class="meta-nome">${escapeHtml(c.nome)}${c.ativo ? "" : " · quitado"}</span>
-      <button class="icon danger" title="Excluir empréstimo">${ICO.x}</button>
+      <button class="icon danger" title="${t("Excluir empréstimo")}">${ICO.x}</button>
     </div>
     ${temParcelas ? `<div class="meta-prazo">Parcela ${c.parcela_atual || 0} de ${c.parcela_total}</div>` : ""}
     ${temParcelas ? `<div class="orcamento-barra" style="margin-top:8px;"><div class="preenchido" style="width:${pct}%"></div></div>` : ""}
@@ -6862,15 +7548,15 @@ function renderizarKpiCardsInvestimentos(resumo){
   const html = [
     kpiInvestimento("carteira", ...V_AZUL, t("Patrimônio total"), formatMoeda(resumo.patrimonio_atual),
       `${kpiVarPct(resumo.rentabilidade_pct_total, "desde o início")}
-       <div class="kpi-var"><span class="ref">Valor investido: ${formatMoeda(resumo.patrimonio_investido)}</span></div>`),
-    kpiInvestimento("sobe", ...V_VERDE, "Lucro total", formatMoeda(resumo.lucro_total),
-      `<div class="kpi-var"><span class="ref">Ganho de capital: ${formatMoeda(resumo.ganho_capital)}</span></div>
-       <div class="kpi-var"><span class="ref">Proventos recebidos: ${formatMoeda(resumo.dividendos_recebidos_total)}</span></div>`),
-    kpiInvestimento("recibo", ...V_AMBAR, "Proventos recebidos (12M)", formatMoeda(resumo.proventos_recebidos_12m),
-      `<div class="kpi-var"><span class="ref">Total da carteira: ${formatMoeda(resumo.dividendos_recebidos_total)}</span></div>`),
-    kpiInvestimento("grafico", ...V_ROXO, "Rentabilidade (12M)",
+       <div class="kpi-var"><span class="ref">${tf("Valor investido: {0}", formatMoeda(resumo.patrimonio_investido))}</span></div>`),
+    kpiInvestimento("sobe", ...V_VERDE, t("Lucro total"), formatMoeda(resumo.lucro_total),
+      `<div class="kpi-var"><span class="ref">${tf("Ganho de capital: {0}", formatMoeda(resumo.ganho_capital))}</span></div>
+       <div class="kpi-var"><span class="ref">${tf("Proventos recebidos: {0}", formatMoeda(resumo.dividendos_recebidos_total))}</span></div>`),
+    kpiInvestimento("recibo", ...V_AMBAR, t("Proventos recebidos (12M)"), formatMoeda(resumo.proventos_recebidos_12m),
+      `<div class="kpi-var"><span class="ref">${tf("Total da carteira: {0}", formatMoeda(resumo.dividendos_recebidos_total))}</span></div>`),
+    kpiInvestimento("grafico", ...V_ROXO, t("Rentabilidade (12M)"),
       pctFormatado(resumo.rentabilidade_pct_12m, true),
-      `<div class="kpi-var"><span class="ref">Rentabilidade total: ${pctFormatado(resumo.rentabilidade_pct_total, true)}</span></div>`),
+      `<div class="kpi-var"><span class="ref">${tf("Rentabilidade total: {0}", pctFormatado(resumo.rentabilidade_pct_total, true))}</span></div>`),
   ].join("");
   document.getElementById("investKpiCards").innerHTML = html;
   document.getElementById("investKpiCardsPosicoes").innerHTML = html;
@@ -7150,7 +7836,7 @@ async function carregarOperacoesInvestimento(inv, container){
             ? (op.tipo_pagamento ? ` · ${ROTULOS_TIPO_PAGAMENTO[op.tipo_pagamento] || op.tipo_pagamento}` : "")
             : (op.quantidade ? ` · ${formatQuantidade(op.quantidade)} × ${formatMoeda(op.preco_unitario)}` : "")
         }</span>
-        <span>${formatMoeda(op.valor)} <button type="button" class="icon danger op-excluir" data-id="${op.id}" title="Excluir operação">${ICO.x}</button></span>
+        <span>${formatMoeda(op.valor)} <button type="button" class="icon danger op-excluir" data-id="${op.id}" title="${t("Excluir operação")}">${ICO.x}</button></span>
       </div>
     `).join("");
     container.querySelectorAll(".op-excluir").forEach(btn => {
@@ -7936,8 +8622,8 @@ function criarHoleriteCardHTML(h){
     <div class="holerite-topo">
       <span class="holerite-nome">${h.referencia ? formatMes(h.referencia) : "Referência não identificada"}</span>
       <span class="holerite-topo-acoes">
-        <a class="icon" href="${API}/holerites/${h.id}/arquivo" target="_blank" title="Baixar PDF">${ICO.baixar}</a>
-        <button type="button" class="icon danger holerite-excluir" title="Excluir holerite">${ICO.x}</button>
+        <a class="icon" href="${API}/holerites/${h.id}/arquivo" target="_blank" title="${t("Baixar PDF")}">${ICO.baixar}</a>
+        <button type="button" class="icon danger holerite-excluir" title="${t("Excluir holerite")}">${ICO.x}</button>
       </span>
     </div>
     <div class="holerite-campos">
@@ -8009,6 +8695,9 @@ function abrirEdicaoPorId(id){
   document.getElementById("editDesc").value = item.descricao;
   document.getElementById("editValor").value = formatNumeroSimples(item.valor);
   document.getElementById("editVenc").value = item.vencimento || "";
+  document.getElementById("editHora").value = item.hora || "";
+  renderizarEscolhaTags("tagsEdicao", (tagsPorLancamento[String(item.id)] || []).map(x => x.id));
+  document.getElementById("novaTagNomeEdicao").value = "";
   document.getElementById("editConta").value = item.conta_id || "";
   document.getElementById("editObs").value = item.observacao || "";
   document.getElementById("editRec").checked = !!item.recorrente;
@@ -8053,6 +8742,7 @@ document.getElementById("editSalvar").addEventListener("click", async () => {
     valor: lerValor("editValor"),
     categoria: document.getElementById("editCategoria").value,
     vencimento: document.getElementById("editVenc").value,
+    hora: document.getElementById("editHora").value,
     conta_id: document.getElementById("editConta").value || null,
     observacao: document.getElementById("editObs").value,
     recorrente: document.getElementById("editRec").checked,
@@ -8069,6 +8759,10 @@ document.getElementById("editSalvar").addEventListener("click", async () => {
       await apiFetch(`${API}/lancamentos/${id}/pagamento`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({pago, data_pagamento: dataPagamento})},
         {erro:"Não foi possível salvar o status de pagamento"});
     }
+    // Rota própria, no molde do /pagamento: o PUT principal usa COALESCE para
+    // o app Android não desfazer campo que não conhece, e uma lista de tags
+    // dentro dele apagaria as etiquetas a cada salvamento vindo de lá.
+    await salvarTagsDoLancamento(id, tagsSelecionadas("tagsEdicao"));
     showToast("Alterações salvas", "ok");
     document.getElementById("modalEdicao").classList.remove("ativo");
     carregarTudo();
@@ -8206,7 +8900,12 @@ async function carregarUsuarioAtual(){
 
 // ---------- Menus da barra superior (sino e usuário) ----------
 function fecharMenusTopo(exceto){
-  for (const id of ["dropdownSino", "dropdownUsuario"]){
+  // A busca entra aqui junto com os outros. Ficar de fora era o motivo de ela
+  // não fechar no celular: clique fora, Escape, escolher um resultado e clicar
+  // num item do menu passam todos por esta função, e o único gatilho que
+  // sobrava para o painel de busca era a lupa — que abaixo de 640px é
+  // `display:none`.
+  for (const id of ["dropdownSino", "dropdownUsuario", "dropdownBusca"]){
     if (id !== exceto) document.getElementById(id).hidden = true;
   }
   document.getElementById("usuarioBtn").classList.toggle(
@@ -8230,6 +8929,28 @@ document.getElementById("buscaBtn").addEventListener("click", (e) => {
     document.getElementById("buscaGlobalInput").focus();
   }
 });
+document.getElementById("buscaFechar").addEventListener("click", (e) => {
+  // stopPropagation porque o clique fora, que também fecha, roda depois: sem
+  // isto os dois disparam e o segundo já encontra tudo fechado — inofensivo
+  // hoje, mas é o tipo de dupla execução que morde quando alguém acrescenta
+  // um efeito colateral ao fecha-tudo.
+  e.stopPropagation();
+  fecharBuscaTopo();
+});
+
+// Fechar a busca é mais que esconder o painel: o campo da barra continua na
+// tela no celular, e deixá-lo com o texto antigo faz o próximo toque reabrir
+// o painel com o resultado da busca passada.
+function fecharBuscaTopo(){
+  fecharMenusTopo(null);
+  const campoBarra = document.getElementById("buscaTopoInput");
+  const campoPainel = document.getElementById("buscaGlobalInput");
+  campoBarra.value = "";
+  campoPainel.value = "";
+  campoBarra.blur();
+  document.getElementById("buscaGlobalResultado").innerHTML =
+    `<div class="sino-vazio">${t("Digite para procurar em todos os meses.")}</div>`;
+}
 // A barra tem duas linhas no celular, e três quando o aviso de mês aparece.
 // Os dropdowns são `position:fixed` nessa largura, então precisam saber onde a
 // barra termina — daí a altura real virar variável de CSS em vez de um número
@@ -8297,7 +9018,7 @@ ligarBuscaGlobal(document.getElementById("buscaTopoInput"));
 
 // Abre o mês do resultado e leva pra lista de lançamentos.
 async function abrirBusca(mes, id){
-  fecharMenusTopo(null);
+  fecharBuscaTopo();
   if (mes && mes !== mesAtual){
     mesAtual = mes;
     const sel = document.getElementById("mesSelect");
@@ -8381,8 +9102,8 @@ function renderizarSino(){
   botaoMarcar.disabled = naoLidos.length === 0;
 
   if (avisosCache.length === 0){
-    resumo.textContent = "Tudo em dia por aqui";
-    lista.innerHTML = `<div class="sino-vazio">Nenhuma conta vencida ou vencendo nos próximos 7 dias.</div>`;
+    resumo.textContent = t("Tudo em dia por aqui");
+    lista.innerHTML = `<div class="sino-vazio">${t("Nenhuma conta vencida ou vencendo nos próximos 7 dias.")}</div>`;
     return;
   }
   const atrasadas = avisosCache.filter(i => (diasAte(i.vencimento) ?? 0) < 0).length;
@@ -8439,11 +9160,40 @@ document.getElementById("btnSair").addEventListener("click", async () => {
 document.getElementById("sidebarUsuario").addEventListener("click", () => {
   document.getElementById("senhaAtualInput").value = "";
   document.getElementById("novaSenhaInput").value = "";
+  document.getElementById("perfilEmailInput").value = (usuarioAtual && usuarioAtual.email) || "";
   atualizarPreviewFotoPerfil();
   atualizarBoxGoogle();
+  atualizarBoxSenha();
   carregarInfoBackup();
   document.getElementById("modalTrocarSenha").classList.add("ativo");
 });
+
+// Quem entrou pelo Google nunca escolheu senha: o hash guardado é o de um
+// token descartado. Pedir a "senha atual" dele seria pedir um segredo que não
+// existe — e era por isso que ele não tinha caminho nenhum para ter uma senha.
+function atualizarBoxSenha(){
+  if (!usuarioAtual) return;
+  const definida = usuarioAtual.senha_definida !== 0;
+  document.getElementById("senhaAtualBox").style.display = definida ? "" : "none";
+  document.getElementById("avisoSemSenha").style.display = definida ? "none" : "block";
+  document.getElementById("tituloTrocarSenha").firstElementChild.textContent =
+    definida ? t("Trocar senha") : t("Definir uma senha");
+  document.getElementById("trocarSenhaSalvar").textContent =
+    definida ? t("Salvar nova senha") : t("Definir senha");
+}
+
+async function salvarEmailDoPerfil(){
+  const btn = document.getElementById("perfilEmailSalvar");
+  btn.disabled = true;
+  try {
+    await apiFetch(`${API}/usuarios/${usuarioAtual.id}/email`,
+      {method:"PUT", headers:{"Content-Type":"application/json"},
+       body: JSON.stringify({email: document.getElementById("perfilEmailInput").value})},
+      {sucesso:"E-mail salvo", erro:"Não foi possível salvar o e-mail"});
+    await carregarUsuarioAtual();
+  } catch (e) {} finally { btn.disabled = false; }
+}
+document.getElementById("perfilEmailSalvar").addEventListener("click", salvarEmailDoPerfil);
 
 function atualizarBoxGoogle(){
   if (!usuarioAtual) return;
@@ -8511,7 +9261,8 @@ async function carregarInfoBackup(){
     const info = await res.json();
     document.getElementById("backupInfo").textContent = info.erro
       ? info.erro
-      : `Um .zip com todos os lançamentos, ${info.comprovantes} comprovante(s) e ${info.fotos} foto(s) — cerca de ${formatarTamanho(info.tamanho_total_bytes)}.`;
+      : tf("Um .zip com todos os lançamentos, {0} comprovante(s) e {1} foto(s) — cerca de {2}.",
+           info.comprovantes, info.fotos, formatarTamanho(info.tamanho_total_bytes));
     document.getElementById("baixarBackupBtn").style.display = info.erro ? "none" : "";
     document.getElementById("backupAgoraBtn").style.display = info.erro ? "none" : "";
   } catch (e) {}
@@ -8558,7 +9309,7 @@ async function carregarBackups(){
         <div style="display:flex; gap:4px; flex:none;">
           <button class="icon" title="Baixar" onclick="baixarBackupSalvo('${escapeHtml(b.nome)}')">${ICO.baixar}</button>
           <button class="icon" title="Restaurar" onclick="restaurarBackupSalvo('${escapeHtml(b.nome)}')">${ICO.restaurar}</button>
-          <button class="icon danger" title="Excluir" onclick="excluirBackupSalvo('${escapeHtml(b.nome)}')">${ICO.lixeira}</button>
+          <button class="icon danger" title="${t("Excluir")}" onclick="excluirBackupSalvo('${escapeHtml(b.nome)}')">${ICO.lixeira}</button>
         </div>
       `;
       container.appendChild(div);
@@ -8703,7 +9454,7 @@ async function carregarCasa(){
   document.getElementById("casaNomeTitulo").textContent = casaCache.nome;
   const admin = casaCache.membros.find(m => m.eh_administrador);
   document.getElementById("casaAdminNome").textContent = admin
-    ? (admin.eh_voce ? `${admin.nome} (você)` : admin.nome) : "—";
+    ? (admin.eh_voce ? tf("{0} (você)", admin.nome) : admin.nome) : "—";
   document.getElementById("secaoConvidarCasa").style.display =
     (usuarioAtual && usuarioAtual.eh_administrador) ? "" : "none";
 
@@ -8810,7 +9561,7 @@ document.getElementById("senhaMembroCancelar").addEventListener("click", () => {
 document.getElementById("senhaMembroSalvar").addEventListener("click", async () => {
   const nova = document.getElementById("senhaMembroNova").value;
   const confirmar = document.getElementById("senhaMembroConfirmar").value;
-  if (nova.length < 4){ showToast("A nova senha precisa ter pelo menos 4 caracteres", "erro"); return; }
+  if (nova.length < 8){ showToast(t("A nova senha precisa ter pelo menos 8 caracteres"), "erro"); return; }
   if (nova !== confirmar){ showToast("As senhas digitadas não coincidem", "erro"); return; }
   try {
     await apiFetch(`${API}/usuarios/${membroSenhaAlvo}/senha-admin`, {method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify({nova_senha: nova})},
@@ -9249,7 +10000,7 @@ function aplicarEstadoDemo(ativo){
   document.getElementById("demoBanner").classList.toggle("ativo", ativo);
   document.getElementById("demoToggle").checked = ativo;
   document.getElementById("demoLabel").textContent =
-    ativo ? "Modo demonstração LIGADO" : "Modo demonstração desligado";
+    ativo ? t("Modo demonstração LIGADO") : t("Modo demonstração desligado");
 }
 
 async function carregarStatusDemo(){

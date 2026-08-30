@@ -87,6 +87,21 @@ jobs:
           docker exec -e SENHA=senha-de-teste-do-ci financerto-ci \
             python /app/teste_seguranca.py
 
+      - name: Etiquetas e horário dos lançamentos
+        run: |
+          docker cp testes/teste_tags_hora.py financerto-ci:/app/teste_tags_hora.py
+          docker exec -e SENHA=senha-de-teste-do-ci financerto-ci \
+            python /app/teste_tags_hora.py
+
+      - name: Esqueci minha senha
+        # Por último de propósito: este teste erra o login várias vezes de
+        # propósito, para conferir o 429, e o limite é por IP. Rodando antes
+        # dos outros, o próprio limite derrubaria o login deles.
+        run: |
+          docker cp testes/teste_recuperacao_senha.py financerto-ci:/app/teste_recuperacao_senha.py
+          docker exec -e SENHA=senha-de-teste-do-ci financerto-ci \
+            python /app/teste_recuperacao_senha.py
+
       - name: Log do container
         if: always()
         run: docker logs financerto-ci || true
