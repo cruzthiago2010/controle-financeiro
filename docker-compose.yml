@@ -31,3 +31,18 @@ services:
       APP_ANDROID_URL: ${APP_ANDROID_URL:-}
       APP_ANDROID_NOTAS: ${APP_ANDROID_NOTAS:-}
       PLUGGY_WEBHOOK_URL: ${PLUGGY_WEBHOOK_URL:-}
+      # Estas duas existiam no .env.example e no app.py, mas faltavam aqui —
+      # ou seja, nunca chegavam no container. E exatamente a armadilha que o
+      # comentario acima descreve.
+      APP_ANDROID_REPO: ${APP_ANDROID_REPO:-}
+      APP_ANDROID_APK_URL: ${APP_ANDROID_APK_URL:-}
+      TZ: ${TZ:-UTC}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORTA: ${SMTP_PORTA:-}
+      SMTP_SEGURANCA: ${SMTP_SEGURANCA:-}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_SENHA: ${SMTP_SENHA:-}
+      SMTP_REMETENTE: ${SMTP_REMETENTE:-}
+      APP_URL: ${APP_URL:-}
+      CONFIAR_EM_PROXY: ${CONFIAR_EM_PROXY:-}
+      COOKIE_SEGURO: ${COOKIE_SEGURO:-}

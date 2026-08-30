@@ -1,0 +1,17 @@
+-- Horário do lançamento.
+--
+-- Coluna NOVA, e não hora dentro de `vencimento` / `data_pagamento`. O app
+-- compara essas duas como TEXTO em dezenas de consultas — `vencimento <= ?`,
+-- `mes < ?`, `BETWEEN ? AND ?` —, e isso só funciona porque 'AAAA-MM-DD'
+-- ordena igual como texto e como data. Um valor 'AAAA-MM-DDTHH:MM' fica MAIOR
+-- que a data do próprio dia, então o filtro de hoje deixaria de trazer o que
+-- vence hoje, o BETWEEN perderia o último dia do período, e nada disso daria
+-- erro: as telas simplesmente mostrariam menos.
+--
+-- Pela mesma razão a coluna não entra em filtro, soma, ordenação nem
+-- agrupamento — ela é dado de exibição. O desempate de ordem continua sendo o
+-- `id`, como já era.
+--
+-- NULL em toda linha antiga, e é isso que preserva o histórico: lançamento sem
+-- horário mostra só a data, e nunca um "00:00" que ninguém digitou.
+ALTER TABLE lancamentos ADD COLUMN hora TEXT;   -- 'HH:MM', opcional

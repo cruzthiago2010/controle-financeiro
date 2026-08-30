@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Entrar — FinanCerto</title>
-<script src="/static/i18n-paginas.js"></script>
-<link rel="manifest" href="/manifest.json">
+<title>Redefinir senha — FinanCerto</title>
 <link rel="icon" href="/static/logo-financerto.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icones/icone-180.png">
+<script src="/static/i18n-paginas.js"></script>
 <meta name="theme-color" content="#141a21">
+<!-- O CSS é o mesmo do login, copiado como o registro.html já faz. Unificar as
+     três páginas num arquivo à parte é uma refatoração separada — e enquanto o
+     app inteiro couber em duas peças grandes, mais um arquivo estático que
+     precisa ser carregado antes de a tela aparecer é um passo para trás. -->
 <style>
   :root{
     --bg:#141a21; --card:#1c252e; --card2:#252f3a;
@@ -138,8 +141,22 @@
     font-size:0.66rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px;
   }
 </style>
-<!-- Analytics desta instalação (opcional; veja static/analytics.js) -->
-<script async src="/static/analytics.js"></script>
+<style>
+  .campo-simples{text-align:left; margin-bottom:12px;}
+  .campo-simples label{display:block; font-size:0.78rem; color:var(--muted); margin:0 0 5px 4px;}
+  .campo-simples input{
+    width:100%; background:rgba(255,255,255,0.02); color:var(--text);
+    border:1px solid rgba(0,167,111,0.35); border-radius:999px;
+    padding:13px 16px; font-size:0.95rem; font-family:inherit;
+    transition:border-color 0.2s, box-shadow 0.2s;
+  }
+  .campo-simples input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,167,111,0.16);}
+  .aviso{
+    margin-top:16px; background:rgba(0,167,111,0.08); border:1px solid rgba(0,167,111,0.25);
+    border-radius:12px; padding:12px 14px; font-size:0.83rem; color:var(--muted); line-height:1.5;
+  }
+  .explica{font-size:0.83rem; color:var(--muted); line-height:1.5; margin:0 0 18px;}
+</style>
 </head>
 <body>
 
@@ -164,59 +181,57 @@
     <div class="tagline" data-i18n="Seu Controle Financeiro">Seu Controle Financeiro</div>
   </div>
 
-  <h1 data-i18n="Bem-vindo ao FinanCerto">Bem-vindo ao FinanCerto</h1>
-  <p class="sub" data-i18n="Acesse sua conta para começar.">Acesse sua conta para começar.</p>
-
-  <form id="loginForm">
-    <div class="campo">
-      <svg class="ico-campo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-      </svg>
-      <input type="text" id="username" autocomplete="username" placeholder="Digite seu usuário" data-i18n-placeholder="Digite seu usuário" required>
-    </div>
-    <div class="campo">
-      <svg class="ico-campo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-      </svg>
-      <input type="password" id="senha" autocomplete="current-password" placeholder="Digite sua senha" data-i18n-placeholder="Digite sua senha" required>
-      <button type="button" class="olho" id="verSenha" title="Mostrar senha" data-i18n-title="Mostrar senha" aria-label="Mostrar senha">
-        <svg id="olhoIco" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
-        </svg>
-      </button>
-    </div>
-    <div class="esqueci"><a href="/esqueci-senha" data-i18n="Esqueci minha senha">Esqueci minha senha</a></div>
-    <div class="erro" id="loginErro"></div>
-    <button type="submit" class="btn-entrar" id="loginBtn" data-i18n="Entrar">Entrar</button>
-  </form>
-
-  <div class="divisor" data-i18n="ou">ou</div>
-  <a class="btn-google" href="/api/auth/google/login">
-    <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.5 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6.5 29.6 4 24 4 16.3 4 9.6 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-2.1 14.1-5.6l-6.5-5.5C29.6 34.7 27 35.5 24 35.5c-5.3 0-9.7-3.3-11.3-8l-6.6 5.1C9.5 39.5 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.5l6.5 5.5C39.9 37 44 31 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
-    <span data-i18n="Continuar com Google">Continuar com Google</span>
-  </a>
-
-  <div class="rodape"><span data-i18n="Não tem uma conta?">Não tem uma conta?</span> <a href="/registro" data-i18n="Crie agora.">Crie agora.</a></div>
-
-  <div class="convite" id="convite">
-    <div class="convite-topo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>
-      </svg>
-      <span class="convite-titulo" id="conviteTitulo"></span>
-    </div>
-    <div class="convite-texto" id="conviteTexto"></div>
-    <div class="convite-acoes" id="conviteAcoes"></div>
+  <div id="conferindo">
+    <h1 data-i18n="Redefinir senha">Redefinir senha</h1>
+    <p class="explica" data-i18n="Conferindo o link...">Conferindo o link...</p>
   </div>
 
-  <div class="protegido">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-    </svg>
-    <span data-i18n="Seus dados ficam no seu servidor.">Seus dados ficam no seu servidor.</span>
+  <div id="invalido" style="display:none;">
+    <h1 data-i18n="Link expirado">Link expirado</h1>
+    <p class="explica" data-i18n="Este link já foi usado ou passou da validade. Peça um novo — leva um minuto.">Este link já foi usado ou passou da validade. Peça um
+      novo — leva um minuto.</p>
+    <a class="btn-entrar" href="/esqueci-senha"
+       style="display:block; text-align:center; text-decoration:none; line-height:1.2;" data-i18n="Pedir outro link">Pedir outro link</a>
+    <div class="rodape"><span data-i18n="Lembrou a senha?">Lembrou a senha?</span> <a href="/login" data-i18n="Entrar">Entrar</a></div>
+  </div>
+
+  <div id="formulario" style="display:none;">
+    <h1 data-i18n="Escolha uma senha nova">Escolha uma senha nova</h1>
+    <p class="explica" id="deQuem"></p>
+    <form id="redefinirForm">
+      <div class="campo">
+        <svg class="ico-campo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <input type="password" id="nova" autocomplete="new-password" required minlength="8"
+               placeholder="Nova senha (mín. 8 caracteres)" data-i18n-placeholder="Nova senha (mín. 8 caracteres)">
+        <button type="button" class="olho" id="verSenha" title="Mostrar senha" data-i18n-title="Mostrar senha" aria-label="Mostrar senha">
+          <svg id="olhoIco" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <div class="campo">
+        <svg class="ico-campo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <input type="password" id="confirmar" autocomplete="new-password" required minlength="8"
+               placeholder="Repita a senha" data-i18n-placeholder="Repita a senha">
+      </div>
+      <div class="erro" id="redefinirErro"></div>
+      <button type="submit" class="btn-entrar" id="redefinirBtn" data-i18n="Salvar senha">Salvar senha</button>
+    </form>
+  </div>
+
+  <div id="pronto" style="display:none;">
+    <h1 data-i18n="Senha redefinida">Senha redefinida</h1>
+    <p class="explica" data-i18n="Pronto. Entre com a senha nova — as sessões abertas nos outros aparelhos foram encerradas.">Pronto. Entre com a senha nova — as sessões abertas nos
+      outros aparelhos foram encerradas.</p>
+    <a class="btn-entrar" href="/login"
+       style="display:block; text-align:center; text-decoration:none; line-height:1.2;" data-i18n="Entrar">Entrar</a>
   </div>
 
   <!-- A AGPL exige que quem usa o app pela rede consiga chegar no código-fonte.
@@ -229,107 +244,69 @@
 </div>
 
 <script>
-// O botão do Google só aparece se o login com Google estiver configurado.
-fetch("/api/auth/google/status").then(r => r.json()).then(d => {
-  if (!d.habilitado){
-    document.querySelector(".btn-google").style.display = "none";
-    document.querySelector(".divisor").style.display = "none";
-  }
-}).catch(() => {});
+// O token vem no FRAGMENTO da URL (#), não na query: o navegador não manda
+// fragmento ao servidor, então ele não aparece no log de acesso nem vaza pelo
+// cabeçalho Referer de nada que a página venha a carregar.
+const TOKEN = decodeURIComponent(location.hash.slice(1));
+
+function mostrar(qual){
+  ["conferindo", "invalido", "formulario", "pronto"].forEach(id => {
+    document.getElementById(id).style.display = id === qual ? "block" : "none";
+  });
+}
 
 const OLHO_ABERTO = `<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>`;
-const OLHO_FECHADO = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="m1 1 22 22"/>`;
+const OLHO_FECHADO = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
 document.getElementById("verSenha").addEventListener("click", () => {
-  const campo = document.getElementById("senha");
-  const mostrar = campo.type === "password";
-  campo.type = mostrar ? "text" : "password";
-  document.getElementById("olhoIco").innerHTML = mostrar ? OLHO_FECHADO : OLHO_ABERTO;
-  document.getElementById("verSenha").title = mostrar ? t("Ocultar senha") : t("Mostrar senha");
+  const campo = document.getElementById("nova");
+  const vendo = campo.type === "text";
+  campo.type = vendo ? "password" : "text";
+  document.getElementById("olhoIco").innerHTML = vendo ? OLHO_ABERTO : OLHO_FECHADO;
 });
 
-(() => {
-  const erro = new URLSearchParams(window.location.search).get("erro");
-  if (erro){
-    const el = document.getElementById("loginErro");
-    el.textContent = erro === "google_indisponivel"
-      ? t("Login com Google não está configurado nesse servidor.")
-      : t("Não foi possível entrar com o Google. Tente de novo.");
-    el.classList.add("ativo");
-  }
-})();
-
-
-// Cada aparelho tem um caminho diferente para "virar app": Android instala o
-// APK, iPhone só permite pela opção Compartilhar do Safari. Mostrar os dois
-// para todo mundo seria ruído, então o convite é escolhido pelo aparelho.
-(() => {
-  const ua = navigator.userAgent || "";
-  const jaEhApp = window.matchMedia("(display-mode: standalone)").matches ||
-                  window.navigator.standalone === true ||
-                  ua.includes("wv");   // WebView: já está dentro do app Android
-  if (jaEhApp || localStorage.getItem("conviteAppDispensado") === "1") return;
-
-  const ehAndroid = /Android/i.test(ua);
-  const ehIOS = /iPhone|iPad|iPod/i.test(ua) ||
-                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  if (!ehAndroid && !ehIOS) return;
-
-  const caixa = document.getElementById("convite");
-  const titulo = document.getElementById("conviteTitulo");
-  const texto = document.getElementById("conviteTexto");
-  const acoes = document.getElementById("conviteAcoes");
-
-  if (ehAndroid) {
-    titulo.textContent = t("Tem app para Android");
-    texto.innerHTML = t("Abre mais rápido e adiciona <b>bloqueio por digital</b>, "
-      + "aviso de contas vencendo e widget de saldo na tela inicial.");
-    acoes.innerHTML =
-      '<a class="convite-baixar" href="https://github.com/financerto/financerto-app/releases/latest" target="_blank" rel="noopener">' + t("Baixar o app") + '</a>' +
-      '<button type="button" class="convite-dispensar" id="conviteNao">' + t("Agora não") + '</button>';
-  } else {
-    titulo.textContent = t("Instale na tela de início");
-    texto.innerHTML = t("No iPhone não existe instalador, mas dá para deixar o "
-      + "FinanCerto como um app de verdade, em tela cheia:");
-    texto.innerHTML +=
-      '<div class="passo"><span class="n">1</span><span>' + t("Toque em <b>Compartilhar</b> na barra do Safari") + '</span></div>' +
-      '<div class="passo"><span class="n">2</span><span>' + t("Escolha <b>Adicionar à Tela de Início</b>") + '</span></div>' +
-      '<div class="passo"><span class="n">3</span><span>' + t("Confirme em <b>Adicionar</b>") + '</span></div>';
-    acoes.innerHTML = '<button type="button" class="convite-dispensar" id="conviteNao">' + t("Entendi") + '</button>';
-  }
-
-  caixa.classList.add("ativo");
-  document.getElementById("conviteNao").addEventListener("click", () => {
-    localStorage.setItem("conviteAppDispensado", "1");
-    caixa.classList.remove("ativo");
-  });
-})();
-
-document.getElementById("loginForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const erroEl = document.getElementById("loginErro");
-  const btn = document.getElementById("loginBtn");
-  erroEl.classList.remove("ativo");
-  btn.disabled = true;
-  btn.textContent = t("Entrando...");
+(async () => {
+  if (!TOKEN){ mostrar("invalido"); return; }
   try {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: cabecalhoJSON(),
-      body: JSON.stringify({
-        username: document.getElementById("username").value,
-        senha: document.getElementById("senha").value,
-      }),
+    const res = await fetch("/api/senha/conferir", {
+      method: "POST", headers: cabecalhoJSON(),
+      body: JSON.stringify({token: TOKEN}),
     });
-    if (!res.ok){
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j.erro || t("Não foi possível entrar"));
-    }
-    window.location.href = "/";
+    const j = await res.json();
+    if (!j.valido){ mostrar("invalido"); return; }
+    document.getElementById("deQuem").textContent =
+      tf("Conta @{0}, de {1}.", j.username, j.nome);
+    mostrar("formulario");
+  } catch (e) { mostrar("invalido"); }
+})();
+
+document.getElementById("redefinirForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const erroEl = document.getElementById("redefinirErro");
+  const btn = document.getElementById("redefinirBtn");
+  const nova = document.getElementById("nova").value;
+  erroEl.classList.remove("ativo");
+  if (nova !== document.getElementById("confirmar").value){
+    erroEl.textContent = t("As duas senhas não são iguais.");
+    erroEl.classList.add("ativo");
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = t("Salvando...");
+  try {
+    const res = await fetch("/api/senha/redefinir", {
+      method: "POST", headers: cabecalhoJSON(),
+      body: JSON.stringify({token: TOKEN, nova_senha: nova}),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.erro || t("Não foi possível redefinir a senha."));
+    // O link não faz login sozinho: quem redefiniu prova que sabe a senha nova
+    // entrando com ela.
+    mostrar("pronto");
   } catch (err) {
     erroEl.textContent = err.message;
     erroEl.classList.add("ativo");
     btn.disabled = false;
-    btn.textContent = t("Entrar");
+    btn.textContent = t("Salvar senha");
   }
 });
 </script>
