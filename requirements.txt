@@ -6,4 +6,4 @@ pyzbar==0.1.9
 Pillow==12.3.0
 Authlib==1.7.2
 requests==2.34.2
-cryptography==50.0.0
+cryptography==50.0.1
